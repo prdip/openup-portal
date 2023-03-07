@@ -149,6 +149,19 @@ def user_register(request):
             "message"       :   "Please Provide Valid Last Name",
        })
     
+    #   CHECK PASSWORD ALREADY EXIST 
+    try:
+       check_mob = Registration.objects.exclude(user_is_delete=1).filter(user_phone_number=phone_number).exists()
+    except:
+       check_mob = None
+
+    if check_mob == True:
+       return JsonResponse({
+           
+            "success"       :   0,
+            "message"       :   "Phone Number already exist",
+       })
+        
     #   CHECK EMAIL ALREADY EXIST 
     try:
        check_email = Registration.objects.exclude(user_is_delete=1).filter(user_email=email).exists()
@@ -202,7 +215,8 @@ def user_register(request):
         "user_email"             :   email,
         "user_password"          :   make_pass,
         "create_at"              :   created_at,
-        "user_role"              :   role_id.role_id
+        "user_role"              :   role_id.role_id,
+        "user_is_delete"         :   0
 
     }
 
@@ -234,17 +248,17 @@ def user_register(request):
     user_session                    =         SessionSerializer(data=data)
     
     if user_session.is_valid():
-        user_session.save()
+        user_session.save()     
 
         # SEND TOKEN BACK TO THE USER
-        token =  {
-                "token"  : session_token
+        user_token =  {
+                "user_token"  : session_token
             }
         
         return JsonResponse({
                     "success"       :   1,
                     "message"       :   "Registered Successfully !",
-                    "data"          :   token
+                    "data"          :   user_token
                 })
     else:
         return JsonResponse({
@@ -332,14 +346,14 @@ def login(request):
 
     if user_session.is_valid():
         user_session.save()
-        token =  {
+        data =  {
        
-                    "token"  : session_token
+                    "user_token"  : session_token
                 }
     return JsonResponse({
                 "success"    :   1,
                 "message"    :   "Login successfully",
-                "data"       :    token
+                "data"       :    data
                 })
 
 
@@ -353,8 +367,8 @@ def login(request):
 @api_view(['POST'])
 def logout(request,*args,**kwargs):
     # required data
-    token = request.data.get('token',None)
-    check_user              =       token_verification(token)
+    user_token = request.data.get('user_token',None)
+    check_user              =       token_verification(user_token)
 
     if check_user is None:
         return JsonResponse({
@@ -362,7 +376,7 @@ def logout(request,*args,**kwargs):
                 "message"     :   "Unauthorized User",
         })    
     else:
-        associated_user     =       Session.objects.filter(session_token=token).values('session_id').first()['session_id']       
+        associated_user     =       Session.objects.filter(session_token=user_token).values('session_id').first()['session_id']       
         session_record      =       get_object_or_404(Session,session_id=associated_user) 
 
         # Update session data    
@@ -392,8 +406,8 @@ def logout(request,*args,**kwargs):
 def email_update(request,*args,**kwargs):
 
     # CHECK TOKEN VALUE
-    token = request.data.get('token',None)
-    check_user              =       token_verification(token)
+    user_token = request.data.get('user_token',None)
+    check_user              =       token_verification(user_token)
 
     if check_user is None:
         return JsonResponse({
@@ -500,8 +514,8 @@ def email_update(request,*args,**kwargs):
 def change_password(request,*args,**kwargs):
     
     # CHECK TOKEN VALUE
-    token = request.data.get('token',None)
-    check_user              =       token_verification(token)
+    user_token = request.data.get('user_token',None)
+    check_user              =       token_verification(user_token)
 
     if check_user is None:
         return JsonResponse({
@@ -594,87 +608,64 @@ def change_password(request,*args,**kwargs):
 
 def forget_password(request):
 
-      # CHECK TOKEN VALUE
-    token            =       request.data.get('token',None)
-    check_user       =       token_verification(token)
-
-    if check_user is None:
+    user_email  = request.data.get('user_email',None)
+    # EMAIL REQUIRED
+    if user_email == None or user_email == "":
         return JsonResponse({
-                "success"     :   0,
-                "message"     :   "Unauthorized User",
-        })      
-    else:
+            "success"     :   0,
+            "message"     :   "Email is not Valid",
+    })  
+    # Get user id from token data  
+    try:
+        check_email = Registration.objects.exclude(user_is_delete=1).filter(user_email=user_email).values('user_id').first()['user_id']
+    except:
+        check_email = None
 
-        user_email  = request.data.get('user_email',None)
+    # IF EMAIL DOES NOT MATCH
+    if check_email == None:
+         return JsonResponse({
+            "success"     :   0,
+            "message"     :   "Please Enter valid email address",
+    })  
 
-        # EMAIL REQUIRED
-        if user_email == None or user_email == "":
-            return JsonResponse({
-                "success"     :   0,
-                "message"     :   "Email is not Valid",
-        })  
-
-        # Get user id from token data  
-        user_id         =   check_user['session_user']
-        try:
-            check_email = Registration.objects.exclude(user_is_delete=1).filter(user_email=user_email).get(user_id=user_id)
-
-        except:
-            check_email = None
-
-        # IF EMAIL DOES NOT MATCH
-        if check_email == None:
-             return JsonResponse({
-                "success"     :   0,
-                "message"     :   "Please Enter valid email address",
-        })  
-
-        # GENERATE TOKEN
-        token               =   secrets.token_hex()
-        user_id             =   check_email.user_id
-        Subject             =   "Request for Password Reset"
-        text_template       =   "email/pass_reset.txt"
-
-        # EMAIL FORMAT
-        data = {
-
-                "email"     :   check_email.user_email,
-                'domain'    :   '127.0.0.1:8000',
-				'site_name' :   'Website',     #Data which will send with E-mail id
-				"user"      :   check_email.user_id,
-				'token'     :   token,
-				'protocol'  :   'http',
-            }
-        # becemol635@gpipes.com
-
-        myemail = render_to_string(text_template,data)  #Converts text file to string 
-
-        email = EmailMessage(Subject, myemail, to=[user_email])  #Formats Email message 
-        email.send()  #Sends Email to the user
-
-        # GENERATED EXPIRY TIME 
-        time                =       datetime.datetime.now()+timedelta(days=30)
-        send_time           =       datetime.datetime.timestamp(time)*1000
-
-        # DATA FOR FORGOT PASSWORD TO STORE
-        forgot_pass_data    =      {
-                                        "email"       :   user_email,
-                                        "status"      :   1,
-                                        "token"       :  token,
-                                        "timestamp"   :   send_time,
-                                        "user"        :   user_id
-                                       }
-
-        user_pass_ser = ForgotPasswordSerializer(data=forgot_pass_data)
-        
-        if user_pass_ser.is_valid():
-            user_pass_ser.save()
-            return JsonResponse({
-                            "status"        :       1,
-                            "message"        :      "Mail Sent to Your email Please Check"
-            })
-
-
+    user =  Registration.objects.exclude(user_is_delete=1).get(user_id=check_email)
+    # GENERATE TOKEN
+    token               =   secrets.token_hex()
+    user_id             =   user.user_id
+    Subject             =   "Request for Password Reset"
+    text_template       =   "email/pass_reset.txt"
+    # EMAIL FORMAT
+    data = {
+            "email"     :   user.user_email,
+            'domain'    :   '127.0.0.1:8000',
+			'site_name' :   'Website',     #Data which will send with E-mail id
+			"user"      :   user.user_id,
+			'token'     :   token,
+			'protocol'  :   'http',
+        }
+    # becemol635@gpipes.com
+    myemail = render_to_string(text_template,data)  #Converts text file to string 
+    email = EmailMessage(Subject, myemail, to=[user_email])  #Formats Email message 
+    email.send()  #Sends Email to the user
+    # GENERATED EXPIRY TIME 
+    time                =       datetime.datetime.now()+timedelta(days=30)
+    send_time           =       datetime.datetime.timestamp(time)*1000
+    # DATA FOR FORGOT PASSWORD TO STORE
+    forgot_pass_data    =      {
+                                    "email"       :   user_email,
+                                    "status"      :   1,
+                                    "token"       :  token,
+                                    "timestamp"   :   send_time,
+                                    "user"        :   user_id
+                                   }
+    user_pass_ser = ForgotPasswordSerializer(data=forgot_pass_data)
+    
+    if user_pass_ser.is_valid():
+        user_pass_ser.save()
+        return JsonResponse({
+                        "status"        :       1,
+                        "message"        :      "Mail Sent to Your email Please Check"
+        })
 
 
 
@@ -735,6 +726,52 @@ def reset_password(request,token):
             messages.error(request,message="Link Expired")
     
     return render(request,'Authentication/forget_password.html',{"token":user_token})
+
+
+
+
+@api_view(['POST'])
+# DELETE ACCOUNT 
+
+def delete_account(request):
+
+      # CHECK TOKEN VALUE
+    user_token            =       request.data.get('user_token',None)
+    check_user            =       token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+        }) 
+    
+    else:
+        
+        # get user_id from token
+        user_id = check_user['session_user']
+
+
+        user_account =  Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)     
+        
+
+        update_data = {
+            "user_is_delete" : 1
+        }
+
+        user_serializer     =   RegisterSerializer(data=update_data,instance=user_account,partial=True)
+        if user_serializer.is_valid():
+            user_serializer.save()
+            return JsonResponse({
+                            "status"        :       1,
+                            "message"        :      "Account deleted succesfully"
+            })
+
+
+
+
+
+
+
 
 
 

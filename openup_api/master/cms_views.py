@@ -21,9 +21,9 @@ from django.http import JsonResponse
 def cms_details(request,*args,**kwargs):
 
     # CHECK TOKEN VALUE
-    token = request.data.get('token',None)
+    user_token = request.data.get('user_token',None)
 
-    check_user              =       token_verification(token)
+    check_user              =       token_verification(user_token)
 
     if check_user is None:
         return JsonResponse({
@@ -32,7 +32,7 @@ def cms_details(request,*args,**kwargs):
         })  
     
     else:
-
+        # return cms links as a response
         cms_links  =  {
 
             "Copyright"             :       "http://192.168.1.4:8000/api/copyright_page",

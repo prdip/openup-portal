@@ -9,7 +9,7 @@ from .models import Registration,Session,ForgotPassword,UserRole
 
 
 
-
+# REGISTRATION SERIALIZER
 class RegisterSerializer(serializers.ModelSerializer):
 
     user_first_name          =   serializers.CharField()
@@ -21,7 +21,9 @@ class RegisterSerializer(serializers.ModelSerializer):
     create_at                =   serializers.DateTimeField()
     user_role                =   serializers.PrimaryKeyRelatedField(queryset = UserRole.objects.all())
 
-    
+    user_is_delete           =   serializers.BooleanField(default=0,allow_null=True)
+
+
     
 
     class Meta:
@@ -29,7 +31,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = Registration
 
         fields = ('user_first_name','user_middle_name', 'user_last_name', 'user_email','user_phone_number',
-                  'user_password','create_at','user_role')
+                  'user_password','create_at','user_role','user_is_delete')
 
 
 
@@ -64,7 +66,7 @@ class SessionSerializer(serializers.ModelSerializer):
 
 
 
-    
+# FORGOT PASSWORD SERIALIZER    
     
 class ForgotPasswordSerializer(serializers.ModelSerializer):
     user               =        serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())

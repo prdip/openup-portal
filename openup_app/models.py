@@ -41,7 +41,6 @@ class UserRole(models.Model):
 class Registration(models.Model):
 
     user_id                 =    models.AutoField(primary_key=True)
-
     user_first_name          =   models.CharField(max_length=150)
     user_middle_name         =   models.CharField(max_length=150)
     user_last_name           =   models.CharField(max_length=150)
@@ -49,7 +48,6 @@ class Registration(models.Model):
     user_phone_number        =   models.CharField(max_length=12)
     user_password            =   models.CharField(max_length=550)
     user_role                =   models.ForeignKey(UserRole,on_delete=models.CASCADE,null=True)
-
     create_at                =   models.DateTimeField()
     update_at                =   models.DateTimeField(null=True,blank=True)
     user_is_delete           =   models.BooleanField(default=0)
@@ -90,9 +88,6 @@ class Session(models.Model):
     session_exp                 =           models.DateTimeField()
     session_status              =           models.BooleanField()    
     session_created_at          =           models.DateTimeField()
-    # session_created_at          =           models.CharField(max_length=50)
-    # session_exp                 =           models.CharField(max_length=50)
-
     session_updated_at          =           models.DateTimeField(null=True)
     session_is_delete           =           models.BooleanField(default=1)
 
@@ -106,6 +101,7 @@ class Session(models.Model):
 
 
     
+    #  Forget Password
     
 class ForgotPassword(models.Model):
     forgot_pass_id     =        models.AutoField(primary_key=True)
