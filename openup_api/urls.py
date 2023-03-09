@@ -1,18 +1,16 @@
-from django.contrib import admin
 from django.urls import path
-
-from openup_api.master import auth_views, cms_views, force_update
+from django.conf import settings
+from django.conf.urls.static import static
+from openup_api.views import auth_views, cms_views, force_update,vehicle_views
 
 urlpatterns = [
 
-    # User Authentication 
+# User Authentication 
   path('registration', auth_views.user_register,name='registration'),
   path('login', auth_views.login,name='login'),
   path('logout', auth_views.logout,name='logout'),
   path('delete_account', auth_views.delete_account,name='delete_account'),
 
-
-  
 
 # UPDATE
   path('email_update', auth_views.email_update,name='email-update'),
@@ -34,8 +32,16 @@ urlpatterns = [
   path('software_license', cms_views.software_license,name='software_license'),
   path('location_information', cms_views.copyright_page,name='location_information'),
 
-  # Force Update
+# Force Update
   path('force_update', force_update.force_update,name='force_update'),
+
+# Vehicle information
+
+  path('add_vehicle', vehicle_views.add_vehicle,name='add_vehicle'),
+  path('vehicle_edit', vehicle_views.vehicle_edit,name='vehicle_edit'),
+
+
 
 
 ]
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

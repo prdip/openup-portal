@@ -2,10 +2,7 @@ from django.db import models
 
 # Create your models here.
 
-
-
-
-
+import datetime
 
 # USER  ROLES
 class UserRole(models.Model):
@@ -121,4 +118,36 @@ class ForgotPassword(models.Model):
             except KeyError:
                 pass
         self.save()
+
+
+
+# VEHICLE DETAILS MODEL
+
+
+class VehicleDetails(models.Model):
+
+    vehicle_id              =       models.AutoField(primary_key=True)
+    user                    =       models.ForeignKey(Registration,on_delete=models.CASCADE)
+    vehicle_details         =       models.CharField(max_length=200)
+    vehicle_modification    =       models.CharField(max_length=200,null=True)
+    vehicle_license         =       models.FileField(upload_to='licenses',blank=True,null=True)
+    created_at              =       models.DateTimeField()
+    update_at               =       models.DateTimeField(null=True)
+    vehicle_status          =       models.BooleanField(default=0)
+    
+    
+    
+    class Meta:
+        db_table = 'vehicle_model'
+
+
+    def update(self,*args, **kwargs):
+        for name,values in kwargs.items():
+            try:
+                setattr(self,name,values)
+            except KeyError:
+                pass
+        self.save()
+
+
 

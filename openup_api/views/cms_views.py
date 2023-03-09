@@ -7,7 +7,7 @@ from rest_framework.decorators import api_view
 
 # Import token verifivations
 
-from openup_api.master.auth_views import token_verification
+from openup_api.views.auth_views import token_verification
 
 
 # Import json response
@@ -20,22 +20,10 @@ from django.http import JsonResponse
 @api_view(['POST'])
 def cms_details(request,*args,**kwargs):
 
-    # CHECK TOKEN VALUE
-    user_token = request.data.get('user_token',None)
-
-    check_user              =       token_verification(user_token)
-
-    if check_user is None:
-        return JsonResponse({
-                "success"     :   0,
-                "message"     :   "Unauthorized User",
-        })  
-    
-    else:
         # return cms links as a response
         cms_links  =  {
 
-            "Copyright"             :       "http://192.168.1.4:8000/api/copyright_page",
+            "copyright"             :       "http://192.168.1.4:8000/api/copyright_page",
             "terms_and_condition"   :       "http://192.168.1.4:8000/api/terms_and_condition",
             "privacy_policy"        :       "http://192.168.1.4:8000/api/privacy_policy",
             "software_license"      :       "http://192.168.1.4:8000/api/software_license",

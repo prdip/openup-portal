@@ -120,7 +120,7 @@ def user_register(request):
        })
     # Validate data
 
-    # Check first name
+    # Check first name == > allowed only text data
     check_first_name = check_text(first_name)
     if check_first_name == False:
        return JsonResponse({
@@ -129,7 +129,7 @@ def user_register(request):
             "message"       :   "Please Provide Valid First Name",
        })
            
-    # Check Middle name
+    # Check Middle name== > allowed only text data
 
     check_middle_name = check_text(middle_name)
     if check_middle_name == False:
@@ -140,7 +140,7 @@ def user_register(request):
        })
     
 
-    # Check last name
+    # Check last name == > allowed only text data
     check_last_name = check_text(last_name)
     if check_last_name == False:
        return JsonResponse({
@@ -149,7 +149,7 @@ def user_register(request):
             "message"       :   "Please Provide Valid Last Name",
        })
     
-    #   CHECK PASSWORD ALREADY EXIST 
+    #   CHECK Mobile Number ALREADY EXIST 
     try:
        check_mob = Registration.objects.exclude(user_is_delete=1).filter(user_phone_number=phone_number).exists()
     except:
@@ -176,7 +176,7 @@ def user_register(request):
        })
        
 
-        # Validate email address  
+        # Validate email address  ==> Validate email address
     check_email = email_address(email)
     if check_email == False:
        return JsonResponse({
@@ -185,7 +185,7 @@ def user_register(request):
             "message"       :   "Please Provide Valid Email",
        })
 
-    # Validate mobile numbers
+    # Validate mobile numbers => allowed 12 digits only
     check_mobile_no = mobile_number(phone_number)
     if check_mobile_no is False:
        
@@ -226,6 +226,7 @@ def user_register(request):
     if registration_data.is_valid():
         registration_data.save()
         time.sleep(5)
+        
 
     # STORE SESSION DATA AFTER REGISTRATION
     user_id             =       Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']    
@@ -282,12 +283,15 @@ def login(request):
     email       = request.data.get('user_email', None)
     password    = request.data.get('user_password', None)
 
+    # check email provided or not
     if email == "" or email ==None:
        return JsonResponse({
             "success"       :   0,
             "message"       :   "Please Provide Email Address",
        })
     
+    # check password provided or not
+
     if password == None or password == "":
        return JsonResponse({
            
@@ -295,7 +299,7 @@ def login(request):
             "message"       :   "Please Provide Password",
        })
     
-    
+    # Validates email address
     check_email = email_address(email)
     if check_email == False:
        return JsonResponse({
@@ -303,7 +307,7 @@ def login(request):
             "success"       :   0,
             "message"       :   "Please Provide Valid Email",
        })
-    
+    # get user_id 
     try:
         check_user_id = Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']
     except:       
@@ -316,7 +320,7 @@ def login(request):
             "success"       :   0,
             "message"       :   "User does not exist",
        })
-    
+    # get user record
     user_rec    =   Registration.objects.exclude(user_is_delete=1).get(user_id=check_user_id)      
 
     # CHECK HASH PASSWORD
@@ -376,6 +380,7 @@ def logout(request,*args,**kwargs):
                 "message"     :   "Unauthorized User",
         })    
     else:
+        # get user from token
         associated_user     =       Session.objects.filter(session_token=user_token).values('session_id').first()['session_id']       
         session_record      =       get_object_or_404(Session,session_id=associated_user) 
 
@@ -477,7 +482,6 @@ def email_update(request,*args,**kwargs):
         # GET USER INSTANCE
         user  = Registration.objects.exclude(user_is_delete=1).get(user_id = user_id)
 
-        
         # CHECK HASH PASSWORD
         check_pass =  check_password(password,user.user_password)
 
@@ -489,6 +493,7 @@ def email_update(request,*args,**kwargs):
             })
         
         # UPDATE DATA
+
         update_data = {
             "user_email" : new_email
         }
@@ -507,9 +512,7 @@ def email_update(request,*args,**kwargs):
 
 # CHANGE PASSWORD API
 
-
 @api_view(['POST'])
-
 
 def change_password(request,*args,**kwargs):
     
@@ -643,7 +646,8 @@ def forget_password(request):
 			'token'     :   token,
 			'protocol'  :   'http',
         }
-    # becemol635@gpipes.com
+
+
     myemail = render_to_string(text_template,data)  #Converts text file to string 
     email = EmailMessage(Subject, myemail, to=[user_email])  #Formats Email message 
     email.send()  #Sends Email to the user

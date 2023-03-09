@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 #IMPORT MODELS FROM SGSP APPLICATION
 
-from .models import Registration,Session,ForgotPassword,UserRole
+from .models import Registration,Session,ForgotPassword,UserRole,VehicleDetails
 
 
 
@@ -20,9 +20,16 @@ class RegisterSerializer(serializers.ModelSerializer):
     user_password            =   serializers.CharField()
     create_at                =   serializers.DateTimeField()
     user_role                =   serializers.PrimaryKeyRelatedField(queryset = UserRole.objects.all())
-
     user_is_delete           =   serializers.BooleanField(default=0,allow_null=True)
 
+
+    # Field level validation  
+    # def validate_user_first_name(self,value):
+    #     if any (value.isdigit() for value in value):
+       
+    #         raise serializers.ValidationError("User name must be string")
+    #     else:
+    #         return value    
 
     
 
@@ -32,7 +39,6 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         fields = ('user_first_name','user_middle_name', 'user_last_name', 'user_email','user_phone_number',
                   'user_password','create_at','user_role','user_is_delete')
-
 
 
 
@@ -85,3 +91,23 @@ class ForgotPasswordSerializer(serializers.ModelSerializer):
                     )
 
 
+# VEHICLE DETAILS MODEL
+
+
+class VehicleSerializer(serializers.ModelSerializer):
+
+    user                    =       serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
+    vehicle_details         =       serializers.CharField()
+    vehicle_modification    =       serializers.CharField()
+    vehicle_license         =       serializers.FileField(required = False)  
+    
+    
+    
+    
+    class Meta:
+        model = VehicleDetails
+
+        fields = ('user','vehicle_details',
+                    'vehicle_license',
+                   'vehicle_modification',
+                    )

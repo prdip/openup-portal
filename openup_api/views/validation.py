@@ -35,7 +35,6 @@ def email_address(email):
 
 
 # Check Mobile Number 
-import re
 def mobile_number(mob_no):
     check = (re.findall("[0123456789]",mob_no))
     if check == []:
@@ -45,3 +44,10 @@ def mobile_number(mob_no):
             return True
         else:
             return False
+        
+
+
+
+# validate password 
+
+

@@ -7,7 +7,7 @@ from rest_framework.decorators import api_view
 
 # Import token verifivations
 
-from openup_api.master.auth_views import token_verification
+from openup_api.views.auth_views import token_verification
 
 
 # Import json response
@@ -20,19 +20,6 @@ from django.http import JsonResponse
 @api_view(['POST'])
 def force_update(request):
 
-      # CHECK TOKEN VALUE
-    user_token = request.data.get('user_token',None)
-
-    check_user              =       token_verification(user_token)
-
-    if check_user is None:
-        return JsonResponse({
-                "success"     :   0,
-                "message"     :   "Unauthorized User",
-        })  
-    else:
-
-
         version_list = {
         "anaroid_version"       :   1.3,
         "is_anaroid_update"     :   0,
@@ -42,7 +29,7 @@ def force_update(request):
             
     }
    
-
+ 
         data = {
         
            "version_list"   :   version_list
@@ -51,7 +38,7 @@ def force_update(request):
     
     
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   1,
                 "message"     :   "Force Update",
                 "data"        :   data
         }) 
