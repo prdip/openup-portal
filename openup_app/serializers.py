@@ -127,9 +127,6 @@ class PaymentSerializer(serializers.ModelSerializer):
     update_at       =       serializers.DateTimeField(required=False)
     is_delete       =       serializers.BooleanField(default=0)
 
-
-
-
     class Meta:
         model = Payment
 

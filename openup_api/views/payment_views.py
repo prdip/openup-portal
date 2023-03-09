@@ -205,6 +205,8 @@ def add_card(request):
                                     "message"     :   "some error occured",
                                     "error"       :     payment_serializer.errors
                             })
+            
+
 
         
 # Api for card details

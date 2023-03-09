@@ -225,8 +225,8 @@ def vehicle_details(request):
         }) 
     
     else:
-         
 
+        #  
         vehicle_id = request.data.get('vehicle_id',None)
         if vehicle_id   ==  None:
               return JsonResponse({
