@@ -151,3 +151,24 @@ class VehicleDetails(models.Model):
 
 
 
+
+
+# PAYMENT MODEL
+
+class Payment(models.Model):
+
+    payment_id      =       models.AutoField(primary_key=True)
+    user_card_no    =       models.BigIntegerField(unique=True)
+    card_cvv        =       models.IntegerField()
+    card_name       =       models.CharField(max_length=250)
+    card_validity   =       models.DateTimeField()
+    card_type       =       models.CharField(max_length=250)
+    created_at      =       models.DateTimeField()
+    update_at       =       models.DateTimeField(null=True)
+    is_delete       =       models.BooleanField(default=0)
+
+
+    class Meta:
+        db_table = 'payment'
+
+

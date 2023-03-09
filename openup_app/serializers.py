@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 #IMPORT MODELS FROM SGSP APPLICATION
 
-from .models import Registration,Session,ForgotPassword,UserRole,VehicleDetails
+from .models import Registration,Session,ForgotPassword,UserRole,VehicleDetails,Payment
 
 
 
@@ -101,7 +101,7 @@ class VehicleSerializer(serializers.ModelSerializer):
     vehicle_modification    =       serializers.CharField()
     vehicle_license         =       serializers.FileField(required = False)  
     
-    
+    created_at              =       serializers.DateTimeField()
     
     
     class Meta:
@@ -110,4 +110,27 @@ class VehicleSerializer(serializers.ModelSerializer):
         fields = ('user','vehicle_details',
                     'vehicle_license',
                    'vehicle_modification',
+                   'created_at'
                     )
+
+
+class PaymentSerializer(serializers.ModelSerializer):
+
+    user_card_no    =       serializers.IntegerField()
+    card_cvv        =       serializers.IntegerField()
+    card_name       =       serializers.CharField()
+    card_validity   =       serializers.DateTimeField()
+    card_type       =       serializers.CharField()
+    created_at      =       serializers.DateTimeField()
+    update_at       =       serializers.DateTimeField(required=False)
+    is_delete       =       serializers.BooleanField(default=0)
+
+
+
+
+    class Meta:
+        model = Payment
+
+
+        fields = ('user_card_no','card_cvv','card_name','card_validity',
+              'card_type','created_at','update_at','is_delete')

@@ -48,6 +48,14 @@ def mobile_number(mob_no):
 
 
 
-# validate password 
+# validate only number 
+
+def check_number(check_no): 
+    if not all (char.isdigit() for char in check_no):
+        return False
+    else:
+        return True
+    
+
 
 
