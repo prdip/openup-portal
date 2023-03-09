@@ -46,5 +46,7 @@ urlpatterns = [
   path('card_details', payment_views.card_details,name='card_details'),
   path('card_delete', payment_views.card_delete,name='card_delete'),
 
+
+
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

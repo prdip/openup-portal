@@ -49,10 +49,6 @@ class Registration(models.Model):
     update_at                =   models.DateTimeField(null=True,blank=True)
     user_is_delete           =   models.BooleanField(default=0)
 
-
-
-
-
     class Meta:
 
         db_table = "user_registration"
@@ -64,13 +60,6 @@ class Registration(models.Model):
             except KeyError:
                 pass
         self.save()
-
-
-
-
-
-
-
 
     
 
@@ -90,11 +79,6 @@ class Session(models.Model):
 
     class Meta:
         db_table = 'user_sessions'
-
-    
-    
-
-
 
 
     
@@ -150,9 +134,6 @@ class VehicleDetails(models.Model):
         self.save()
 
 
-
-
-
 # PAYMENT MODEL
 
 class Payment(models.Model):
@@ -171,4 +152,10 @@ class Payment(models.Model):
     class Meta:
         db_table = 'payment'
 
-
+    def update(self,*args, **kwargs):
+        for name,values in kwargs.items():
+            try:
+                setattr(self,name,values)
+            except KeyError:
+                pass
+        self.save()

@@ -114,6 +114,8 @@ class VehicleSerializer(serializers.ModelSerializer):
                     )
 
 
+# PAYMENT SERIALIZER
+
 class PaymentSerializer(serializers.ModelSerializer):
 
     user_card_no    =       serializers.IntegerField()
