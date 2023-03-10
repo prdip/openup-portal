@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 #IMPORT MODELS FROM SGSP APPLICATION
 
-from .models import Registration,Session,ForgotPassword,UserRole,VehicleDetails,Payment,Jobs,JobsType
+from .models import Registration,Session,ForgotPassword,UserRole,VehicleDetails,Payment,Jobs,JobsType,Settings
 
 
 
@@ -174,6 +174,9 @@ class JobsSerializer(serializers.Serializer):
 
     def create(self,validated_data):     
         return Jobs.objects.create(**validated_data)
+    
+    def update(self,validated_data):     
+        return Jobs.objects.update(**validated_data)
 
     class Meta:
         model = Jobs
@@ -182,3 +185,39 @@ class JobsSerializer(serializers.Serializer):
         fields = ('job_type','user','location_latitude','location_longitude',
               'vehicle_details','vehicle_modification','vehicle_license','created_at','is_delete','job_status')
 
+
+
+
+
+# Setting Serializer
+
+
+
+
+class SettingsSerializer(serializers.Serializer):
+
+    user            =    serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
+    screen          =    serializers.BooleanField(default=1)
+    location        =    serializers.BooleanField(default=1)
+    only_using      =    serializers.BooleanField(default=1)
+    service_not     =    serializers.BooleanField(default=1)
+    location_not    =    serializers.BooleanField(default=1)
+    ser_feed_not    =    serializers.BooleanField(default=1)
+    created_at      =    serializers.DateTimeField()
+   
+
+    def create(self,validated_data):     
+        return Settings.objects.create(**validated_data)
+    
+    def update(self,validated_data):     
+        return Settings.objects.update(**validated_data)
+
+
+    class Meta:
+        model = Settings
+
+        fields = ('user','screen','location',
+              'only_using','service_not','location_not','created_at','ser_feed_not')
+
+
+        

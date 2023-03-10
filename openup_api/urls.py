@@ -2,6 +2,7 @@ from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
 from openup_api.views import auth_views, cms_views, force_update,vehicle_views,payment_views,job_views
+from openup_api.views import setting
 
 urlpatterns = [
 
@@ -41,11 +42,10 @@ urlpatterns = [
   path('vehicle_edit', vehicle_views.vehicle_edit,name='vehicle_edit'),
   path('vehicle_details', vehicle_views.vehicle_details,name='vehicle_details'),
 
-  # Add card
+# Add card
   path('add_card', payment_views.add_card,name='add_card'),
   path('card_details', payment_views.card_details,name='card_details'),
   path('card_delete', payment_views.card_delete,name='card_delete'),
-
 
 
 # Update location
@@ -55,7 +55,13 @@ urlpatterns = [
 
 # Jobs 
   path('add_job', job_views.add_job,name='add_job'),
+  path('job_list', job_views.job_list,name='job_list'),
+  path('job_details', job_views.job_details,name='job_details'),
+  path('remove_job', job_views.remove_job,name='remove_job'),
 
+# Settings
+  path('add_settings', setting.add_settings,name='add_settings'),
+  path('setting_details', setting.setting_details,name='setting_details'),
 
 
 ]

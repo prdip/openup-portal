@@ -14,7 +14,7 @@ import datetime
 from datetime import datetime
 
 # Import Models here
-from openup_app.models import Registration,JobsType
+from openup_app.models import Registration,JobsType,Jobs
 
 # Import Serializer
 from openup_app.serializers import JobsSerializer
@@ -139,5 +139,168 @@ def add_job(request):
                 })
 
 
+# remove data from list
+def removeElements(items,lists):
+    for dict in lists:
+        for item in items:
+            del(dict[item])  
+    return lists
+
+
+
+
+@api_view(['POST'])
+
+
+def job_list(request):
+    #  Token Verification
+
+    user_token      =       request.data.get('user_token',None)
+    check_user      =       token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+        })
+    
+    # if token verified
+    else:
+        # required data
+        job_list = Jobs.objects.exclude(is_delete=1).all()
+        job_ser     =   JobsSerializer(job_list,many=True).data
+
+        removeElements(['created_at','is_delete'],job_ser) 
+        domain = "192.168.1.4:8000"
+
+        for data in job_ser:
+            # get url of image
+            obj = data['vehicle_license']
+            url = 'http://{domain}{path}'.format(domain=domain, path=obj)
+            data['vehicle_license'] = url
+
+            if data['job_status'] == 1:
+                data['job_status'] = "active"
+
+            if data['job_status'] == 2:
+                data['job_status'] == "accepted"
+
+            if data['job_status'] == "3":
+                data['job_status']=="completed"
+
+        data    =   {
+            "job_list"  :   job_ser
+            }
+        return JsonResponse({
+                "status"    :   1,
+                "message"   :   "job list fetched successfully",
+                "data"      :   data
+                })
+
+
+
+# Get detail of job 
+
+@api_view(['POST'])
+def job_details(request):
+    #  Token Verification
+
+    user_token      =       request.data.get('user_token',None)
+    check_user      =       token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+        })
+    
+    # if token verified
+    else:
+        # required data
+
+        job_id      =       request.data.get('job_id',None)
+
+        # check if jon id is blank
+        if job_id is None or job_id == "":
+            return JsonResponse({
+                    "success"     :   0,
+                    "message"     :   "Please provide job id",
+            })
+        job_data        =   Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
+
+        job_serializer  =   JobsSerializer(job_data).data
+        job_serializer.pop('created_at')
+        # job_serializer.pop('update_at')
+        job_serializer.pop('is_delete')
+
+        domain = "192.168.1.4:8000"
+        obj = job_serializer['vehicle_license']
+        url = 'http://{domain}{path}'.format(domain=domain, path=obj)
+        job_serializer['vehicle_license'] = url
+
+        if job_serializer['job_status'] == 1:
+            job_serializer['job_status'] = "active"
+        
+        if job_serializer['job_status'] == 2:
+            job_serializer['job_status'] == "accepted"
+        
+        if job_serializer['job_status'] == "3":
+            job_serializer['job_status']=="completed"
+
+
+        data = {
+            "job_details":job_serializer
+        }
+        return JsonResponse({
+                    "success"     :   1,
+                    "message"     :   "Job Details fetched",
+                    "data"        :     data
+            })
+    
+
+
+@api_view(['POST'])
+
+def remove_job(request):
+    user_token      =       request.data.get('user_token',None)
+    check_user      =       token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+        })
+    
+    # if token verified
+    else:
+        # required data
+        job_id      =       request.data.get('job_id',None)
+
+        # check if jon id is blank
+        if job_id is None or job_id == "":
+            return JsonResponse({
+                    "success"     :   0,
+                    "message"     :   "Please provide job id",
+            })
+        
+        update_data     =   {
+            "is_delete"     :       1
+        }
+        
+        job_data        =   Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
+        job_serializer  =   JobsSerializer(data=update_data,instance=job_data,partial=True)
+       
+        if job_serializer.is_valid():
+            job_serializer.update(update_data)
+            return JsonResponse({
+                    "success"     :   1,
+                    "message"     :   "Record removed successfully",
+            })
+        else:
+            return JsonResponse({
+                    "success"     :   1,
+                    "message"     :   "Record removed successfully",
+                    "job_serializer":   job_serializer.errors
+            })
 
 

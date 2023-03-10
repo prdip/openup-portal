@@ -34,6 +34,7 @@ class UserRole(models.Model):
 
 
 
+#  User Registration Model 
 
 class Registration(models.Model):
 
@@ -164,6 +165,9 @@ class Payment(models.Model):
 
 
 
+
+# Job status Model
+
 class JobsType(models.Model):
     status_id       =       models.AutoField(primary_key=True)
     status_name     =       models.CharField(max_length=20)
@@ -173,6 +177,10 @@ class JobsType(models.Model):
 
 
 
+
+
+# Jobs Model
+
 class Jobs(models.Model):
 
     choice = (
@@ -180,23 +188,52 @@ class Jobs(models.Model):
         ('emergency','emergency'),
         
     )
-    job_id                   =   models.AutoField(primary_key=True) 
+    job_id                   =       models.AutoField(primary_key=True) 
+    job_type                 =       models.CharField(max_length=20,choices=choice,default="service")
 
-    job_type                =       models.CharField(max_length=20,choices=choice,default="service")
-
+    # status of job 1 == >active 2==> accepted 3==>completed
 
     job_status               =   models.ForeignKey(JobsType,on_delete=models.CASCADE)
     user                     =   models.ForeignKey(Registration,on_delete=models.CASCADE)
-    location_latitude     =   models.FloatField()
-    location_longitude    =   models.FloatField()
+    location_latitude        =   models.FloatField()
+    location_longitude       =   models.FloatField()
     vehicle_details          =   models.CharField(max_length=300)
     vehicle_modification     =   models.CharField(max_length=400)
     vehicle_license          =   models.FileField(upload_to='licenses')
-
     created_at               =   models.DateTimeField()
     update_at                =   models.DateTimeField(null=True)
     is_delete                =   models.BooleanField(default=0)
 
+    def update(self,*args, **kwargs):
+        for name,values in kwargs.items():
+            try:
+                setattr(self,name,values)
+            except KeyError:
+                pass
+        self.save()
 
     class Meta:
         db_table = 'userjob'
+
+   
+
+
+
+class Settings(models.Model):
+
+    setting_id      =    models.AutoField(primary_key=True)         
+    user            =    models.ForeignKey(Registration,on_delete=models.CASCADE)
+    screen          =    models.BooleanField(default=1)
+    location        =    models.BooleanField(default=1)
+    only_using      =    models.BooleanField(default=1)
+    service_not     =    models.BooleanField(default=1)
+    location_not    =    models.BooleanField(default=1)
+    ser_feed_not    =    models.BooleanField(default=1)
+    created_at      =    models.DateTimeField()
+    update_at       =    models.DateTimeField(null=True)
+    is_delete       =    models.BooleanField(default=0)
+
+
+    class Meta:
+        db_table = 'user_setting'
+
