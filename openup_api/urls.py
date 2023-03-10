@@ -58,10 +58,12 @@ urlpatterns = [
   path('job_list', job_views.job_list,name='job_list'),
   path('job_details', job_views.job_details,name='job_details'),
   path('remove_job', job_views.remove_job,name='remove_job'),
+  path('job_accept', job_views.accept_job,name='job_accept'),
 
 # Settings
   path('add_settings', setting.add_settings,name='add_settings'),
   path('setting_details', setting.setting_details,name='setting_details'),
+
 
 
 ]

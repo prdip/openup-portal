@@ -200,6 +200,7 @@ class Jobs(models.Model):
     vehicle_details          =   models.CharField(max_length=300)
     vehicle_modification     =   models.CharField(max_length=400)
     vehicle_license          =   models.FileField(upload_to='licenses')
+    job_accepted_by          =   models.CharField(max_length=31,null=True)
     created_at               =   models.DateTimeField()
     update_at                =   models.DateTimeField(null=True)
     is_delete                =   models.BooleanField(default=0)

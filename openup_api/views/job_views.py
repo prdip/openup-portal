@@ -298,9 +298,74 @@ def remove_job(request):
             })
         else:
             return JsonResponse({
-                    "success"     :   1,
+                    "success"     :   0,
                     "message"     :   "Record removed successfully",
                     "job_serializer":   job_serializer.errors
             })
 
+
+
+
+# accept job api
+
+@api_view(['POST'])
+
+
+def accept_job(request):
+    user_token      =       request.data.get('user_token',None)
+    check_user      =       token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+        })
+    
+    # if token verified
+    else:
+        # required data
+        job_id      =       request.data.get('job_id',None)
+
+        user_id     =       check_user['session_user']
+
+        user_record =       Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
+
+        job_record =        Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
+        
+        update_data = {
+            "job_status"     :   2,
+            "job_accepted_by":  user_record.user_id
+        }   
+        job_serializer= JobsSerializer(instance=job_record,data=update_data,partial=True)
+
+        user_data = {
+            "first_name"            :       user_record.user_first_name,
+            "middle_name"           :       user_record.user_middle_name,
+            "last_name"             :       user_record.user_last_name,
+            "email"                 :       user_record.user_email,
+            "mobile_number"         :       user_record.user_phone_number,
+            "location_latitude"     :       user_record.location_latitude,
+            "location_longitude"    :       user_record.location_longitude
+
+        }
+        data = {
+            "employee" :   user_data
+        }
+        if job_serializer.is_valid():
+            job_serializer.update(update_data)
+
+
+            return JsonResponse({
+                            "success"     :   1,
+                            "message"     :   "job accepted",
+                            "data"        :     data
+                    })
+        
+        else:
+
+            return JsonResponse({
+                            "success"     :   0,
+                            "message"     :   "some error occured",
+                            "error"         :   job_serializer.errors
+                    })
 

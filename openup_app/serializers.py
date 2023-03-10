@@ -18,8 +18,8 @@ class RegisterSerializer(serializers.ModelSerializer):
     user_email               =   serializers.EmailField()
     user_phone_number        =   serializers.CharField()
     user_password            =   serializers.CharField()
-    location_latitude     =   serializers.FloatField(allow_null=True)
-    location_longitude    =   serializers.FloatField(allow_null=True)
+    location_latitude        =   serializers.FloatField(allow_null=True)
+    location_longitude       =   serializers.FloatField(allow_null=True)
     create_at                =   serializers.DateTimeField()
     user_role                =   serializers.PrimaryKeyRelatedField(queryset = UserRole.objects.all())
     user_is_delete           =   serializers.BooleanField(default=0,allow_null=True)
@@ -88,8 +88,8 @@ class ForgotPasswordSerializer(serializers.ModelSerializer):
         model = ForgotPassword
 
         fields = ('user','email',
-                    'token',
-                    'status','timestamp',
+                'token','status',
+                'timestamp',
                     )
 
 
@@ -133,18 +133,15 @@ class PaymentSerializer(serializers.ModelSerializer):
         model = Payment
 
 
-        fields = ('user_card_no','card_cvv','card_name','card_validity',
-              'card_type','created_at','update_at','is_delete')
+        fields = ('user_card_no','card_cvv',
+                  'card_name','card_validity',
+                    'card_type','created_at',
+                    'update_at','is_delete')
 
 
 
 
-
-
-
-
-
-
+#  Job Serializer
 
 class JobsTypeSerializer(serializers.Serializer):
     status_name     =       serializers.CharField()
@@ -154,15 +151,13 @@ class JobsTypeSerializer(serializers.Serializer):
 
 
 # Job Serializer
-
-
-
 class JobsSerializer(serializers.Serializer):
 
     job_type                 =   serializers.CharField()
     user                     =   serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
     location_latitude        =   serializers.FloatField()
     location_longitude       =   serializers.FloatField()
+    job_accepted_by          =   serializers.CharField(required=False)
     vehicle_details          =   serializers.CharField()
     vehicle_modification     =   serializers.CharField()
     vehicle_license          =   serializers.FileField()
@@ -182,8 +177,10 @@ class JobsSerializer(serializers.Serializer):
         model = Jobs
 
 
-        fields = ('job_type','user','location_latitude','location_longitude',
-              'vehicle_details','vehicle_modification','vehicle_license','created_at','is_delete','job_status')
+        fields = ('job_type','user','location_latitude',
+                  'location_longitude','vehicle_details',
+                  'vehicle_modification','vehicle_license',
+                  'created_at','is_delete','job_status','job_accepted_by')
 
 
 
@@ -217,7 +214,9 @@ class SettingsSerializer(serializers.Serializer):
         model = Settings
 
         fields = ('user','screen','location',
-              'only_using','service_not','location_not','created_at','ser_feed_not')
+                  'only_using','service_not',
+                  'location_not','created_at',
+                  'ser_feed_not')
 
 
         
