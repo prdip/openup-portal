@@ -72,17 +72,7 @@ def add_card(request):
                                 "message"     :   "Please provide valid cvv ",
                         })
 
-            # check card present
-            try:
-                check_card  =   Payment.objects.exclude(is_delete=1).filter(card_no=card_no).exists()
-            except:
-                check_card  =   False
-
-            if check_card:
-                return JsonResponse({
-                                "success"     :   0,
-                                "message"     :   "card number already exists "
-                        })
+        
             # check cvv provided or not
             if  card_cvv is None or card_cvv == "":
                 return JsonResponse({

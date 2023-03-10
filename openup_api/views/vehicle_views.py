@@ -25,6 +25,8 @@ import datetime
 
 
 
+
+
 @api_view(['POST'])
 
 def add_vehicle(request):
@@ -108,8 +110,6 @@ def add_vehicle(request):
                 })
         else:
 
-
-
             update_data = {
                 "vehicle_license"   :   vehicle_license_img
 
@@ -139,7 +139,7 @@ def add_vehicle(request):
 
 
 
-
+# Edit api call 
 @api_view(['POST'])
 def vehicle_edit(request):
 
@@ -226,7 +226,7 @@ def vehicle_details(request):
     
     else:
 
-        #  
+        #  Get details using id
         vehicle_id = request.data.get('vehicle_id',None)
         if vehicle_id   ==  None:
               return JsonResponse({

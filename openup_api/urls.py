@@ -1,7 +1,7 @@
 from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
-from openup_api.views import auth_views, cms_views, force_update,vehicle_views,payment_views
+from openup_api.views import auth_views, cms_views, force_update,vehicle_views,payment_views,job_views
 
 urlpatterns = [
 
@@ -45,6 +45,16 @@ urlpatterns = [
   path('add_card', payment_views.add_card,name='add_card'),
   path('card_details', payment_views.card_details,name='card_details'),
   path('card_delete', payment_views.card_delete,name='card_delete'),
+
+
+
+# Update location
+
+  path('update_location', auth_views.update_location,name='update_location'),
+
+
+# Jobs 
+  path('add_job', job_views.add_job,name='add_job'),
 
 
 

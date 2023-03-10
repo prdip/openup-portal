@@ -46,6 +46,8 @@ class Registration(models.Model):
     user_password            =   models.CharField(max_length=550)
     user_role                =   models.ForeignKey(UserRole,on_delete=models.CASCADE,null=True)
     create_at                =   models.DateTimeField()
+    location_latitude     =   models.FloatField(null=True)
+    location_longitude    =   models.FloatField(null=True)
     update_at                =   models.DateTimeField(null=True,blank=True)
     user_is_delete           =   models.BooleanField(default=0)
 
@@ -139,7 +141,7 @@ class VehicleDetails(models.Model):
 class Payment(models.Model):
 
     payment_id      =       models.AutoField(primary_key=True)
-    user_card_no    =       models.BigIntegerField(unique=True)
+    user_card_no    =       models.BigIntegerField()
     card_cvv        =       models.IntegerField()
     card_name       =       models.CharField(max_length=250)
     card_validity   =       models.DateTimeField()
@@ -159,3 +161,42 @@ class Payment(models.Model):
             except KeyError:
                 pass
         self.save()
+
+
+
+class JobsType(models.Model):
+    status_id       =       models.AutoField(primary_key=True)
+    status_name     =       models.CharField(max_length=20)
+
+    class Meta:
+        db_table = 'jobstype'
+
+
+
+class Jobs(models.Model):
+
+    choice = (
+        ('service','service'),
+        ('emergency','emergency'),
+        
+    )
+    job_id                   =   models.AutoField(primary_key=True) 
+
+    job_type                =       models.CharField(max_length=20,choices=choice,default="service")
+
+
+    job_status               =   models.ForeignKey(JobsType,on_delete=models.CASCADE)
+    user                     =   models.ForeignKey(Registration,on_delete=models.CASCADE)
+    location_latitude     =   models.FloatField()
+    location_longitude    =   models.FloatField()
+    vehicle_details          =   models.CharField(max_length=300)
+    vehicle_modification     =   models.CharField(max_length=400)
+    vehicle_license          =   models.FileField(upload_to='licenses')
+
+    created_at               =   models.DateTimeField()
+    update_at                =   models.DateTimeField(null=True)
+    is_delete                =   models.BooleanField(default=0)
+
+
+    class Meta:
+        db_table = 'userjob'

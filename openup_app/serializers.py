@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 #IMPORT MODELS FROM SGSP APPLICATION
 
-from .models import Registration,Session,ForgotPassword,UserRole,VehicleDetails,Payment
+from .models import Registration,Session,ForgotPassword,UserRole,VehicleDetails,Payment,Jobs,JobsType
 
 
 
@@ -18,6 +18,8 @@ class RegisterSerializer(serializers.ModelSerializer):
     user_email               =   serializers.EmailField()
     user_phone_number        =   serializers.CharField()
     user_password            =   serializers.CharField()
+    location_latitude     =   serializers.FloatField(allow_null=True)
+    location_longitude    =   serializers.FloatField(allow_null=True)
     create_at                =   serializers.DateTimeField()
     user_role                =   serializers.PrimaryKeyRelatedField(queryset = UserRole.objects.all())
     user_is_delete           =   serializers.BooleanField(default=0,allow_null=True)
@@ -38,7 +40,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = Registration
 
         fields = ('user_first_name','user_middle_name', 'user_last_name', 'user_email','user_phone_number',
-                  'user_password','create_at','user_role','user_is_delete')
+                  'user_password','location_latitude','location_longitude','create_at','user_role','user_is_delete')
 
 
 
@@ -133,3 +135,50 @@ class PaymentSerializer(serializers.ModelSerializer):
 
         fields = ('user_card_no','card_cvv','card_name','card_validity',
               'card_type','created_at','update_at','is_delete')
+
+
+
+
+
+
+
+
+
+
+
+class JobsTypeSerializer(serializers.Serializer):
+    status_name     =       serializers.CharField()
+
+    class Meta:
+        db_table = 'jobstype'
+
+
+# Job Serializer
+
+
+
+class JobsSerializer(serializers.Serializer):
+
+    job_type                 =   serializers.CharField()
+    user                     =   serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
+    location_latitude        =   serializers.FloatField()
+    location_longitude       =   serializers.FloatField()
+    vehicle_details          =   serializers.CharField()
+    vehicle_modification     =   serializers.CharField()
+    vehicle_license          =   serializers.FileField()
+    created_at               =   serializers.DateTimeField()
+    is_delete                =   serializers.BooleanField(default=0)
+    job_status               =   serializers.PrimaryKeyRelatedField(queryset = JobsType.objects.all())
+
+
+
+    def create(self,validated_data):     
+        return Jobs.objects.create(**validated_data)
+
+    class Meta:
+        model = Jobs
+
+
+        fields = ('job_type','user','location_latitude','location_longitude',
+              'vehicle_details','vehicle_modification','vehicle_license','created_at','is_delete','job_status')
+
