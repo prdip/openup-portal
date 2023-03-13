@@ -18,11 +18,13 @@ class RegisterSerializer(serializers.ModelSerializer):
     user_email               =   serializers.EmailField()
     user_phone_number        =   serializers.CharField()
     user_password            =   serializers.CharField()
-    location_latitude        =   serializers.FloatField(allow_null=True)
-    location_longitude       =   serializers.FloatField(allow_null=True)
+    location_latitude        =   serializers.FloatField(allow_null=True,required=False)
+    location_longitude       =   serializers.FloatField(allow_null=True,required=False)
     create_at                =   serializers.DateTimeField()
     user_role                =   serializers.PrimaryKeyRelatedField(queryset = UserRole.objects.all())
     user_is_delete           =   serializers.BooleanField(default=0,allow_null=True)
+    device_type              =   serializers.BooleanField(required=False)   # 0 == > Anaroid  1==> IOS
+    user_fcm_token           =   serializers.CharField(required=False,allow_blank=True)
 
 
     # Field level validation  
@@ -33,14 +35,18 @@ class RegisterSerializer(serializers.ModelSerializer):
     #     else:
     #         return value    
 
-    
+    def update(self,instance,validated_data):     
+        demo = Registration.objects.get(user_id=instance.user_id)
+        demo.update(**validated_data)
+        return demo
+
 
     class Meta:
 
         model = Registration
 
         fields = ('user_first_name','user_middle_name', 'user_last_name', 'user_email','user_phone_number',
-                  'user_password','location_latitude','location_longitude','create_at','user_role','user_is_delete')
+                  'user_password','location_latitude','location_longitude','create_at','user_role','user_is_delete','device_type','user_fcm_token')
 
 
 
@@ -155,8 +161,8 @@ class JobsSerializer(serializers.Serializer):
 
     job_type                 =   serializers.CharField()
     user                     =   serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
-    location_latitude        =   serializers.FloatField()
-    location_longitude       =   serializers.FloatField()
+    location_latitude        =   serializers.FloatField(required=False)
+    location_longitude       =   serializers.FloatField(required=False)
     job_accepted_by          =   serializers.CharField(required=False)
     vehicle_details          =   serializers.CharField()
     vehicle_modification     =   serializers.CharField()
@@ -170,8 +176,14 @@ class JobsSerializer(serializers.Serializer):
     def create(self,validated_data):     
         return Jobs.objects.create(**validated_data)
     
-    def update(self,validated_data):     
-        return Jobs.objects.update(**validated_data)
+    def update(self,instance,validated_data):     
+        demo = Jobs.objects.get(job_id=instance.job_id)
+        demo.update(**validated_data)
+        return demo
+
+    # def update(self, instance, validated_data):
+
+
 
     class Meta:
         model = Jobs

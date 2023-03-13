@@ -11,7 +11,7 @@ from openup_app.models import Registration,Session,ForgotPassword,UserRole
 from rest_framework.decorators import api_view
 
 # import Json Response
-from django.http.response import JsonResponse
+from django.http.response import JsonResponse,HttpResponse
 
 # Import datetime
 import datetime,time
@@ -101,17 +101,12 @@ def user_register(request):
             "success"       :   0,
             "message"       :   "Please Provide Password",
        })
-
-
-
     if confirm_pass == None or confirm_pass=="":
        return JsonResponse({
            
             "success"       :   0,
             "message"       :   "Please Provide Confirm Password",
        })
-   
-
     if password != confirm_pass:
        return JsonResponse({
            
@@ -175,8 +170,7 @@ def user_register(request):
             "message"       :   "Email Already exist",
        })
        
-
-        # Validate email address  ==> Validate email address
+    # Validate email address  ==> Validate email address
     check_email = email_address(email)
     if check_email == False:
        return JsonResponse({
@@ -187,15 +181,12 @@ def user_register(request):
 
     # Validate mobile numbers => allowed 12 digits only
     check_mobile_no = mobile_number(phone_number)
-    if check_mobile_no is False:
-       
+    if check_mobile_no is False:     
         return JsonResponse({
            
             "success"       :   0,
             "message"       :   "Please Provide Valid Moile Number",
        })
-    
-
     # Get Role id from role type
     role        =   UserRole.objects.filter(role_name=user_type).values('role_id').first()['role_id']        
     role_id     =   UserRole.objects.get(role_id=role)
@@ -205,7 +196,7 @@ def user_register(request):
 
     # Created date is current date
     created_at = datetime.datetime.now()
-
+    # Employee status 0 ==> inactive 
     # USER REGISTRATION DATA 
     registration_data = {
         "user_first_name"        :   first_name,
@@ -226,17 +217,16 @@ def user_register(request):
     if registration_data.is_valid():
         registration_data.save()
         time.sleep(5)
+        user_id             =       Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']    
+        user                =       Registration.objects.get(user_id=user_id)
         
-
-    # STORE SESSION DATA AFTER REGISTRATION
-    user_id             =       Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']    
-    user                =       Registration.objects.get(user_id=user_id)
+    # STORE SESSION DATA AFTER REGISTRATION   
     session_token       =       secrets.token_hex() # SESSION TOKEN
     # SESSION EXPIRY
     exp_time            =       datetime.datetime.now()+ timedelta(days=30)  
     
     # SESSION DATA TO STORE
-    data= {
+    session_data= {
             "session_user"              :         user.user_id,
             "session_user_email"        :         user.user_email,
             "session_token"             :         session_token,
@@ -245,8 +235,27 @@ def user_register(request):
             "session_created_at"        :         datetime.datetime.now(),
             "session_is_delete"         :         False           
         }
+    if user_type == "employee":
+        Subject             =   "Request for Password Reset"
+        text_template       =   "email/confirm_user.txt"
+        # EMAIL FORMAT
+        email_data = {
+                "email"     :   email,
+                'domain'    :   '127.0.0.1:8000',
+	    		'site_name' :   'Website',     #Data which will send with E-mail id
+	    		'protocol'  :   'http',
+            }
 
-    user_session                    =         SessionSerializer(data=data)
+
+        myemail = render_to_string(text_template,email_data)  #Converts text file to string 
+        email = EmailMessage(Subject, myemail, to=["swapnilpathak@gmail.com"])  #Formats Email message 
+        email.send()  #Sends Email to the user
+        return JsonResponse({
+                    "success"       :   1,
+                    "message"       :   "Employee Registered Successfully !",
+        })
+
+    user_session                    =         SessionSerializer(data=session_data)
     
     if user_session.is_valid():
         user_session.save()     
@@ -256,22 +265,13 @@ def user_register(request):
                 "user_token"  : session_token
             }
         
+        
         return JsonResponse({
                     "success"       :   1,
                     "message"       :   "Registered Successfully !",
                     "data"          :   user_token
                 })
-    else:
-        return JsonResponse({
-                    "success"        :   0,
-                    "message"        :   "Please enter valid data !",
-                })
-
-
-
-
-
-
+   
 
 
 # Login API
@@ -280,8 +280,27 @@ def user_register(request):
 
 def login(request):
     # Required data    
-    email       = request.data.get('user_email', None)
-    password    = request.data.get('user_password', None)
+    email           =   request.data.get('user_email', None)
+    password        =   request.data.get('user_password', None)
+    user_type       =   request.data.get('user_type', None)
+    fcm_token       =   request.data.get('fcm_token', None)
+    device_type     =   request.data.get('device_type', None)
+    if device_type == "1":
+        device_type = 1
+    else:
+        device_type = 0
+    if fcm_token == "" or fcm_token ==None:
+       return JsonResponse({
+            "success"       :   0,
+            "message"       :   "Please Provide FCM Token",
+       })
+    
+    if device_type == "" or device_type ==None:
+       return JsonResponse({
+            "success"       :   0,
+            "message"       :   "Please Provide Device type",
+       })
+
 
     # check email provided or not
     if email == "" or email ==None:
@@ -307,12 +326,11 @@ def login(request):
             "success"       :   0,
             "message"       :   "Please Provide Valid Email",
        })
-    # get user_id 
+    
     try:
         check_user_id = Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']
     except:       
         check_user_id = None
-
 
     if check_user_id == None:       
         return JsonResponse({
@@ -320,9 +338,29 @@ def login(request):
             "success"       :   0,
             "message"       :   "User does not exist",
        })
-    # get user record
-    user_rec    =   Registration.objects.exclude(user_is_delete=1).get(user_id=check_user_id)      
 
+    # get role_id  to verify user role type
+
+    role_id = UserRole.objects.exclude(role_is_delete=1).filter(role_name = user_type).values('role_id').first()['role_id']
+    
+    # get user record
+    user_rec    =   Registration.objects.exclude(user_is_delete=1).get(user_id=check_user_id)
+
+    # Verify user type 
+    if user_rec.user_role.role_id != role_id:
+        return JsonResponse({                           #if usertype not match generates error 
+            "success"       :   0,
+            "message"       :   "invalid user type",
+            })
+    
+    # check user account is activate or not
+
+    if user_type == "employee" and user_rec.user_status == 0:
+        return JsonResponse({           
+            "success"       :   0,                      # if account_status is 0 == > user is inactive
+            "message"       :   "account is inactive",
+            })
+    
     # CHECK HASH PASSWORD
     check_pass  =   check_password(password,user_rec.user_password)
     if check_pass is False:
@@ -333,7 +371,7 @@ def login(request):
        
     # Create session token
     session_token       =       secrets.token_hex()
-    exp_time            =       datetime.datetime.now()+ timedelta(days=30) 
+    exp_time            =       datetime.datetime.now()+ timedelta(days=30)
 
     # STORE TOKEN IN SESSION DATA 
     data= {
@@ -346,14 +384,24 @@ def login(request):
                 "session_is_delete"         :         False           
             }
     
-    user_session                    =         SessionSerializer(data=data)
+    user_session     =      SessionSerializer(data=data)
 
     if user_session.is_valid():
         user_session.save()
-        data =  {
-       
+        data    =  {
                     "user_token"  : session_token
-                }
+                    }
+        
+        update_data = {
+                "device_type"       :   device_type,
+                "user_fcm_token"     :   fcm_token
+            }
+        
+        user_ser = RegisterSerializer(instance=user_rec,data=update_data,partial=True)
+        
+        if user_ser.is_valid():
+            user_ser.save(**update_data)
+
     return JsonResponse({
                 "success"    :   1,
                 "message"    :   "Login successfully",
@@ -363,6 +411,31 @@ def login(request):
 
 
 
+# Renders confirm account 
+
+def confirm_account(request,email):
+    
+    user_id = Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']
+    user_record =  Registration.objects.get(user_id=user_id)
+    
+    return render(request,'Authentication/admin_conf.html',{"user":user_record})
+
+# activate account 
+
+
+def activate_account(request):
+    id = request.POST.get('id')
+    user_rec     =       Registration.objects.exclude(user_is_delete=1).get(user_id=id)
+    update_data =   {
+        "user_status"   :   1
+    }
+    user_ser    =       RegisterSerializer(instance=user_rec,data=update_data,partial=True)
+    if user_ser.is_valid():
+        user_ser.save(**update_data)
+        return HttpResponse("Account Activated")
+    
+    # return 
+
 
 
 # Logout API
@@ -371,8 +444,8 @@ def login(request):
 @api_view(['POST'])
 def logout(request,*args,**kwargs):
     # required data
-    user_token = request.data.get('user_token',None)
-    check_user              =       token_verification(user_token)
+    user_token      =       request.data.get('user_token',None)
+    check_user      =       token_verification(user_token)
 
     if check_user is None:
         return JsonResponse({
@@ -383,13 +456,33 @@ def logout(request,*args,**kwargs):
         # get user from token
         associated_user     =       Session.objects.filter(session_token=user_token).values('session_id').first()['session_id']       
         session_record      =       get_object_or_404(Session,session_id=associated_user) 
+        # get user id
+        user_id             =       session_record.session_user
+        # get user Record
+        user_record         =       Registration.objects.exclude(user_is_delete = 1).get(user_id=user_id.user_id)
+        
+        update_data = {
+            "user_fcm_token" :   ""
+
+        }
+        user_data       =   RegisterSerializer(instance=user_record,data=update_data,partial=True)
+
+        if user_data.is_valid():
+            user_data.save(**update_data)
+
+        else:
+            return JsonResponse({
+                "success"   :   1,
+                "message"   :   "Logout User",
+                "error"     :   user_data.errors
+            })
 
         # Update session data    
-        data                =       {   
+        u_data                =       {   
                                     "session_is_delete" :    True,
                                     "session_status"    :    0
                                     }        
-        session_data        =       SessionSerializer(instance=session_record,data=data,partial=True)
+        session_data        =       SessionSerializer(instance=session_record,data=u_data,partial=True)
 
         if session_data.is_valid():
             session_data.save()

@@ -22,7 +22,8 @@ from openup_app.serializers import JobsSerializer
 # Import pillow
 from PIL import Image
 
-
+# Import Q
+from django.db.models import Q
 
 
 # ADD NEW JOB 
@@ -51,17 +52,14 @@ def add_job(request):
         vehicle_modification    =   request.data.get('vehicle_modification',None)
         vehicle_license         =   request.data.get('vehicle_license',None)
         created_at              =   datetime.now()
-
         # job type accepts only employee and emergency
 
-        if job_type is None or job_type ==  ""or job_type != "service" or job_type != "emergency":
+        if job_type is None or job_type == "" or (job_type != "service" and job_type != "emergency"):
             return JsonResponse({
                     "status"    :   0,
                     "message"   :   "please provide job type"
                     })
         
-
-
         if current_location_lat is None or current_location_lat ==  "":
             return JsonResponse({
                     "status"    :   0,
@@ -86,25 +84,24 @@ def add_job(request):
                     "message"   :   "please provide current location "
                     })
         
-        if vehicle_license != None:
-
-                try:
+        if vehicle_license is None:
+                 return JsonResponse({
+                        "success"     :   0,
+                        "message"     :   "Please provide licence image",
+                    })               
+        else:
+            try:
                     im = Image.open(vehicle_license)
-                    im.verify()
 
-                except:
+            except:
                     im = None
 
-                if im is None: 
-                    return JsonResponse({
+            if im is None: 
+                return JsonResponse({
                         "success"     :   0,
                         "message"     :   "Please provide valid image",
                     })
-        else:
-            return JsonResponse({
-                        "success"     :   0,
-                        "message"     :   "Please provide licence image",
-                    })
+           
         # get user id from token
         user_id     =       check_user['session_user']
         # get instance of login user
@@ -167,7 +164,7 @@ def job_list(request):
     # if token verified
     else:
         # required data
-        job_list = Jobs.objects.exclude(is_delete=1).all()
+        job_list    =   Jobs.objects.exclude(Q(is_delete=1)and (Q(job_status=2)or Q(job_status=3))).all()
         job_ser     =   JobsSerializer(job_list,many=True).data
 
         removeElements(['created_at','is_delete'],job_ser) 
@@ -183,11 +180,11 @@ def job_list(request):
                 data['job_status'] = "active"
 
             if data['job_status'] == 2:
-                data['job_status'] == "accepted"
+                data['job_status'] = "accepted"
 
-            if data['job_status'] == "3":
-                data['job_status']=="completed"
-
+            if data['job_status'] == 3:
+                data['job_status']="completed"
+            
         data    =   {
             "job_list"  :   job_ser
             }
@@ -242,10 +239,10 @@ def job_details(request):
             job_serializer['job_status'] = "active"
         
         if job_serializer['job_status'] == 2:
-            job_serializer['job_status'] == "accepted"
+            job_serializer['job_status'] = "accepted"
         
         if job_serializer['job_status'] == "3":
-            job_serializer['job_status']=="completed"
+            job_serializer['job_status']="completed"
 
 
         data = {
@@ -324,19 +321,33 @@ def accept_job(request):
     # if token verified
     else:
         # required data
-        job_id      =       request.data.get('job_id',None)
+        job_id          =       request.data.get('job_id',None)
+        user_id         =       check_user['session_user']
+        user_record     =       Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
+        try:
+            job_record =        Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
 
-        user_id     =       check_user['session_user']
-
-        user_record =       Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
-
-        job_record =        Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
+        except:
+            job_record = None
         
-        update_data = {
+        if job_record is None:
+            return JsonResponse({
+                            "success"     :   0,
+                            "message"     :   "Please enter valid job id",
+                    })
+
+        if job_record.job_status_id == 2 or job_record.job_status_id == 3:
+            return JsonResponse({
+                            "success"     :   0,
+                            "message"     :   "Job already accepted",
+                    })
+
+        
+        data = {
             "job_status"     :   2,
             "job_accepted_by":  user_record.user_id
         }   
-        job_serializer= JobsSerializer(instance=job_record,data=update_data,partial=True)
+        job_serializer= JobsSerializer(instance=job_record,data=data,partial=True)
 
         user_data = {
             "first_name"            :       user_record.user_first_name,
@@ -352,8 +363,7 @@ def accept_job(request):
             "employee" :   user_data
         }
         if job_serializer.is_valid():
-            job_serializer.update(update_data)
-
+            job_serializer.save(**data)
 
             return JsonResponse({
                             "success"     :   1,
@@ -366,6 +376,5 @@ def accept_job(request):
             return JsonResponse({
                             "success"     :   0,
                             "message"     :   "some error occured",
-                            "error"         :   job_serializer.errors
                     })
 

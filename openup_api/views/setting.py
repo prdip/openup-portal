@@ -92,7 +92,6 @@ def add_settings(request):
                 })
             user_id         =   check_user['session_user']
             user            =   Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
-            setting_ser     =       SettingsSerializer(data=setting_data)
             setting_data    =       {
 
                         "screen"            :       user_screen,
@@ -105,6 +104,7 @@ def add_settings(request):
                         "created_at"        :       datetime.now()
                     }
 
+            setting_ser     =       SettingsSerializer(data=setting_data)
             if setting_ser.is_valid():
                 setting_ser.save()
                 return JsonResponse({
@@ -201,14 +201,29 @@ def setting_details(request):
                     })
         
         setting_record  =   Settings.objects.exclude(is_delete=1).get(setting_id=setting_id)
+        setting_ser     =   SettingsSerializer(setting_record).data
 
-        setting_ser     =   SettingsSerializer(instance=setting_record).data
-
+        for key in setting_ser:
+            if setting_ser[key] == False:
+                setting_ser[key] = 0
+            if setting_ser[key] == True:
+                setting_ser[key] = 1
+        setting_ser.pop('created_at')
         data    =   {
-        "setting_details"   :   setting_ser
+                "setting_details"   :   setting_ser
         }
         return JsonResponse({
                     "success"     :   1,
                     "message"     :   "setting fetched successfully",
                     "data"        :   data
                     })
+    
+
+    
+
+# remove data from list
+def removeElements(items,lists):
+    for dict in lists:
+        for item in items:
+            del(dict[item])  
+    return lists

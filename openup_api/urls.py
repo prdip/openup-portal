@@ -3,6 +3,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 from openup_api.views import auth_views, cms_views, force_update,vehicle_views,payment_views,job_views
 from openup_api.views import setting
+from django.urls import reverse
+
 
 urlpatterns = [
 
@@ -63,6 +65,14 @@ urlpatterns = [
 # Settings
   path('add_settings', setting.add_settings,name='add_settings'),
   path('setting_details', setting.setting_details,name='setting_details'),
+
+  path('confirm_account/<str:email>', auth_views.confirm_account,name='confirm_account'),
+
+  path('activate', auth_views.activate_account,name='activate'),
+
+  
+
+  
 
 
 

@@ -38,7 +38,7 @@ class UserRole(models.Model):
 
 class Registration(models.Model):
 
-    user_id                 =    models.AutoField(primary_key=True)
+    user_id                  =   models.AutoField(primary_key=True)
     user_first_name          =   models.CharField(max_length=150)
     user_middle_name         =   models.CharField(max_length=150)
     user_last_name           =   models.CharField(max_length=150)
@@ -47,8 +47,11 @@ class Registration(models.Model):
     user_password            =   models.CharField(max_length=550)
     user_role                =   models.ForeignKey(UserRole,on_delete=models.CASCADE,null=True)
     create_at                =   models.DateTimeField()
-    location_latitude     =   models.FloatField(null=True)
-    location_longitude    =   models.FloatField(null=True)
+    location_latitude        =   models.FloatField(null=True)
+    location_longitude       =   models.FloatField(null=True)
+    device_type              =   models.BooleanField(null=True,default=0)   # 0 == > Anaroid  1==> IOS
+    user_fcm_token           =   models.CharField(max_length=150,null=True)
+    user_status              =   models.BooleanField(null=True,default=0)
     update_at                =   models.DateTimeField(null=True,blank=True)
     user_is_delete           =   models.BooleanField(default=0)
 
