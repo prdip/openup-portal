@@ -145,7 +145,8 @@ class VehicleDetails(models.Model):
 class Payment(models.Model):
 
     payment_id      =       models.AutoField(primary_key=True)
-    user_card_no    =       models.BigIntegerField()
+    user            =       models.ForeignKey(Registration,on_delete=models.CASCADE,null=True)
+    user_card_no    =       models.BigIntegerField(unique=True)
     card_cvv        =       models.IntegerField()
     card_name       =       models.CharField(max_length=250)
     card_validity   =       models.DateTimeField()

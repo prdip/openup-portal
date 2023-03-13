@@ -125,6 +125,7 @@ class VehicleSerializer(serializers.ModelSerializer):
 # PAYMENT SERIALIZER
 
 class PaymentSerializer(serializers.ModelSerializer):
+    user                    =       serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
 
     user_card_no    =       serializers.IntegerField()
     card_cvv        =       serializers.IntegerField()
@@ -139,7 +140,7 @@ class PaymentSerializer(serializers.ModelSerializer):
         model = Payment
 
 
-        fields = ('user_card_no','card_cvv',
+        fields = ('user','user_card_no','card_cvv',
                   'card_name','card_validity',
                     'card_type','created_at',
                     'update_at','is_delete')

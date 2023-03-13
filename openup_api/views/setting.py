@@ -27,7 +27,6 @@ from openup_app.serializers import SettingsSerializer
 
 def add_settings(request):
     #  Token Verification
-
     user_token      =       request.data.get('user_token',None)
     check_user      =       token_verification(user_token)
 
@@ -37,8 +36,8 @@ def add_settings(request):
                 "message"     :   "Unauthorized User",
         })
     else:
-        setting_id  =   request.data.get('setting_id',None)
 
+        setting_id  =   request.data.get('setting_id',None)
         if setting_id == None:
             # add operation
             # required data
@@ -62,8 +61,8 @@ def add_settings(request):
                 "success"     :   0,
                 "message"     :   "please provide location data",
                 })
+            
             # check only while using app data provided or not
-
             if while_using is None or while_using == "":
                 return JsonResponse({
                 "success"     :   0,
@@ -192,15 +191,17 @@ def setting_details(request):
     else:
 
         # 0 == > False   1==>true
-        setting_id  =   request.data.get('setting_id',None)
+        # setting_id  =   request.data.get('setting_id',None)
 
-        if setting_id is  None:
-            return JsonResponse({
-                    "success"     :   0,
-                    "message"     :   "Please provide setting id",
-                    })
+        # if setting_id is  None:
+        #     return JsonResponse({
+        #             "success"     :   0,
+        #             "message"     :   "Please provide setting id",
+        #             })
         
-        setting_record  =   Settings.objects.exclude(is_delete=1).get(setting_id=setting_id)
+        # setting_record  =   Settings.objects.exclude(is_delete=1).get(setting_id=setting_id)
+        setting_record  =   Settings.objects.exclude(is_delete=1).last()
+
         setting_ser     =   SettingsSerializer(setting_record).data
 
         for key in setting_ser:

@@ -14,7 +14,7 @@ import datetime
 from datetime import datetime
 
 # Import Models here
-from openup_app.models import Payment
+from openup_app.models import Payment,Registration
 
 # Import Serializer
 from openup_app.serializers import PaymentSerializer
@@ -122,8 +122,10 @@ def add_card(request):
             created_at  =     datetime.now()
 
             # formats datetime stamp
-            validity = (datetime.strptime(card_validity,"%Y-%m-%d")).strftime("%Y-%m-%d")
+            validity    = (datetime.strptime(card_validity,"%Y-%m-%d")).strftime("%Y-%m-%d")
 
+            user_id     =   check_user['session_user']
+            user_record =   Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
             # card data to be added
             card_data = {
             "user_card_no"      :   card_no,
@@ -131,7 +133,8 @@ def add_card(request):
             "card_name"         :   card_holder_name,
             "card_validity"     :   validity,
             "card_type"         :   card_type,
-            "created_at"        :   created_at
+            "created_at"        :   created_at,
+            "user"              :   user_record.user_id
             }
             # serializer instance
             card_ser = PaymentSerializer(data=card_data)
@@ -177,12 +180,17 @@ def add_card(request):
             if card_type is not None:
                 update_data["card_type"] =  card_type
 
+
+            user_id     =   check_user['session_user']
+            user_record =   Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
+            update_data["user"] = user_record.user_id
+            
             # get payment record instance
             payment_rec     =       Payment.objects.exclude(is_delete=1).get(payment_id=payment_id)
 
             # serializer instance 
             payment_serializer = PaymentSerializer(instance=payment_rec,data=update_data,partial=True)
-
+        
             if payment_serializer.is_valid():
                 payment_serializer.save()
                 return JsonResponse({

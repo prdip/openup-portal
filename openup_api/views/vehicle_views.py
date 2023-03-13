@@ -43,11 +43,10 @@ def add_vehicle(request):
 
     else:
         # Required 
-        vehicle_id         =       request.data.get('vehicle_id',None)
+        vehicle_id              =       request.data.get('vehicle_id',None)
         vehicle_license_img     =       request.data.get('vehicle_license_img',None)
 
         if vehicle_id == None:
-
 
             vehicle_details         =       request.data.get('vehicle_details',None)
             vehicle_modification    =       request.data.get('vehicle_modification',None)
@@ -67,7 +66,6 @@ def add_vehicle(request):
             })
             # Check file upload is image or not
             if vehicle_license_img != None:
-
                 try:
                     im = Image.open(vehicle_license_img)
                     im.verify()
@@ -85,18 +83,14 @@ def add_vehicle(request):
             user_id = check_user['session_user']
 
             # get user record through id
-            user    =   Registration.objects.exclude(user_is_delete=1).get(user_id = user_id)
-
-            created_at = datetime.datetime.now()
+            user        =   Registration.objects.exclude(user_is_delete=1).get(user_id = user_id)
+            created_at  =   datetime.datetime.now()
             vehicle_data = {
                 "user"                  :   user.user_id,
                 "vehicle_details"       :   vehicle_details,
                 "vehicle_modification"  :   vehicle_modification,
                 "created_at"            :   created_at
             }
-
-
-
             if vehicle_license_img != None:
                         vehicle_data["vehicle_license"]   =   vehicle_license_img
 
@@ -124,9 +118,8 @@ def add_vehicle(request):
                  update_data["vehicle_modification"] = vehicle_modification
                  
 
-            vehicle_rec = VehicleDetails.objects.get(vehicle_id=vehicle_id)
-
-            vehicle_ser = VehicleSerializer(instance=vehicle_rec,data=update_data,partial=True)
+            vehicle_rec     =   VehicleDetails.objects.get(vehicle_id=vehicle_id)
+            vehicle_ser     =   VehicleSerializer(instance=vehicle_rec,data=update_data,partial=True)
 
             if vehicle_ser.is_valid():
                 vehicle_ser.save()
@@ -227,19 +220,21 @@ def vehicle_details(request):
     else:
 
         #  Get details using id
-        vehicle_id = request.data.get('vehicle_id',None)
-        if vehicle_id   ==  None:
-              return JsonResponse({
-                "success"     :   0,
-                "message"     :   "Please provide Vehicle id",
-            })
+        # vehicle_id = request.data.get('vehicle_id',None)
+        # if vehicle_id   ==  None:
+        #       return JsonResponse({
+        #         "success"     :   0,
+        #         "message"     :   "Please provide Vehicle id",
+        #     })
 
-        vehicle_details =   VehicleDetails.objects.get(vehicle_id=vehicle_id)
+        # vehicle_details =   VehicleDetails.objects.get(vehicle_id=vehicle_id)
+        vehicle_details =   VehicleDetails.objects.last()
         vehicle_ser     =   VehicleSerializer(vehicle_details).data
+
 
         vehicle_ser.pop('created_at')
         # import socket
-        domain = "192.168.1.4 :8000"
+        domain = "192.168.1.4:8000"
         # ipaddress = socket.gethostbyname(domain)
         # dom = socket.gethostbyaddr(ipaddress)
 

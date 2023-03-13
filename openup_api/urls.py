@@ -13,6 +13,8 @@ urlpatterns = [
   path('login', auth_views.login,name='login'),
   path('logout', auth_views.logout,name='logout'),
   path('delete_account', auth_views.delete_account,name='delete_account'),
+  path('user_details', auth_views.get_user_details,name='user-details'),
+
 
 
 # UPDATE

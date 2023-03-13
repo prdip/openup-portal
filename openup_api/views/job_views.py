@@ -211,7 +211,7 @@ def job_details(request):
                 "message"     :   "Unauthorized User",
         })
     
-    # if token verified
+    # if token verified m
     else:
         # required data
 

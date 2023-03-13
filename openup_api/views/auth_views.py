@@ -5,7 +5,7 @@ from openup_app.serializers import RegisterSerializer,SessionSerializer,ForgotPa
 
 
 # Import Models here
-from openup_app.models import Registration,Session,ForgotPassword,UserRole
+from openup_app.models import Registration,Session,ForgotPassword,UserRole,Settings,Payment,VehicleDetails
 
 # Create your views here.
 from rest_framework.decorators import api_view
@@ -241,7 +241,7 @@ def user_register(request):
         # EMAIL FORMAT
         email_data = {
                 "email"     :   email,
-                'domain'    :   '127.0.0.1:8000',
+                'domain'    :   '192.168.1.4:8000',
 	    		'site_name' :   'Website',     #Data which will send with E-mail id
 	    		'protocol'  :   'http',
             }
@@ -999,4 +999,56 @@ def update_location(request):
                             "message"        :      "User location updated succesfully",
                             "data"          :       data
             })
+
+
+
+
+
+# get user details
+
+@api_view(['POST'])
+
+
+def get_user_details(request):
+    user_token            =       request.data.get('user_token',None)
+    check_user            =       token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+        }) 
+    
+    else:
+
+        user_id     =       check_user['session_user']
+        user_record =   Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
+
+        get_user_details=   RegisterSerializer(instance=user_record).data
+
+        setting_id     =    Settings.objects.exclude(is_delete=1).filter(user=user_record.user_id).values('setting_id').first()['setting_id']
+        vehicle_id     =    VehicleDetails.objects.filter(user=user_record.user_id).values('vehicle_id').first()['vehicle_id']     
+        
+        get_user_details["setting_id"] =    setting_id
+        get_user_details["vehicle_id"] =    vehicle_id
+
+        get_user_details.pop("user_is_delete")
+        get_user_details.pop("create_at")
+
+        if get_user_details["device_type"] == True:
+            get_user_details["device_type"] = 0
+        else:
+             get_user_details["device_type"] = 1
+
+        data={
+
+            "user_details"  :   get_user_details,
+            
+        }
+        return JsonResponse({
+                            "status"        :       1,
+                            "message"        :      "user details fetched",
+                            "data"          :       data
+            })
+
 
