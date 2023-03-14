@@ -174,8 +174,10 @@ class JobsSerializer(serializers.Serializer):
 
 
 
-    def create(self,validated_data):     
-        return Jobs.objects.create(**validated_data)
+    def create(self,validated_data):
+        n = Jobs.objects.create(**validated_data)
+        id = n.pk
+        return id 
     
     def update(self,instance,validated_data):     
         demo = Jobs.objects.get(job_id=instance.job_id)

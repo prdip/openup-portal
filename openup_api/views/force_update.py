@@ -21,24 +21,24 @@ from django.http import JsonResponse
 def force_update(request):
 
         version_list = {
-        "anaroid_version"       :   1.3,
-        "is_anaroid_update"     :   0,
-        "ios_version"           :   1.3,
-        "is_ios_update"         :   0
-
-            
-    }
-   
- 
+                 "anaroid_version"       :   1.3,
+                 "is_anaroid_update"     :   0,
+                 "ios_version"           :   1.3,
+                 "is_ios_update"         :   0
+                }
         data = {
-        
-           "version_list"   :   version_list
-            
-        }    #0 ==> no        
-    
-    
+                "version_list"   :   version_list
+                }    #0 ==> no        
         return JsonResponse({
                 "success"     :   1,
                 "message"     :   "Force Update",
                 "data"        :   data
         }) 
+        
+            
+    
+
+            
+   
+ 
+    

@@ -191,16 +191,16 @@ def setting_details(request):
     else:
 
         # 0 == > False   1==>true
-        # setting_id  =   request.data.get('setting_id',None)
+        setting_id  =   request.data.get('setting_id',None)
 
-        # if setting_id is  None:
-        #     return JsonResponse({
-        #             "success"     :   0,
-        #             "message"     :   "Please provide setting id",
-        #             })
+        if setting_id is  None:
+            return JsonResponse({
+                    "success"     :   0,
+                    "message"     :   "Please provide setting id",
+                    })
         
-        # setting_record  =   Settings.objects.exclude(is_delete=1).get(setting_id=setting_id)
-        setting_record  =   Settings.objects.exclude(is_delete=1).last()
+        setting_record  =   Settings.objects.exclude(is_delete=1).get(setting_id=setting_id)
+        # setting_record  =   Settings.objects.exclude(is_delete=1).last()
 
         setting_ser     =   SettingsSerializer(setting_record).data
 
@@ -209,6 +209,9 @@ def setting_details(request):
                 setting_ser[key] = 0
             if setting_ser[key] == True:
                 setting_ser[key] = 1
+        
+        # remove items from dict
+
         setting_ser.pop('created_at')
         data    =   {
                 "setting_details"   :   setting_ser

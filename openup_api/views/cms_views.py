@@ -23,11 +23,11 @@ def cms_details(request,*args,**kwargs):
         # return cms links as a response
         cms_links  =  {
 
-            "copyright"             :       "http://192.168.1.4:8000/api/copyright_page",
-            "terms_and_condition"   :       "http://192.168.1.4:8000/api/terms_and_condition",
-            "privacy_policy"        :       "http://192.168.1.4:8000/api/privacy_policy",
-            "software_license"      :       "http://192.168.1.4:8000/api/software_license",
-            "location_information"  :       "http://192.168.1.4:8000/api/location_information"
+            "copyright"             :       "http://192.168.1.5:8000/api/copyright_page",
+            "terms_and_condition"   :       "http://192.168.1.5:8000/api/terms_and_condition",
+            "privacy_policy"        :       "http://192.168.1.5:8000/api/privacy_policy",
+            "software_license"      :       "http://192.168.1.5:8000/api/software_license",
+            "location_information"  :       "http://192.168.1.5:8000/api/location_information"
 
         }
 

@@ -15,7 +15,6 @@ from PIL import Image
 # Import Models here
 from openup_app.models import Registration,VehicleDetails
 
-
 # Import Serializer
 from openup_app.serializers import VehicleSerializer
 
@@ -25,7 +24,7 @@ import datetime
 
 
 
-
+# API to add new vehicle 
 
 @api_view(['POST'])
 
@@ -80,11 +79,13 @@ def add_vehicle(request):
                     })
 
             # get user id from token 
-            user_id = check_user['session_user']
+            user_id     =   check_user['session_user']
 
             # get user record through id
             user        =   Registration.objects.exclude(user_is_delete=1).get(user_id = user_id)
             created_at  =   datetime.datetime.now()
+            
+            # Vehicle data 
             vehicle_data = {
                 "user"                  :   user.user_id,
                 "vehicle_details"       :   vehicle_details,
@@ -130,8 +131,6 @@ def add_vehicle(request):
 
 
 
-
-
 # Edit api call 
 @api_view(['POST'])
 def vehicle_edit(request):
@@ -147,7 +146,6 @@ def vehicle_edit(request):
         }) 
     
     else:
-
         # Required data
         vehicle_id              =       request.data.get('vehicle_id',None)
         vehicle_license_img     =       request.data.get('vehicle_license_img',None)
@@ -203,6 +201,9 @@ def removeElements(items,lists):
     return lists
 
 
+
+
+
 @api_view(['POST'])
 
 def vehicle_details(request):
@@ -220,21 +221,26 @@ def vehicle_details(request):
     else:
 
         #  Get details using id
-        # vehicle_id = request.data.get('vehicle_id',None)
-        # if vehicle_id   ==  None:
-        #       return JsonResponse({
-        #         "success"     :   0,
-        #         "message"     :   "Please provide Vehicle id",
-        #     })
-
-        # vehicle_details =   VehicleDetails.objects.get(vehicle_id=vehicle_id)
-        vehicle_details =   VehicleDetails.objects.last()
+        vehicle_id = request.data.get('vehicle_id',None)
+        
+        try:
+            vehicle_details =   VehicleDetails.objects.get(vehicle_id=vehicle_id)
+            # vehicle_details =   VehicleDetails.objects.last()
+        
+        except:
+            vehicle_details = None
+        
+        if vehicle_details is None or vehicle_id   ==  None:
+             return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Please provide Vehicle id",
+            })
         vehicle_ser     =   VehicleSerializer(vehicle_details).data
-
+        # Remove created at field from dict
 
         vehicle_ser.pop('created_at')
         # import socket
-        domain = "192.168.1.4:8000"
+        domain = "192.168.1.5:8000"
         # ipaddress = socket.gethostbyname(domain)
         # dom = socket.gethostbyaddr(ipaddress)
 

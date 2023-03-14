@@ -54,10 +54,10 @@ class Registration(models.Model):
     user_status              =   models.BooleanField(null=True,default=0)
     update_at                =   models.DateTimeField(null=True,blank=True)
     user_is_delete           =   models.BooleanField(default=0)
-
+    # emp_not                  =   models.CharField(max_length=10,null=True)
     class Meta:
 
-        db_table = "user_registration"
+        db_table = "users"
 
     def update(self,*args, **kwargs):
         for name,values in kwargs.items():
@@ -146,7 +146,7 @@ class Payment(models.Model):
 
     payment_id      =       models.AutoField(primary_key=True)
     user            =       models.ForeignKey(Registration,on_delete=models.CASCADE,null=True)
-    user_card_no    =       models.BigIntegerField(unique=True)
+    user_card_no    =       models.BigIntegerField()
     card_cvv        =       models.IntegerField()
     card_name       =       models.CharField(max_length=250)
     card_validity   =       models.DateTimeField()
@@ -217,6 +217,11 @@ class Jobs(models.Model):
                 pass
         self.save()
 
+
+
+
+
+
     class Meta:
         db_table = 'userjob'
 
@@ -242,3 +247,19 @@ class Settings(models.Model):
     class Meta:
         db_table = 'user_setting'
 
+
+
+
+class Alerts(models.Model):
+    alert_id         =      models.AutoField(primary_key=True)
+    alert_job        =      models.ForeignKey(Jobs,on_delete=models.CASCADE)
+    alert_users      =      models.CharField(max_length=500)
+    alert_title      =      models.CharField(max_length=500)
+    alert_messages   =      models.CharField(max_length=500)
+    alert_status     =      models.BooleanField(default=0)
+    created_at       =      models.DateTimeField()
+    update_at        =      models.DateTimeField(null=True)
+    is_delete        =      models.BooleanField(default=0)
+
+    class Meta:
+        db_table = 'alerts'

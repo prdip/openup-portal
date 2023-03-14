@@ -1,17 +1,15 @@
-
 # Create your views here.
 from rest_framework.decorators import api_view
 
 # import Json Response
 from django.http.response import JsonResponse
 
-
 # Import token verifications
 from openup_api.views.auth_views import token_verification
 
-import datetime 
+import datetime
 
-from datetime import datetime
+from datetime import datetime,timedelta
 
 # Import Models here
 from openup_app.models import Payment,Registration
@@ -26,7 +24,7 @@ from .validation import check_text,check_number
 
 
 
-# Api for add and edit data
+# Api for add and edit card data
 
 @api_view(['POST'])
 def add_card(request):
@@ -72,7 +70,8 @@ def add_card(request):
                                 "message"     :   "Please provide valid cvv ",
                         })
 
-        
+       
+
             # check cvv provided or not
             if  card_cvv is None or card_cvv == "":
                 return JsonResponse({
@@ -120,9 +119,23 @@ def add_card(request):
             
             # current datestamp
             created_at  =     datetime.now()
-
             # formats datetime stamp
-            validity    = (datetime.strptime(card_validity,"%Y-%m-%d")).strftime("%Y-%m-%d")
+            validity    =   (datetime.strptime(card_validity,"%m/%y")).strftime("%Y-%m-%d")
+
+            # change current date to unix date
+            date_today  =           datetime.now()
+            dt          =           datetime.strftime(date_today,"%m/%y")
+            time        =           (datetime.strptime(dt,"%m/%y"))
+            date_unix   =           datetime.timestamp(time)*1000
+
+            # change validity date to timestamp 
+            v               =       (datetime.strptime(card_validity,"%m/%y"))
+            validity_unix   =       datetime.timestamp(v)*1000
+            if validity_unix    <   date_unix:
+                  return JsonResponse({
+                                "success"     :   0,
+                                "message"     :   "card validity expired",
+                        })
 
             user_id     =   check_user['session_user']
             user_record =   Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
@@ -135,6 +148,7 @@ def add_card(request):
             "card_type"         :   card_type,
             "created_at"        :   created_at,
             "user"              :   user_record.user_id
+            
             }
             # serializer instance
             card_ser = PaymentSerializer(data=card_data)
@@ -162,6 +176,24 @@ def add_card(request):
             card_validity       =   request.data.get('card_validity',None)
             card_type           =   request.data.get('card_type',None)
 
+            validity    =   (datetime.strptime(card_validity,"%m/%y")).strftime("%Y-%m-%d")
+
+            # change current date to unix date
+            date_today  =           datetime.now()
+            dt          =           datetime.strftime(date_today,"%m/%y")
+            time        =           (datetime.strptime(dt,"%m/%y"))
+            date_unix   =           datetime.timestamp(time)*1000
+
+            # change validity date to timestamp 
+            v               =       (datetime.strptime(card_validity,"%m/%y"))
+            validity_unix   =       datetime.timestamp(v)*1000
+            if validity_unix    <   date_unix:
+                  return JsonResponse({
+                                "success"     :   0,
+                                "message"     :   "card validity expired",
+                        })
+
+
             # creates empty dict
             update_data = { }
 
@@ -175,7 +207,7 @@ def add_card(request):
                 update_data["card_name"] =  card_holder_name
 
             if card_validity is not None:
-                update_data["card_validity"] =  card_validity
+                update_data["card_validity"] =  validity
 
             if card_type is not None:
                 update_data["card_type"] =  card_type
@@ -233,9 +265,19 @@ def card_details(request):
                 "success"     :   0,
                 "message"     :   "Please provide payment id",
         })
+        try:
+            # Get payment details
+            payment_record  =   Payment.objects.exclude(is_delete=1).get(payment_id=payment_id)
+        
+        except:
+            payment_record = None
+        
+        if payment_record == None:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "please provide valid payment id",
+        })
 
-        # Get payment details
-        payment_record  =   Payment.objects.exclude(is_delete=1).get(payment_id=payment_id)
         payment_ser     =   PaymentSerializer(payment_record).data
 
         # Remove data from serializer
@@ -277,7 +319,6 @@ def card_delete(request):
                 "message"     :   "Unauthorized User",
         })
     else:
-
         # required data
         payment_id  =   request.data.get('payment_id',None)
 
@@ -306,6 +347,23 @@ def card_delete(request):
                 "message"     :   "record deleted",
             })
        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

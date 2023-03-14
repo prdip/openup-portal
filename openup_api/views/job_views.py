@@ -2,6 +2,9 @@
 # Create your views here.
 from rest_framework.decorators import api_view
 
+
+from openup.fcm import FCM
+
 # import Json Response
 from django.http.response import JsonResponse
 
@@ -9,12 +12,14 @@ from django.http.response import JsonResponse
 # Import token verifications
 from openup_api.views.auth_views import token_verification
 
-import datetime 
+# import datetime
+import datetime
 
-from datetime import datetime
+# import datetime
+from datetime import datetime,timedelta
 
 # Import Models here
-from openup_app.models import Registration,JobsType,Jobs
+from openup_app.models import Registration,JobsType,Jobs,Alerts
 
 # Import Serializer
 from openup_app.serializers import JobsSerializer
@@ -123,7 +128,17 @@ def add_job(request):
         job_ser     =   JobsSerializer(data=job_details)
 
         if job_ser.is_valid():
-            job_ser.save()      
+            
+            # id = job_ser.save()
+            id = 29
+            import threading
+
+            t = threading.Thread(target=jobAlert,args=(id,))
+            t.setDaemon(True)
+            t.start()
+           
+            
+             
             return JsonResponse({
                 "status"    :   1,
                 "message"   :   "Details Added successfully"
@@ -142,6 +157,52 @@ def removeElements(items,lists):
         for item in items:
             del(dict[item])  
     return lists
+
+
+
+# job alert to nearest employees
+def jobAlert(job_id):
+    # Fetch Employee List
+    employees =  Registration.objects.exclude(Q(user_is_delete=1) or Q(user_role_id=2) ).filter(user_role=1)
+
+    # get employee list
+    user_list = []
+    emp_fcm   = []
+    
+    for employees in employees:
+        if employees.user_fcm_token == "" or employees.user_fcm_token is None:
+            pass
+        else:
+            user_list.append(employees.user_id)
+            emp_fcm.append(employees.user_fcm_token)
+
+    emp_list        =   ','.join(str(i) for i in user_list)
+    job_id          =    Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
+    alert_title     =    "new job added"
+    alert_messages  =    "job generated"
+    created_at      =     datetime.now()
+    
+    # Alert Table Save entry
+    data            = Alerts(alert_job=job_id, alert_users=emp_list,alert_title=alert_title,
+                             alert_messages=alert_messages,
+                            created_at=created_at)
+    
+    data.save()
+
+    # send alert to employees
+    # SEND NOTIFICATIONS 
+    noti_data={
+        'title'     :   'New job request',
+        'message'   :   'Please acccept this asap',
+        'job_id'    :   job_id, 
+    }
+    
+    for emp in emp_fcm: 
+        FCM.send_push_notifications(emp,noti_data)
+
+    return True
+    
+    
 
 
 
@@ -166,10 +227,11 @@ def job_list(request):
         # required data
         job_list    =   Jobs.objects.exclude(Q(is_delete=1)and (Q(job_status=2)or Q(job_status=3))).all()
         job_ser     =   JobsSerializer(job_list,many=True).data
-
+        # remove data from list
         removeElements(['created_at','is_delete'],job_ser) 
-        domain = "192.168.1.4:8000"
 
+        domain = "192.168.1.5:8000"
+        
         for data in job_ser:
             # get url of image
             obj = data['vehicle_license']
@@ -201,7 +263,6 @@ def job_list(request):
 @api_view(['POST'])
 def job_details(request):
     #  Token Verification
-
     user_token      =       request.data.get('user_token',None)
     check_user      =       token_verification(user_token)
 
@@ -214,7 +275,6 @@ def job_details(request):
     # if token verified m
     else:
         # required data
-
         job_id      =       request.data.get('job_id',None)
 
         # check if jon id is blank
@@ -223,16 +283,22 @@ def job_details(request):
                     "success"     :   0,
                     "message"     :   "Please provide job id",
             })
+        
+        # get job instance using if  
         job_data        =   Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
-
+        # send instance to serializer 
         job_serializer  =   JobsSerializer(job_data).data
-        job_serializer.pop('created_at')
-        # job_serializer.pop('update_at')
+        
+        # remove field from dict
+        job_serializer.pop('created_at')        
         job_serializer.pop('is_delete')
 
-        domain = "192.168.1.4:8000"
-        obj = job_serializer['vehicle_license']
-        url = 'http://{domain}{path}'.format(domain=domain, path=obj)
+        # create image url 
+        domain  = "192.168.1.5:8000"
+        obj     = job_serializer['vehicle_license']
+        url     = 'http://{domain}{path}'.format(domain=domain, path=obj)
+
+
         job_serializer['vehicle_license'] = url
 
         if job_serializer['job_status'] == 1:

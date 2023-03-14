@@ -322,7 +322,6 @@ def login(request):
     check_email = email_address(email)
     if check_email == False:
        return JsonResponse({
-           
             "success"       :   0,
             "message"       :   "Please Provide Valid Email",
        })
@@ -424,8 +423,14 @@ def confirm_account(request,email):
 
 
 def activate_account(request):
+
     id = request.POST.get('id')
+    # get user record
     user_rec     =       Registration.objects.exclude(user_is_delete=1).get(user_id=id)
+    # if account already activated
+    if user_rec.user_status == 1:
+        return HttpResponse("Account Already activated")            
+
     update_data =   {
         "user_status"   :   1
     }
@@ -492,12 +497,6 @@ def logout(request,*args,**kwargs):
             })
 
 
-
-
-
-
-
-
 #  EMAIL ADDRESS UPDATE
 
 @api_view(['POST'])
@@ -524,27 +523,24 @@ def email_update(request,*args,**kwargs):
 
         # Check for current email
         if current_email == None or current_email == "":
-            return JsonResponse({
-           
-            "success"       :   0,
-            "message"       :   "Please Current Email Address",
+            return JsonResponse({           
+                    "success"       :   0,
+                    "message"       :   "Please Current Email Address",
        })
         
         # Check for new email
-
         if new_email == None or new_email=="":
             return JsonResponse({
+                    "success"       :   0,
+                    "message"       :   "Please provide Email Address",
+                })
            
-            "success"       :   0,
-            "message"       :   "Please provide Email Address",
-        })
-
         # Check for password
 
         if password == None or password == "":
             return JsonResponse({
-            "success"       :   0,
-            "message"       :   "Please provide password",
+                    "success"       :   0,
+                    "message"       :   "Please provide password",
        })
         
         # CHECK IF EMAIL EXISTS OR NOT
@@ -569,12 +565,19 @@ def email_update(request,*args,**kwargs):
             return JsonResponse({
                 "success"     :   0,
                 "message"     :   "Email address already exist",
-        
             })
-
+        
         # GET USER INSTANCE
         user  = Registration.objects.exclude(user_is_delete=1).get(user_id = user_id)
-
+        
+        # Validate email is valid to login user_email
+        user_email_ad = check_user['session_email']
+        if user_email_ad != current_email:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "please enter valid email address",
+            })
+        
         # CHECK HASH PASSWORD
         check_pass =  check_password(password,user.user_password)
 
@@ -590,7 +593,7 @@ def email_update(request,*args,**kwargs):
         update_data = {
             "user_email" : new_email
         }
-        
+        # user instance to register serializer for update data   
         user_serializer = RegisterSerializer(data=update_data,instance=user,partial=True)
         if user_serializer.is_valid():
             user_serializer.save()
@@ -601,7 +604,7 @@ def email_update(request,*args,**kwargs):
             })
         
 
-
+  
 
 # CHANGE PASSWORD API
 
@@ -619,7 +622,7 @@ def change_password(request,*args,**kwargs):
                 "message"     :   "Unauthorized User",
         })    
     else:
-        
+        # required data
         current_password    =       request.data.get('current_password',None)
         new_password        =       request.data.get('new_password',None)
         confirm_password    =       request.data.get('confirm_password',None)
@@ -647,8 +650,6 @@ def change_password(request,*args,**kwargs):
                 "message"     :   "Please confirm new passowrd",        
         })
         
-
-
         user_id = check_user['session_user']
 
         # get current user
@@ -666,7 +667,7 @@ def change_password(request,*args,**kwargs):
                 "message"     :   "Current password is Not Valid",
             })
 
-
+        # check old password with new password 
         pass_check = check_password(new_password,check_current_user.user_password)
         if pass_check :           
              return JsonResponse({
@@ -723,7 +724,7 @@ def forget_password(request):
             "success"     :   0,
             "message"     :   "Please Enter valid email address",
     })  
-
+    # ger user record using id
     user =  Registration.objects.exclude(user_is_delete=1).get(user_id=check_email)
     # GENERATE TOKEN
     token               =   secrets.token_hex()
@@ -733,7 +734,7 @@ def forget_password(request):
     # EMAIL FORMAT
     data = {
             "email"     :   user.user_email,
-            'domain'    :   '127.0.0.1:8000',
+            'domain'    :   '192.168.1.5:8000',
 			'site_name' :   'Website',     #Data which will send with E-mail id
 			"user"      :   user.user_id,
 			'token'     :   token,
@@ -755,7 +756,8 @@ def forget_password(request):
                                     "timestamp"   :   send_time,
                                     "user"        :   user_id
                                    }
-    user_pass_ser = ForgotPasswordSerializer(data=forgot_pass_data)
+    # save forget password data to serializer
+    user_pass_ser       =       ForgotPasswordSerializer(data=forgot_pass_data)
     
     if user_pass_ser.is_valid():
         user_pass_ser.save()
@@ -771,13 +773,11 @@ def forget_password(request):
 
 # UPDATE PASSWORD
 
-# @api_view(['POST'])
-
+# Renders forget password template 
 
 def reset_password(request,token):
 
     user_token              =       token
-
     # GET TEMP TIMESTAMP
     temp_timestamp          =       datetime.datetime.now() # This is temp timestamp to verify diff of 5 min. 
     temp_time               =       datetime.datetime.timestamp(temp_timestamp)*1000 #temp timestamp converted to unix 
@@ -790,7 +790,9 @@ def reset_password(request,token):
     if pass_reset_data.exists(): #True if user found
 
         email                   =       pass_reset_data.values('email').first()['email']
+        # filters record using email addresss
         myuser_id               =       Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values_list('user_id')[0][0]    
+        #  get single user instance
         user                    =       Registration.objects.exclude(user_is_delete=1).get(user_id=myuser_id)
         status_code             =       pass_reset_data.values_list('status')[0][0] #status value for checking link been used or not        
         exp_time                =       pass_reset_data.values_list('timestamp')[0][0] # get timestamp from database
@@ -799,8 +801,9 @@ def reset_password(request,token):
 
         if (convert_unix_timestamp>convert_temp_timestamp) and (status_code==1):
             if request.method == "POST":
-                pass1       = request.POST.get('new_pass')
-                pass2       = request.POST.get('confirm_pass')
+                # required data
+                pass1       =       request.POST.get('new_pass')
+                pass2       =       request.POST.get('confirm_pass')
 
                 if  pass1 == pass2:
                     enc_pass    = make_password(pass1)
@@ -845,12 +848,10 @@ def delete_account(request):
     else:
         
         # get user_id from token
-        user_id = check_user['session_user']
-
-
-        user_account =  Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)     
+        user_id         =   check_user['session_user']
+        # get user record from user id
+        user_account    =   Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)     
         
-
         update_data = {
             "user_is_delete" : 1
         }
@@ -863,22 +864,6 @@ def delete_account(request):
                             "message"        :      "Account deleted succesfully"
             })
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-              
 
 
 # TOKEN VERIFICATION DONE HERE
@@ -970,7 +955,6 @@ def update_location(request):
                             "message"        :      "Please provide lattitude"
             })
 
-
         if longitude is None:
             return JsonResponse({
                             "status"        :       0,
@@ -990,6 +974,7 @@ def update_location(request):
         user_ser    =       RegisterSerializer(instance=user_rec,data=location_details,partial=True)
 
         data = {
+
                 "location_details":location_details
             }
         if user_ser.is_valid():
@@ -1004,10 +989,9 @@ def update_location(request):
 
 
 
-# get user details
+# API call for get user details
 
 @api_view(['POST'])
-
 
 def get_user_details(request):
     user_token            =       request.data.get('user_token',None)
@@ -1021,25 +1005,52 @@ def get_user_details(request):
     
     else:
 
-        user_id     =       check_user['session_user']
-        user_record =   Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
-
-        get_user_details=   RegisterSerializer(instance=user_record).data
-
-        setting_id     =    Settings.objects.exclude(is_delete=1).filter(user=user_record.user_id).values('setting_id').first()['setting_id']
-        vehicle_id     =    VehicleDetails.objects.filter(user=user_record.user_id).values('vehicle_id').first()['vehicle_id']     
+        # required data
+        user_id                 =       check_user['session_user']   
+        try:
+            user_record         =       Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
+        except:
+            user_record         =       None
         
-        get_user_details["setting_id"] =    setting_id
-        get_user_details["vehicle_id"] =    vehicle_id
+        if user_id is None or user_record is None:
 
+              return JsonResponse({
+                "success"     :   0,
+                "message"     :   "please provide valid user_id",
+        }) 
+
+        get_user_details    =       RegisterSerializer(instance=user_record).data
+        
+        # check setting added by user or not. if not setting_id =  none 
+        try:
+            setting_id      =       Settings.objects.exclude(is_delete=1).filter(user=user_record.user_id).values('setting_id').first()['setting_id']
+        except:
+            setting_id      =       None
+        
+        #  Check vehicle details added by user. if not vehicle_id = none
+        try:
+            vehicle_id      =       VehicleDetails.objects.filter(user=user_record.user_id).values('vehicle_id').first()['vehicle_id']             
+        except:
+            vehicle_id      =       None
+
+        try:
+            payment_id      =       Payment.objects.filter(user=user_record.user_id).values('payment_id').first()['payment_id']             
+        except:
+            payment_id      =       None
+
+        
+        # Add data to the dictionary
+        get_user_details["setting_id"]      =    setting_id
+        get_user_details["vehicle_id"]      =    vehicle_id
+        get_user_details["payment_id"]      =    payment_id
+
+        # remove key,value from dict
         get_user_details.pop("user_is_delete")
         get_user_details.pop("create_at")
-
-        if get_user_details["device_type"] == True:
-            get_user_details["device_type"] = 0
-        else:
-             get_user_details["device_type"] = 1
-
+        get_user_details.pop("user_password")
+        get_user_details.pop("device_type")
+        get_user_details.pop("user_fcm_token")
+    
         data={
 
             "user_details"  :   get_user_details,
