@@ -94,6 +94,7 @@ def add_vehicle(request):
                 "vehicle_modification"  :   vehicle_modification,
                 "created_at"            :   created_at
             }
+            
             if vehicle_license_img != None:
                     vehicle_data["vehicle_license"]   =   vehicle_license_img
 
