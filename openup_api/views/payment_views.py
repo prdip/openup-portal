@@ -62,15 +62,7 @@ def add_card(request):
                                 "message"     :   "Please provide card number ",
                         })
 
-            # validates card number
-            check_card_no = check_number(card_no)
-            if check_card_no is False:
-                return JsonResponse({
-                                "success"     :   0,
-                                "message"     :   "Please provide valid cvv ",
-                        })
-
-       
+            # validates card number     
 
             # check cvv provided or not
             if  card_cvv is None or card_cvv == "":
@@ -79,14 +71,6 @@ def add_card(request):
                                 "message"     :   "Please provide cvv card number ",
                         })
             # Validates cvv contains numbers only
-
-            check_cvv = check_number(card_cvv)
-            if check_cvv is False:
-                return JsonResponse({
-                                "success"     :   0,
-                                "message"     :   "Please provide valid cvv ",
-                        })
-
             # check for card holder name 
 
             if card_holder_name is None or card_holder_name ==  "":

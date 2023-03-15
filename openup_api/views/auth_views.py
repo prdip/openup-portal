@@ -5,7 +5,7 @@ from openup_app.serializers import RegisterSerializer,SessionSerializer,ForgotPa
 
 
 # Import Models here
-from openup_app.models import Registration,Session,ForgotPassword,UserRole,Settings,Payment,VehicleDetails
+from openup_app.models import Registration,Session,ForgotPassword,UserRole,Settings,Payment,VehicleDetails,Jobs
 
 # Create your views here.
 from rest_framework.decorators import api_view
@@ -41,6 +41,8 @@ from django.contrib import messages
 from django.core.mail import EmailMessage
 
 
+# Import Q
+from django.db.models import Q
 
 @api_view(['POST'])
 def user_register(request):
@@ -380,8 +382,12 @@ def login(request):
                 "session_exp"               :         exp_time,
                 "session_status"            :         True, #login
                 "session_created_at"        :         datetime.datetime.now(),
-                "session_is_delete"         :         False           
+                "session_is_delete"         :         False     
+                      
             }
+    
+    if fcm_token != None:
+        data["session_user_fcm"] = fcm_token
     
     user_session     =      SessionSerializer(data=data)
 
@@ -414,8 +420,8 @@ def login(request):
 
 def confirm_account(request,email):
     
-    user_id = Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']
-    user_record =  Registration.objects.get(user_id=user_id)
+    user_id       =  Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']
+    user_record   =  Registration.objects.get(user_id=user_id)
     
     return render(request,'Authentication/admin_conf.html',{"user":user_record})
 
@@ -1017,10 +1023,10 @@ def get_user_details(request):
               return JsonResponse({
                 "success"     :   0,
                 "message"     :   "please provide valid user_id",
-        }) 
+        })
 
-        get_user_details    =       RegisterSerializer(instance=user_record).data
-        
+        # provide user instance to user serializer
+        get_user_details    =       RegisterSerializer(instance=user_record).data        
         # check setting added by user or not. if not setting_id =  none 
         try:
             setting_id      =       Settings.objects.exclude(is_delete=1).filter(user=user_record.user_id).values('setting_id').first()['setting_id']
@@ -1033,16 +1039,20 @@ def get_user_details(request):
         except:
             vehicle_id      =       None
 
+        # get last card of user
         try:
-            payment_id      =       Payment.objects.filter(user=user_record.user_id).values('payment_id').first()['payment_id']             
+            payment_id      =       Payment.objects.exclude(is_delete=1).filter(user=user_record.user_id).order_by('payment_id').reverse().first()             
         except:
             payment_id      =       None
 
+        if payment_id is None:
+            get_user_details["payment_id"]      =    None
+        else:
+            get_user_details["payment_id"]      =    payment_id.payment_id
         
         # Add data to the dictionary
         get_user_details["setting_id"]      =    setting_id
         get_user_details["vehicle_id"]      =    vehicle_id
-        get_user_details["payment_id"]      =    payment_id
 
         # remove key,value from dict
         get_user_details.pop("user_is_delete")
@@ -1050,7 +1060,30 @@ def get_user_details(request):
         get_user_details.pop("user_password")
         get_user_details.pop("device_type")
         get_user_details.pop("user_fcm_token")
-    
+
+        if user_record.user_role.role_name == "employee":
+            try:
+                accepted_job  =  Jobs.objects.exclude(Q(is_delete=1) and Q(job_status=3)).filter(job_accepted_by=user_record.user_id).order_by('job_id').reverse().first()
+                get_user_details['accepted_job'] = accepted_job.job_id
+
+            except:
+                accepted_job = None
+
+            if accepted_job is None:
+
+                get_user_details['accepted_job'] = None
+
+        else:
+            try:
+                job_posted  =   Jobs.objects.exclude(Q(is_delete=1) and Q(job_status=3)).filter(user_id=user_record.user_id).order_by('job_id').reverse().first()        
+                get_user_details['posted_job'] = job_posted.job_id
+
+            except:
+                job_posted = None
+
+            if job_posted is None:
+                get_user_details['posted_job'] = None
+
         data={
 
             "user_details"  :   get_user_details,

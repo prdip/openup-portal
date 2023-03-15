@@ -63,13 +63,14 @@ class SessionSerializer(serializers.ModelSerializer):
     session_status          =           serializers.BooleanField()
     session_created_at      =           serializers.DateTimeField()
     session_is_delete       =           serializers.BooleanField()
+    session_user_fcm            =           serializers.CharField(required=False)
 
     class Meta:
         model = Session
         fields = ('session_user','session_user_email',
                     'session_token','session_exp',
                     'session_status','session_created_at',
-                    'session_is_delete')
+                    'session_is_delete','session_user_fcm')
 
 
     def create(self,validated_data):     

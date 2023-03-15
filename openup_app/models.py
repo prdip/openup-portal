@@ -82,6 +82,7 @@ class Session(models.Model):
     session_created_at          =           models.DateTimeField()
     session_updated_at          =           models.DateTimeField(null=True)
     session_is_delete           =           models.BooleanField(default=1)
+    session_user_fcm            =           models.CharField(max_length=150,null=True)
 
     class Meta:
         db_table = 'user_sessions'
@@ -114,16 +115,37 @@ class ForgotPassword(models.Model):
 # VEHICLE DETAILS MODEL
 
 
+# change filename 
+import os
+def file_name(instance, filename):
+        ext = filename.split('.')[-1]
+        name = filename.split('.')[0]
+
+        count = 0
+
+        for i in range(0, len(name)):  
+            if(name[i] != ' '):  
+                count = count + 1;
+
+        if count >=12:
+              name = str(name)[0:12]
+        time = (datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S")
+                      
+        filename = "'%s','%s',.%s'" % (name,str(time),ext)
+        return os.path.join('licenses',filename)
+
 class VehicleDetails(models.Model):
 
     vehicle_id              =       models.AutoField(primary_key=True)
     user                    =       models.ForeignKey(Registration,on_delete=models.CASCADE)
     vehicle_details         =       models.CharField(max_length=200)
     vehicle_modification    =       models.CharField(max_length=200,null=True)
-    vehicle_license         =       models.FileField(upload_to='licenses',blank=True,null=True)
+    vehicle_license         =       models.FileField(upload_to=file_name,blank=True,null=True)  #licenses
     created_at              =       models.DateTimeField()
     update_at               =       models.DateTimeField(null=True)
     vehicle_status          =       models.BooleanField(default=0)
+
+
     
     
     
@@ -203,7 +225,7 @@ class Jobs(models.Model):
     location_longitude       =   models.FloatField()
     vehicle_details          =   models.CharField(max_length=300)
     vehicle_modification     =   models.CharField(max_length=400)
-    vehicle_license          =   models.FileField(upload_to='licenses')
+    vehicle_license          =   models.FileField(upload_to=file_name)
     job_accepted_by          =   models.CharField(max_length=31,null=True)
     created_at               =   models.DateTimeField()
     update_at                =   models.DateTimeField(null=True)

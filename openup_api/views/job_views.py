@@ -1,7 +1,7 @@
 
 # Create your views here.
 from rest_framework.decorators import api_view
-
+import threading
 
 from openup.fcm import FCM
 
@@ -16,10 +16,10 @@ from openup_api.views.auth_views import token_verification
 import datetime
 
 # import datetime
-from datetime import datetime,timedelta
+from datetime import datetime,timedelta,timezone
 
 # Import Models here
-from openup_app.models import Registration,JobsType,Jobs,Alerts
+from openup_app.models import Registration,JobsType,Jobs,Alerts,VehicleDetails
 
 # Import Serializer
 from openup_app.serializers import JobsSerializer
@@ -57,6 +57,10 @@ def add_job(request):
         vehicle_modification    =   request.data.get('vehicle_modification',None)
         vehicle_license         =   request.data.get('vehicle_license',None)
         created_at              =   datetime.now()
+        licence_name            =   request.data.get('licence_name',None)
+        vehicle_id              =   request.data.get('vehicle_id',None)
+
+
         # job type accepts only employee and emergency
 
         if job_type is None or job_type == "" or (job_type != "service" and job_type != "emergency"):
@@ -89,11 +93,14 @@ def add_job(request):
                     "message"   :   "please provide current location "
                     })
         
+        user_id     =       check_user['session_user']
+        
         if vehicle_license is None:
-                 return JsonResponse({
-                        "success"     :   0,
-                        "message"     :   "Please provide licence image",
-                    })               
+
+                veh_rec             =   VehicleDetails.objects.get(vehicle_id=vehicle_id)
+                vehicle_license     =   veh_rec.vehicle_license
+
+                           
         else:
             try:
                     im = Image.open(vehicle_license)
@@ -108,7 +115,7 @@ def add_job(request):
                     })
            
         # get user id from token
-        user_id     =       check_user['session_user']
+        
         # get instance of login user
         user_rec    =       Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
         job_id      =       JobsType.objects.first()
@@ -128,20 +135,17 @@ def add_job(request):
         job_ser     =   JobsSerializer(data=job_details)
 
         if job_ser.is_valid():
-            
-            # id = job_ser.save()
-            id = 29
-            import threading
 
-            t = threading.Thread(target=jobAlert,args=(id,))
-            t.setDaemon(True)
-            t.start()
-           
-            
+            # time                =       datetime.now()
+            id = job_ser.save()
+            # id = 30
+            jobAlert(id)
+            # time                =       datetime.now()
+            # print("Thread end",time)       
              
             return JsonResponse({
                 "status"    :   1,
-                "message"   :   "Details Added successfully"
+                "message"   :   "Details Added successfully",
                 })
         else:
             return JsonResponse({
@@ -151,6 +155,8 @@ def add_job(request):
                 })
 
 
+
+
 # remove data from list
 def removeElements(items,lists):
     for dict in lists:
@@ -158,8 +164,9 @@ def removeElements(items,lists):
             del(dict[item])  
     return lists
 
-
-
+from openup import celery_app
+from celery import shared_task
+@shared_task
 # job alert to nearest employees
 def jobAlert(job_id):
     # Fetch Employee List
@@ -187,7 +194,7 @@ def jobAlert(job_id):
                              alert_messages=alert_messages,
                             created_at=created_at)
     
-    data.save()
+    data.save() 
 
     # send alert to employees
     # SEND NOTIFICATIONS 
@@ -196,13 +203,15 @@ def jobAlert(job_id):
         'message'   :   'Please acccept this asap',
         'job_id'    :   job_id, 
     }
-    
+    # import datetime
     for emp in emp_fcm: 
+        print("Notification send",datetime.now())
         FCM.send_push_notifications(emp,noti_data)
 
     return True
     
     
+
 
 
 
