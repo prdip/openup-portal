@@ -1,7 +1,7 @@
 from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
-from openup_api.views import auth_views, cms_views, force_update,vehicle_views,payment_views,job_views,feedback_views
+from openup_api.views import auth_views, cms_views, force_update,vehicle_views,payment_views,job_views,feedback_views,location_views
 from openup_api.views import setting
 from django.urls import reverse
 
@@ -59,7 +59,8 @@ urlpatterns = [
 
 # Update location
 
-  path('update_location', auth_views.update_location,name='update_location'),
+  path('update_location', location_views.update_location,name='update_location'),
+  path('service_available', location_views.service_available,name='service_available'),
 
 
 # Jobs 

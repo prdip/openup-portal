@@ -933,68 +933,6 @@ def token_verification(token):
 
 
 
-#  API for location update
-
-
-@api_view(['POST'])
-
-def update_location(request):
-       # CHECK TOKEN VALUE
-    user_token            =       request.data.get('user_token',None)
-    check_user            =       token_verification(user_token)
-
-    if check_user is None:
-        return JsonResponse({
-                "success"     :   0,
-                "message"     :   "Unauthorized User",
-        }) 
-    
-    else:
-            # required data
-        latitude     =    request.data.get('latitude',None)
-        longitude    =    request.data.get('longitude',None)
-
-        # check for blank value
-        if latitude is None:
-            return JsonResponse({
-                            "status"        :       0,
-                            "message"        :      "Please provide lattitude"
-            })
-
-        if longitude is None:
-            return JsonResponse({
-                            "status"        :       0,
-                            "message"        :      "Please provide lattitude"
-            })
-        
-        user_id = check_user['session_user']
-        # update data
-        location_details = {
-                    "location_latitude"   :     latitude,
-                    "location_longitude"  :     longitude,
-        }
-
-        #instance of  user recored
-        user_rec    =       Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
-        # user serializer
-        user_ser    =       RegisterSerializer(instance=user_rec,data=location_details,partial=True)
-
-        data = {
-
-                "location_details":location_details
-            }
-        if user_ser.is_valid():
-            user_ser.save()
-            return JsonResponse({
-                            "status"        :       1,
-                            "message"        :      "User location updated succesfully",
-                            "data"          :       data
-            })
-
-
-
-
-
 # API call for get user details
 
 @api_view(['POST'])

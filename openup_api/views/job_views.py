@@ -57,12 +57,12 @@ def add_job(request):
         current_location_long   =   request.data.get('longitude',None)
         vehicle_details         =   request.data.get('vehicle_details',None)
         vehicle_modification    =   request.data.get('vehicle_modification',None)
-        vehicle_license         =   request.data.get('vehicle_license',None)
+        license         =   request.data.get('vehicle_license',None)
         created_at              =   datetime.now()
         licence_name            =   request.data.get('licence_name',None)
         vehicle_id              =   request.data.get('vehicle_id',None)
 
-
+        print(vehicle_id)
         # job type accepts only employee and emergency
 
         if job_type is None or job_type == "" or (job_type != "service" and job_type != "emergency"):
@@ -96,30 +96,50 @@ def add_job(request):
                     })
         
         user_id     =       check_user['session_user']
+
+        if vehicle_id == None and license ==  None:
+            license = None
         
-        if vehicle_license is None:
+        
+        else:
+
+
+            if license is None and vehicle_id != None:
+                
+                print(license is None and vehicle_id != None)
                 try:
                     veh_rec             =   VehicleDetails.objects.get(vehicle_id=vehicle_id)
                 
                 except:
                    veh_rec = None
 
+                if veh_rec is not None:
+                    license = veh_rec.vehicle_license
+               
 
+            elif license != None and vehicle_id == None:
+                try:
+                    veh_rec             =   VehicleDetails.objects.get(vehicle_id=vehicle_id)
+                
+                except:
+                   veh_rec = None
+
+               
                 if veh_rec != None:
-                    vehicle_license = veh_rec.vehicle_license
-                else:
-                    vehicle_license = None
+                    license = veh_rec.vehicle_license
+               
 
+                print("No license but veh image ",license)
                            
-        else:
-            try:
-                    im = Image.open(vehicle_license)
+            else:
+                try:
+                        im = Image.open(license)
 
-            except:
-                    im = None
+                except:
+                        im = None
 
-            if im is None: 
-                return JsonResponse({
+                if im is None: 
+                    return JsonResponse({
                         "success"     :   0,
                         "message"     :   "Please provide valid image",
                     })
@@ -136,7 +156,7 @@ def add_job(request):
                 "location_longitude"    :   current_location_long,
                 "vehicle_details"       :   vehicle_details,
                 "vehicle_modification"  :   vehicle_modification,
-                "vehicle_license"       :   vehicle_license,
+                "vehicle_license"       :   license,
                 "created_at"            :   created_at,
                 "user"                  :   user_rec.user_id,
                 "job_status"            :   job_id.status_id               
@@ -148,7 +168,8 @@ def add_job(request):
 
             id = job_ser.save()
             # id = 30
-            jobAlert(id)
+            # jobAlert(id)
+
             # time                =       datetime.now()
             # print("Thread end",time)       
              
@@ -156,7 +177,9 @@ def add_job(request):
                 "status"    :   1,
                 "message"   :   "Details Added successfully",
                 })
-     
+       
+        
+
 
 
 
@@ -320,7 +343,7 @@ def job_details(request):
         url     = 'http://{domain}{path}'.format(domain=domain, path=obj)
 
 
-        job_serializer['vehicle_license'] = url
+        job_serializer['vehicle_license_url'] = url
 
         if job_serializer['job_status'] == 1:
             job_serializer['job_status'] = "active"
@@ -331,6 +354,7 @@ def job_details(request):
         if job_serializer['job_status'] == "3":
             job_serializer['job_status']="completed"
 
+        job_serializer.pop('vehicle_license')
 
         data = {
             "job_details":job_serializer
@@ -465,3 +489,9 @@ def accept_job(request):
                             "message"     :   "some error occured",
                     })
 
+
+
+
+@api_view(['POST'])
+def reject_job(request):
+    pass
