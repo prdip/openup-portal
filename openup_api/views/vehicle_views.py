@@ -22,7 +22,7 @@ from openup_app.serializers import VehicleSerializer
 import datetime
 
 
-
+import socket
 
 # API to add new vehicle 
 
@@ -248,10 +248,13 @@ def vehicle_details(request):
         vehicle_ser.pop('vehicle_license')
 
         # import socket
-        domain = "192.168.1.2:8000"
+        # domain = "192.168.1.2:8000"
         # ipaddress = socket.gethostbyname(domain)
         # dom = socket.gethostbyaddr(ipaddress)
 
+        hostname = socket.gethostname()
+        name = socket.gethostbyname(hostname)
+        domain = name+":8000"
 
         obj = vehicle_details.vehicle_license.url
         url = 'http://{domain}{path}'.format(domain=domain, path=obj)

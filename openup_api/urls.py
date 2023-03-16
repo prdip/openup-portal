@@ -1,7 +1,7 @@
 from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
-from openup_api.views import auth_views, cms_views, force_update,vehicle_views,payment_views,job_views
+from openup_api.views import auth_views, cms_views, force_update,vehicle_views,payment_views,job_views,feedback_views
 from openup_api.views import setting
 from django.urls import reverse
 
@@ -14,6 +14,11 @@ urlpatterns = [
   path('logout', auth_views.logout,name='logout'),
   path('delete_account', auth_views.delete_account,name='delete_account'),
   path('user_details', auth_views.get_user_details,name='user-details'),
+  
+  # Account confirm
+  path('confirm_account/<str:email>', auth_views.confirm_account,name='confirm_account'),
+  path('activate', auth_views.activate_account,name='activate'),
+
 
 
 
@@ -68,14 +73,8 @@ urlpatterns = [
   path('add_settings', setting.add_settings,name='add_settings'),
   path('setting_details', setting.setting_details,name='setting_details'),
 
-  path('confirm_account/<str:email>', auth_views.confirm_account,name='confirm_account'),
-
-  path('activate', auth_views.activate_account,name='activate'),
-
-  
-
-  
-
+# Feedback
+  path('add_feedback', feedback_views.add_feedback,name='add_feedback'),
 
 
 ]

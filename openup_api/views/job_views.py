@@ -1,7 +1,9 @@
 
 # Create your views here.
 from rest_framework.decorators import api_view
-import threading
+
+
+import socket
 
 from openup.fcm import FCM
 
@@ -96,9 +98,17 @@ def add_job(request):
         user_id     =       check_user['session_user']
         
         if vehicle_license is None:
+                try:
+                    veh_rec             =   VehicleDetails.objects.get(vehicle_id=vehicle_id)
+                
+                except:
+                   veh_rec = None
 
-                veh_rec             =   VehicleDetails.objects.get(vehicle_id=vehicle_id)
-                vehicle_license     =   veh_rec.vehicle_license
+
+                if veh_rec != None:
+                    vehicle_license = veh_rec.vehicle_license
+                else:
+                    vehicle_license = None
 
                            
         else:
@@ -136,7 +146,6 @@ def add_job(request):
 
         if job_ser.is_valid():
 
-            # time                =       datetime.now()
             id = job_ser.save()
             # id = 30
             jobAlert(id)
@@ -147,12 +156,7 @@ def add_job(request):
                 "status"    :   1,
                 "message"   :   "Details Added successfully",
                 })
-        else:
-            return JsonResponse({
-                "status"    :   0,
-                "message"   :   "Details Added successfully",
-                "errors"    :   job_ser.errors
-                })
+     
 
 
 
@@ -303,7 +307,15 @@ def job_details(request):
         job_serializer.pop('is_delete')
 
         # create image url 
-        domain  = "192.168.1.5:8000"
+        # domain  = "192.168.1.5:8000"
+        
+        hostname = socket.gethostname()
+        name = socket.gethostbyname(hostname)
+        domain = name+":8000"
+
+        # s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+        # s.bind(('', 0))
+        # owners_port = int(s.getsockname()[1])
         obj     = job_serializer['vehicle_license']
         url     = 'http://{domain}{path}'.format(domain=domain, path=obj)
 

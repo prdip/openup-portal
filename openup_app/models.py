@@ -6,11 +6,10 @@ import datetime
 
 # USER  ROLES
 class UserRole(models.Model):
-    choice = (
-        ('client','client'),
-        ('employee','employee'),
-        
-    )
+    choice = (   
+            ('client','client'),            
+            ('employee','employee'),
+            )
 
     role_id             =       models.AutoField(primary_key=True)
     role_name           =       models.CharField(choices=choice,max_length=50)
@@ -145,9 +144,6 @@ class VehicleDetails(models.Model):
     update_at               =       models.DateTimeField(null=True)
     vehicle_status          =       models.BooleanField(default=0)
 
-
-    
-    
     
     class Meta:
         db_table = 'vehicle_model'
@@ -203,8 +199,6 @@ class JobsType(models.Model):
 
 
 
-
-
 # Jobs Model
 
 class Jobs(models.Model):
@@ -225,7 +219,7 @@ class Jobs(models.Model):
     location_longitude       =   models.FloatField()
     vehicle_details          =   models.CharField(max_length=300)
     vehicle_modification     =   models.CharField(max_length=400)
-    vehicle_license          =   models.FileField(upload_to=file_name)
+    vehicle_license          =   models.FileField(upload_to=file_name, null=True)
     job_accepted_by          =   models.CharField(max_length=31,null=True)
     created_at               =   models.DateTimeField()
     update_at                =   models.DateTimeField(null=True)
@@ -240,15 +234,8 @@ class Jobs(models.Model):
         self.save()
 
 
-
-
-
-
     class Meta:
         db_table = 'userjob'
-
-   
-
 
 
 class Settings(models.Model):
@@ -285,3 +272,23 @@ class Alerts(models.Model):
 
     class Meta:
         db_table = 'alerts'
+
+
+
+#  FEEDBACK MODEL
+
+class Feedback(models.Model):
+
+    feedback_id            =      models.AutoField(primary_key=True)
+    feedback_job           =      models.OneToOneField(Jobs,on_delete=models.CASCADE)
+    feedback_user          =      models.ForeignKey(Registration,on_delete=models.CASCADE)
+    feedback_stars         =      models.FloatField()
+    feedback_comment       =      models.CharField(max_length=500)
+    created_at             =      models.DateTimeField()
+    feedback_status        =      models.BooleanField(default=0)
+    update_at              =      models.DateTimeField(null=True)
+    is_delete              =      models.BooleanField(default=0)
+
+
+    class Meta:
+        db_table = 'feedback'

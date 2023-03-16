@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 #IMPORT MODELS FROM SGSP APPLICATION
 
-from .models import Registration,Session,ForgotPassword,UserRole,VehicleDetails,Payment,Jobs,JobsType,Settings
+from .models import Registration,Session,ForgotPassword,UserRole,VehicleDetails,Payment,Jobs,JobsType,Settings,Feedback
 
 
 
@@ -40,13 +40,15 @@ class RegisterSerializer(serializers.ModelSerializer):
         demo.update(**validated_data)
         return demo
 
-
     class Meta:
-
         model = Registration
 
-        fields = ('user_first_name','user_middle_name', 'user_last_name', 'user_email','user_phone_number',
-                  'user_password','location_latitude','location_longitude','create_at','user_role','user_is_delete','device_type','user_fcm_token')
+        fields = ('user_first_name','user_middle_name', 
+                  'user_last_name', 'user_email',
+                  'user_phone_number','user_password',
+                  'location_latitude','location_longitude',
+                  'create_at','user_role','user_is_delete',
+                  'device_type','user_fcm_token')
 
 
 
@@ -55,7 +57,6 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 class SessionSerializer(serializers.ModelSerializer):
 
-    
     session_user            =           serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
     session_user_email      =           serializers.EmailField()
     session_token           =           serializers.CharField()
@@ -63,7 +64,7 @@ class SessionSerializer(serializers.ModelSerializer):
     session_status          =           serializers.BooleanField()
     session_created_at      =           serializers.DateTimeField()
     session_is_delete       =           serializers.BooleanField()
-    session_user_fcm            =           serializers.CharField(required=False)
+    session_user_fcm        =           serializers.CharField(required=False)
 
     class Meta:
         model = Session
@@ -78,12 +79,10 @@ class SessionSerializer(serializers.ModelSerializer):
 
 
 
-
-
-
 # FORGOT PASSWORD SERIALIZER    
     
 class ForgotPasswordSerializer(serializers.ModelSerializer):
+
     user               =        serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
     email              =        serializers.EmailField()
     status             =        serializers.BooleanField()
@@ -102,14 +101,12 @@ class ForgotPasswordSerializer(serializers.ModelSerializer):
 
 # VEHICLE DETAILS MODEL
 
-
 class VehicleSerializer(serializers.ModelSerializer):
 
     user                    =       serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
     vehicle_details         =       serializers.CharField()
     vehicle_modification    =       serializers.CharField()
     vehicle_license         =       serializers.FileField(required = False)  
-    
     created_at              =       serializers.DateTimeField()
     
     
@@ -126,8 +123,8 @@ class VehicleSerializer(serializers.ModelSerializer):
 # PAYMENT SERIALIZER
 
 class PaymentSerializer(serializers.ModelSerializer):
-    user                    =       serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
 
+    user            =       serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
     user_card_no    =       serializers.IntegerField()
     card_cvv        =       serializers.IntegerField()
     card_name       =       serializers.CharField()
@@ -168,12 +165,10 @@ class JobsSerializer(serializers.Serializer):
     job_accepted_by          =   serializers.CharField(required=False)
     vehicle_details          =   serializers.CharField()
     vehicle_modification     =   serializers.CharField()
-    vehicle_license          =   serializers.FileField()
+    vehicle_license          =   serializers.FileField(required=False,allow_null=True)
     created_at               =   serializers.DateTimeField()
     is_delete                =   serializers.BooleanField(default=0)
     job_status               =   serializers.PrimaryKeyRelatedField(queryset = JobsType.objects.all())
-
-
 
     def create(self,validated_data):
         n = Jobs.objects.create(**validated_data)
@@ -187,12 +182,8 @@ class JobsSerializer(serializers.Serializer):
 
     # def update(self, instance, validated_data):
 
-
-
     class Meta:
         model = Jobs
-
-
         fields = ('job_type','user','location_latitude',
                   'location_longitude','vehicle_details',
                   'vehicle_modification','vehicle_license',
@@ -203,9 +194,6 @@ class JobsSerializer(serializers.Serializer):
 
 
 # Setting Serializer
-
-
-
 
 class SettingsSerializer(serializers.Serializer):
 
@@ -235,4 +223,23 @@ class SettingsSerializer(serializers.Serializer):
                   'ser_feed_not')
 
 
-        
+
+
+# FEEDBACK SERIALIZER
+
+class FeedbackSerializer(serializers.Serializer):
+
+    feedback_job           =      serializers.PrimaryKeyRelatedField(queryset = Jobs.objects.all())
+    feedback_user          =      serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
+    feedback_stars         =      serializers.FloatField(default=1)
+    feedback_comment       =      serializers.CharField(max_length=500)
+    created_at             =      serializers.DateTimeField()
+    
+    def create(self,validated_data):     
+        return Feedback.objects.create(**validated_data)
+    
+    
+    class Meta:
+        model = Feedback
+        fields = ('feedback_job','feedback_user','feedback_stars',
+                  'feedback_comment','created_at')
