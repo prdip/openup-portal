@@ -30,16 +30,13 @@ import socket
 
 def add_vehicle(request):
     #  Token Verification
-
     user_token      =       request.data.get('user_token',None)
     check_user      =       token_verification(user_token)
-
     if check_user is None:
         return JsonResponse({
                 "success"     :   0,
                 "message"     :   "Unauthorized User",
         }) 
-
     else:
         # Required 
         vehicle_id              =       request.data.get('vehicle_id',None)
@@ -55,20 +52,19 @@ def add_vehicle(request):
                 return JsonResponse({
                     "success"     :   0,
                     "message"     :   "Please Provide Vehicle details",
-            }) 
+                }) 
 
             # check vehicle_modification data
             if vehicle_modification is None or vehicle_modification == "":
                 return JsonResponse({
                     "success"     :   0,
                     "message"     :   "Please Provide Vehicle mod",
-            })
+                })
             # Check file upload is image or not
             if vehicle_license_img != None:
                 try:
                     im = Image.open(vehicle_license_img)
                     im.verify()
-
                 except:
                     im = None
 
@@ -89,11 +85,9 @@ def add_vehicle(request):
             vehicle_data = {
                 "user"                  :   user.user_id,
                 "vehicle_details"       :   vehicle_details,
-
-
                 "vehicle_modification"  :   vehicle_modification,
                 "created_at"            :   created_at
-            }
+                }
             
             if vehicle_license_img != None:
                     vehicle_data["vehicle_license"]   =   vehicle_license_img
@@ -105,24 +99,21 @@ def add_vehicle(request):
                 return JsonResponse({
                         "success"      :   1,
                         "message"      :   "Vehicle Information Stored Successfully",
-                        
-                })
+                    })                        
         else:
-
             update_data = {
                 "vehicle_license"   :   vehicle_license_img
-
-            }
+                }
 
             vehicle_details         =       request.data.get('vehicle_details',None)
             vehicle_modification    =       request.data.get('vehicle_modification',None)
+            
             if vehicle_details != None:
                  update_data["vehicle_details"] = vehicle_details
 
             if vehicle_modification != None:
                  update_data["vehicle_modification"] = vehicle_modification
                  
-
             vehicle_rec     =   VehicleDetails.objects.get(vehicle_id=vehicle_id)
             vehicle_ser     =   VehicleSerializer(instance=vehicle_rec,data=update_data,partial=True)
 
@@ -131,10 +122,8 @@ def add_vehicle(request):
                 return JsonResponse({
                     "success"     :   1,
                     "message"     :   "Vehicle Information updated Successfully",
-                    
-
                 })
-
+                    
 
 
 # Edit api call 
@@ -166,8 +155,7 @@ def vehicle_edit(request):
             return JsonResponse({
                 "success"     :   0,
                 "message"     :   "Please provide valid image",
-            })
-        
+            })        
         try:
             im = Image.open(vehicle_license_img)
             im.verify()
@@ -225,16 +213,14 @@ def vehicle_details(request):
         }) 
     
     else:
-
         #  Get details using id
-        vehicle_id = request.data.get('vehicle_id',None)
+        vehicle_id  =       request.data.get('vehicle_id',None)
         
         try:
             vehicle_details =   VehicleDetails.objects.get(vehicle_id=vehicle_id)
-            # vehicle_details =   VehicleDetails.objects.last()
-        
+            # vehicle_details =   VehicleDetails.objects.last()        
         except:
-            vehicle_details = None
+            vehicle_details =   None
         
         if vehicle_details is None or vehicle_id   ==  None:
              return JsonResponse({
@@ -259,14 +245,12 @@ def vehicle_details(request):
         obj = vehicle_details.vehicle_license.url
         url = 'http://{domain}{path}'.format(domain=domain, path=obj)
         vehicle_ser['vehicle_license_url'] = url
-
         img_name = str(vehicle_details.vehicle_license)
         img_name=img_name.replace("licenses/"," ")
         vehicle_ser['vehicle_image_name'] =    img_name
         data = {
              "vehicle_details" : vehicle_ser
-
-        } 
+            } 
         return JsonResponse({
                     "success"     :   1,
                     "message"     :   "Vehicle details provided",

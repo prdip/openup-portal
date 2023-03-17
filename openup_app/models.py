@@ -41,7 +41,7 @@ class Registration(models.Model):
     user_first_name          =   models.CharField(max_length=150)
     user_middle_name         =   models.CharField(max_length=150)
     user_last_name           =   models.CharField(max_length=150)
-    user_email               =   models.EmailField(unique=True)
+    user_email               =   models.EmailField()
     user_phone_number        =   models.CharField(max_length=12)
     user_password            =   models.CharField(max_length=550)
     user_role                =   models.ForeignKey(UserRole,on_delete=models.CASCADE,null=True)

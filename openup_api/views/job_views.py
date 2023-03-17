@@ -1,14 +1,21 @@
 
+from openup import celery_app
+from celery import shared_task,Celery
+from time import sleep
+
+# Import thead
+
+import threading
+
 # Create your views here.
 from rest_framework.decorators import api_view
 
-
 import socket
 
-from openup.fcm import FCM
+from .tasks import send_push_notifications
 
 # import Json Response
-from django.http.response import JsonResponse
+from django.http.response import JsonResponse,HttpResponse
 
 
 # Import token verifications
@@ -32,6 +39,7 @@ from PIL import Image
 # Import Q
 from django.db.models import Q
 
+from background_task import background
 
 # ADD NEW JOB 
 @api_view(['POST'])
@@ -63,61 +71,62 @@ def add_job(request):
         vehicle_id              =   request.data.get('vehicle_id',None)
 
         print(vehicle_id)
+        print(license)
         # job type accepts only employee and emergency
 
         if job_type is None or job_type == "" or (job_type != "service" and job_type != "emergency"):
             return JsonResponse({
-                    "status"    :   0,
+                    "success"    :   0,
                     "message"   :   "please provide job type"
                     })
         
         if current_location_lat is None or current_location_lat ==  "":
             return JsonResponse({
-                    "status"    :   0,
+                    "success"    :   0,
                     "message"   :   "please provide current location "
                     })
         
         if current_location_long is None or current_location_long == "":
             return JsonResponse({
-                    "status"    :   0,
+                    "success"    :   0,
                     "message"   :   "please provide current location "
                     })
 
         if vehicle_details is None or vehicle_details == "":
             return JsonResponse({
-                    "status"    :   0,
+                    "success"    :   0,
                     "message"   :   "please provide current location "
                     })
         
         if vehicle_modification is None or vehicle_modification == "":
             return JsonResponse({
-                    "status"    :   0,
+                    "success"    :   0,
                     "message"   :   "please provide current location "
                     })
         
         user_id     =       check_user['session_user']
 
         if vehicle_id == None and license ==  None:
+            # pass
+            print("No id provided and no image")
             license = None
         
         
-        else:
-
-
-            if license is None and vehicle_id != None:
+        elif license == None and vehicle_id != None:
+            print("id provided and no image")
+            try:
+                    veh_rec             =   VehicleDetails.objects.get(vehicle_id=int(vehicle_id))
                 
-                print(license is None and vehicle_id != None)
-                try:
-                    veh_rec             =   VehicleDetails.objects.get(vehicle_id=vehicle_id)
-                
-                except:
+            except:
                    veh_rec = None
 
-                if veh_rec is not None:
-                    license = veh_rec.vehicle_license
-               
+            if veh_rec == None:
+                license=None
+            else:
+                license = veh_rec.vehicle_license
 
-            elif license != None and vehicle_id == None:
+        elif license != None and vehicle_id == None:
+                print(" No id provided and image provided")
                 try:
                     veh_rec             =   VehicleDetails.objects.get(vehicle_id=vehicle_id)
                 
@@ -127,18 +136,19 @@ def add_job(request):
                
                 if veh_rec != None:
                     license = veh_rec.vehicle_license
-               
 
-                print("No license but veh image ",license)
-                           
-            else:
+        # id and new image
+        else:
+                
+                print("else")
+                
                 try:
                         im = Image.open(license)
 
                 except:
                         im = None
 
-                if im is None: 
+                if im == None: 
                     return JsonResponse({
                         "success"     :   0,
                         "message"     :   "Please provide valid image",
@@ -165,43 +175,43 @@ def add_job(request):
         job_ser     =   JobsSerializer(data=job_details)
 
         if job_ser.is_valid():
-
+            
             id = job_ser.save()
-            # id = 30
-            # jobAlert(id)
+            # id = 97
+            jobAlert.delay(id)        
+            data = {
 
-            # time                =       datetime.now()
-            # print("Thread end",time)       
-             
+                "job_id" : id
+            }
+            
             return JsonResponse({
-                "status"    :   1,
+                "success"    :   1,
                 "message"   :   "Details Added successfully",
+            "data"          :       data
+                })
+        
+        return JsonResponse({
+                "success"    :   0,
+                "message"   :   "error occured",
+              
                 })
        
         
 
 
 
-
-
-# remove data from list
-def removeElements(items,lists):
-    for dict in lists:
-        for item in items:
-            del(dict[item])  
-    return lists
-
-from openup import celery_app
-from celery import shared_task
-@shared_task
-# job alert to nearest employees
+@shared_task()
 def jobAlert(job_id):
     # Fetch Employee List
+     
+    sleep(10)
     employees =  Registration.objects.exclude(Q(user_is_delete=1) or Q(user_role_id=2) ).filter(user_role=1)
 
     # get employee list
     user_list = []
     emp_fcm   = []
+
+    emplist = {}
     
     for employees in employees:
         if employees.user_fcm_token == "" or employees.user_fcm_token is None:
@@ -209,6 +219,8 @@ def jobAlert(job_id):
         else:
             user_list.append(employees.user_id)
             emp_fcm.append(employees.user_fcm_token)
+            emplist[str(employees.user_fcm_token)] = list((str(employees.user_id),str(employees.device_type))) 
+
 
     emp_list        =   ','.join(str(i) for i in user_list)
     job_id          =    Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
@@ -221,22 +233,37 @@ def jobAlert(job_id):
                              alert_messages=alert_messages,
                             created_at=created_at)
     
-    data.save() 
+    # data.save() 
 
-    # send alert to employees
     # SEND NOTIFICATIONS 
     noti_data={
         'title'     :   'New job request',
         'message'   :   'Please acccept this asap',
         'job_id'    :   job_id, 
     }
-    # import datetime
-    for emp in emp_fcm: 
-        print("Notification send",datetime.now())
-        FCM.send_push_notifications(emp,noti_data)
 
-    return True
+    # for emp in emplist:
+
+    send_push_notifications(emplist,noti_data)
+
+
+    # import datetime
+    # for emp in emp_fcm: 
+
+    #     send_push_notifications(emp,noti_data)
+
+    return  JsonResponse("executed")
     
+
+
+
+
+# remove data from list
+def removeElements(items,lists):
+    for dict in lists:
+        for item in items:
+            del(dict[item])  
+    return lists
     
 
 
@@ -266,7 +293,10 @@ def job_list(request):
         # remove data from list
         removeElements(['created_at','is_delete'],job_ser) 
 
-        domain = "192.168.1.5:8000"
+
+        hostname = socket.gethostname()
+        name = socket.gethostbyname(hostname)
+        domain = name+":8000"
         
         for data in job_ser:
             # get url of image
@@ -377,7 +407,7 @@ def remove_job(request):
         return JsonResponse({
                 "success"     :   0,
                 "message"     :   "Unauthorized User",
-        })
+                })
     
     # if token verified
     else:
@@ -389,11 +419,11 @@ def remove_job(request):
             return JsonResponse({
                     "success"     :   0,
                     "message"     :   "Please provide job id",
-            })
+                })
         
         update_data     =   {
-            "is_delete"     :       1
-        }
+                 "is_delete"     :       1
+                }
         
         job_data        =   Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
         job_serializer  =   JobsSerializer(data=update_data,instance=job_data,partial=True)
@@ -403,18 +433,18 @@ def remove_job(request):
             return JsonResponse({
                     "success"     :   1,
                     "message"     :   "Record removed successfully",
-            })
+                 })
         else:
             return JsonResponse({
                     "success"     :   0,
                     "message"     :   "Record removed successfully",
                     "job_serializer":   job_serializer.errors
-            })
+                })
 
 
 
 
-# accept job api
+# ACCEPT JOB 
 
 @api_view(['POST'])
 
@@ -487,11 +517,98 @@ def accept_job(request):
             return JsonResponse({
                             "success"     :   0,
                             "message"     :   "some error occured",
-                    })
+                        })
 
 
 
 
 @api_view(['POST'])
 def reject_job(request):
+
+    user_token      =       request.data.get('user_token',None)
+    check_user      =       token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+        })
+    
+    # if token verified
+    else:
+
+        return JsonResponse({
+            "success"   :       1,
+            "message"   :   "job rejacted"
+        })
+
+
+
+
+
     pass
+
+
+
+
+
+# API FOR COMPLETE JOB 
+
+@api_view(['POST'])
+
+
+def complete_job(request):
+    user_token      =       request.data.get('user_token',None)
+    check_user      =       token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+        })
+    
+    # if token verified
+    else:
+
+
+        job_id      =       request.data.get("job_id",None)
+        user_id     =       check_user['session_user']
+        try:
+            job_record  =       Jobs.objects.exclude(Q(job_status=1) and Q(job_status=3) and Q(is_delete=1)).get(job_id=job_id)
+        except:
+            job_record  =   None
+
+        if job_record == None:
+            return JsonResponse({
+                "success"   :   0,
+                "message"   :   "no record found"
+            })
+
+
+        job_accepted_by = job_record.job_accepted_by
+
+        if job_accepted_by == None or user_id != int(job_record.job_accepted_by):
+            return JsonResponse({
+                "success"   :   0,
+                "message"   :   "invalid employee"
+            })
+        
+        job_status = JobsType.objects.get(status_id=3)
+        
+        update_record = {
+            "job_status" : job_status.status_id 
+        }
+
+        job_serializer = JobsSerializer(instance=job_record,data=update_record,partial=True)
+
+        if job_serializer.is_valid():
+            job_serializer.save()
+            return JsonResponse({
+                "success"   :   1,
+                "message"   :   "job completed"
+                })
+        else:
+            return JsonResponse({
+                "success"   :   0,
+                "message"   :   "error occured"
+                })

@@ -248,7 +248,6 @@ def user_register(request):
 	    		'protocol'  :   'http',
             }
 
-
         myemail = render_to_string(text_template,email_data)  #Converts text file to string 
         email = EmailMessage(Subject, myemail, to=["swapnilpathak@gmail.com"])  #Formats Email message 
         email.send()  #Sends Email to the user
@@ -261,13 +260,10 @@ def user_register(request):
     
     if user_session.is_valid():
         user_session.save()     
-
         # SEND TOKEN BACK TO THE USER
         user_token =  {
                 "user_token"  : session_token
-            }
-        
-        
+            }        
         return JsonResponse({
                     "success"       :   1,
                     "message"       :   "Registered Successfully !",
@@ -295,30 +291,28 @@ def login(request):
        return JsonResponse({
             "success"       :   0,
             "message"       :   "Please Provide FCM Token",
-       })
+            })
     
     if device_type == "" or device_type ==None:
        return JsonResponse({
             "success"       :   0,
             "message"       :   "Please Provide Device type",
-       })
-
+        })
 
     # check email provided or not
     if email == "" or email ==None:
        return JsonResponse({
             "success"       :   0,
             "message"       :   "Please Provide Email Address",
-       })
+            })
     
     # check password provided or not
 
     if password == None or password == "":
-       return JsonResponse({
-           
+       return JsonResponse({           
             "success"       :   0,
             "message"       :   "Please Provide Password",
-       })
+            })
     
     # Validates email address
     check_email = email_address(email)
@@ -326,7 +320,7 @@ def login(request):
        return JsonResponse({
             "success"       :   0,
             "message"       :   "Please Provide Valid Email",
-       })
+            })
     
     try:
         check_user_id = Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']
@@ -342,8 +336,7 @@ def login(request):
 
     # get role_id  to verify user role type
 
-    role_id = UserRole.objects.exclude(role_is_delete=1).filter(role_name = user_type).values('role_id').first()['role_id']
-    
+    role_id     =   UserRole.objects.exclude(role_is_delete=1).filter(role_name = user_type).values('role_id').first()['role_id']
     # get user record
     user_rec    =   Registration.objects.exclude(user_is_delete=1).get(user_id=check_user_id)
 
@@ -363,7 +356,7 @@ def login(request):
             })
     
     # CHECK HASH PASSWORD
-    check_pass  =   check_password(password,user_rec.user_password)
+    check_pass          =       check_password(password,user_rec.user_password)
     if check_pass is False:
         return JsonResponse({           
             "success"       :   0,
@@ -499,7 +492,7 @@ def logout(request,*args,**kwargs):
             session_data.save()
             return JsonResponse({
                 "success"   :   1,
-                "message"   :   "Logout User",
+                "message"   :   "You have been logged out successfully.",
             })
 
 
@@ -532,7 +525,7 @@ def email_update(request,*args,**kwargs):
             return JsonResponse({           
                     "success"       :   0,
                     "message"       :   "Please Current Email Address",
-       })
+                })
         
         # Check for new email
         if new_email == None or new_email=="":
@@ -547,7 +540,7 @@ def email_update(request,*args,**kwargs):
             return JsonResponse({
                     "success"       :   0,
                     "message"       :   "Please provide password",
-       })
+            })
         
         # CHECK IF EMAIL EXISTS OR NOT
         try:
@@ -574,18 +567,18 @@ def email_update(request,*args,**kwargs):
             })
         
         # GET USER INSTANCE
-        user  = Registration.objects.exclude(user_is_delete=1).get(user_id = user_id)
+        user        =   Registration.objects.exclude(user_is_delete=1).get(user_id = user_id)
         
         # Validate email is valid to login user_email
-        user_email_ad = check_user['session_email']
-        if user_email_ad != current_email:
+        user_id     =   check_user['session_user']
+        if user.user_id != user_id:
             return JsonResponse({
                 "success"     :   0,
                 "message"     :   "please enter valid email address",
             })
         
         # CHECK HASH PASSWORD
-        check_pass =  check_password(password,user.user_password)
+        check_pass  =  check_password(password,user.user_password)
 
         if check_pass is False: 
             return JsonResponse({
@@ -605,7 +598,7 @@ def email_update(request,*args,**kwargs):
             user_serializer.save()
             return JsonResponse({
            
-            "success"       :   0,
+            "success"       :   1,
             "message"       :   "Email Address Updated ",
             })
         
@@ -676,13 +669,13 @@ def change_password(request,*args,**kwargs):
         # check old password with new password 
         pass_check = check_password(new_password,check_current_user.user_password)
         if pass_check :           
-             return JsonResponse({
+            return JsonResponse({
                 "success"     :   0,
                 "message"     :   "password is same as old password",
         })
                 
         if new_password != confirm_password:
-             return JsonResponse({
+            return JsonResponse({
                 "success"     :   0,
                 "message"     :   "password Mismatch",
             })
@@ -693,15 +686,15 @@ def change_password(request,*args,**kwargs):
             update_password   =       {
                                       "user_password":make_pass
                                       }
-            user_serializer   = RegisterSerializer(data=update_password,instance=check_current_user,partial=True)
 
+            user_serializer   = RegisterSerializer(data=update_password,instance=check_current_user,partial=True)
             if user_serializer.is_valid():
                 user_serializer.save()
                 return JsonResponse({
                 "success"     :   1,
                 "message"     :   "Password Changed ",
+                })
     
-            })
 
 
 
@@ -740,7 +733,7 @@ def forget_password(request):
     # EMAIL FORMAT
     data = {
             "email"     :   user.user_email,
-            'domain'    :   '192.168.1.5:8000',
+            'domain'    :   '192.168.1.4:8000',
 			'site_name' :   'Website',     #Data which will send with E-mail id
 			"user"      :   user.user_id,
 			'token'     :   token,
@@ -768,12 +761,9 @@ def forget_password(request):
     if user_pass_ser.is_valid():
         user_pass_ser.save()
         return JsonResponse({
-                        "status"        :       1,
+                        "success"        :       1,
                         "message"        :      "Mail Sent to Your email Please Check"
         })
-
-
-
 
 
 
@@ -817,17 +807,13 @@ def reset_password(request,token):
                                 'user_password':enc_pass 
                                 }
                     user.update(**update_pass)
-
                     update_status = {
                                 'status':   0
                                 }
-                    
-
                     pass_reset_data.update(**update_status)
-
-                    messages.success(request,message="Password changed")
+                    messages.success(request,message="Password changed please login")
                 else:
-                    messages.error(request,message="Please Enter Valid Pass")                
+                    messages.error(request,message="password not matched")                
         else:
             messages.error(request,message="Link Expired")
     
@@ -852,23 +838,43 @@ def delete_account(request):
         }) 
     
     else:
-        
         # get user_id from token
         user_id         =   check_user['session_user']
         # get user record from user id
         user_account    =   Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)     
         
         update_data = {
-            "user_is_delete" : 1
-        }
+                    "user_is_delete" : 1,
+                    "user_fcm_token" :   ""
+            }
 
-        user_serializer     =   RegisterSerializer(data=update_data,instance=user_account,partial=True)
-        if user_serializer.is_valid():
-            user_serializer.save()
+        associate_user      =       Session.objects.exclude(session_is_delete=1).filter(session_user=user_id).values('session_id').first()['session_id']
+        session_record      =       get_object_or_404(Session,session_id=associate_user) 
+        # get user id
+       
+        user_data           =       RegisterSerializer(instance=user_account,data=update_data,partial=True)
+
+        if user_data.is_valid():
+            user_data.save(**update_data)
+
+        # Update session data    
+        u_data                =       {   
+                                    "session_is_delete" :    True,
+                                    "session_status"    :    0
+                                    }        
+        
+        session_data        =       SessionSerializer(instance=session_record,data=u_data,partial=True)
+
+        if session_data.is_valid():
+            session_data.save()
             return JsonResponse({
-                            "status"        :       1,
-                            "message"        :      "Account deleted succesfully"
+                "success"   :   1,
+                "message"   :   "account deleted",
             })
+
+
+
+
 
 
 
@@ -961,10 +967,11 @@ def get_user_details(request):
               return JsonResponse({
                 "success"     :   0,
                 "message"     :   "please provide valid user_id",
-        })
+                })
 
         # provide user instance to user serializer
         get_user_details    =       RegisterSerializer(instance=user_record).data        
+        
         # check setting added by user or not. if not setting_id =  none 
         try:
             setting_id      =       Settings.objects.exclude(is_delete=1).filter(user=user_record.user_id).values('setting_id').first()['setting_id']
@@ -1028,7 +1035,7 @@ def get_user_details(request):
             
         }
         return JsonResponse({
-                            "status"        :       1,
+                            "success"        :       1,
                             "message"        :      "user details fetched",
                             "data"          :       data
             })

@@ -44,13 +44,13 @@ def update_location(request):
         # check for blank value
         if latitude is None:
             return JsonResponse({
-                            "status"        :       0,
+                            "success"        :       0,
                             "message"        :      "Please provide lattitude"
             })
 
         if longitude is None:
             return JsonResponse({
-                            "status"        :       0,
+                            "success"        :       0,
                             "message"        :      "Please provide lattitude"
             })
         
@@ -73,7 +73,7 @@ def update_location(request):
         if user_ser.is_valid():
             user_ser.save()
             return JsonResponse({
-                            "status"        :       1,
+                            "success"        :       1,
                             "message"        :      "User location updated succesfully",
                             "data"          :       data
             })

@@ -69,6 +69,8 @@ urlpatterns = [
   path('job_details', job_views.job_details,name='job_details'),
   path('remove_job', job_views.remove_job,name='remove_job'),
   path('job_accept', job_views.accept_job,name='job_accept'),
+  path('complete_job', job_views.complete_job,name='complete_job'),
+
 
 # Settings
   path('add_settings', setting.add_settings,name='add_settings'),

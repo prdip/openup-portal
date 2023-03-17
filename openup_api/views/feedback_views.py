@@ -56,7 +56,7 @@ def add_feedback(request):
         #  if feedback is already exist
         if check_feedback:
             return JsonResponse({
-                "status"    :   0,
+                "success"    :   0,
                 "message"   :   "feedback already exist"
             })
 
@@ -64,7 +64,7 @@ def add_feedback(request):
 
         if feedback_star is None or feedback_comment is None:
             return JsonResponse({
-                "status"    :   0,
+                "success"    :   0,
                 "message"   :   "please provide data"
             })
 
@@ -78,7 +78,7 @@ def add_feedback(request):
         # if job does not exist
         if job_record is None:
             return JsonResponse({
-                "status"    :       0,
+                "success"    :       0,
                 "message"   :   "please provide job id"
             })
         
@@ -86,7 +86,7 @@ def add_feedback(request):
         
         if job_record.user_id != user_id:
             return JsonResponse({
-                "status"    :   0,
+                "success"    :   0,
                 "message"   :   "please provide valid job id"
             })
         
@@ -106,8 +106,13 @@ def add_feedback(request):
         if feedback_ser.is_valid():
             feedback_ser.save()
             return JsonResponse({
-                "status"    :   1,
+                "success"    :   1,
                 "message"   :   "feedback saved successfully"
+            })
+        else:
+             return JsonResponse({
+                "success"    :   0,
+                "message"   :   "error occured"
             })
 
 
