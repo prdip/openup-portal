@@ -57,7 +57,7 @@ def add_feedback(request):
         if check_feedback:
             return JsonResponse({
                 "success"    :   0,
-                "message"   :   "feedback already exist"
+                "message"   :   "Feedback already exist"
             })
 
         #  check required data
@@ -65,7 +65,7 @@ def add_feedback(request):
         if feedback_star is None or feedback_comment is None:
             return JsonResponse({
                 "success"    :   0,
-                "message"   :   "please provide data"
+                "message"   :   "Please provide data"
             })
 
         # filters job record of login user.
@@ -79,7 +79,7 @@ def add_feedback(request):
         if job_record is None:
             return JsonResponse({
                 "success"    :       0,
-                "message"   :   "please provide job id"
+                "message"   :   "Please provide job id"
             })
         
         # if job is not user job 
@@ -87,7 +87,7 @@ def add_feedback(request):
         if job_record.user_id != user_id:
             return JsonResponse({
                 "success"    :   0,
-                "message"   :   "please provide valid job id"
+                "message"   :   "Please provide valid job id"
             })
         
         # FEEDBACK DATA
@@ -107,7 +107,7 @@ def add_feedback(request):
             feedback_ser.save()
             return JsonResponse({
                 "success"    :   1,
-                "message"   :   "feedback saved successfully"
+                "message"   :   "Feedback saved successfully"
             })
         else:
              return JsonResponse({

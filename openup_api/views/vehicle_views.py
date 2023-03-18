@@ -5,7 +5,6 @@ from rest_framework.decorators import api_view
 # import Json Response
 from django.http.response import JsonResponse
 
-
 # Import token verifivations
 from openup_api.views.auth_views import token_verification
 
@@ -21,7 +20,7 @@ from openup_app.serializers import VehicleSerializer
 # Import datetime module
 import datetime
 
-
+# Import socket to get ip address
 import socket
 
 # API to add new vehicle 
@@ -214,20 +213,21 @@ def vehicle_details(request):
     
     else:
         #  Get details using id
-        vehicle_id  =       request.data.get('vehicle_id',None)
+        vehicle_id              =       request.data.get('vehicle_id',None)
         
         try:
-            vehicle_details =   VehicleDetails.objects.get(vehicle_id=vehicle_id)
+            vehicle_details     =       VehicleDetails.objects.get(vehicle_id=vehicle_id)
             # vehicle_details =   VehicleDetails.objects.last()        
         except:
-            vehicle_details =   None
+            vehicle_details     =       None
         
         if vehicle_details is None or vehicle_id   ==  None:
              return JsonResponse({
                 "success"     :   0,
                 "message"     :   "Please provide Vehicle id",
             })
-        vehicle_ser     =   VehicleSerializer(vehicle_details).data
+        
+        vehicle_ser             =       VehicleSerializer(vehicle_details).data
         # Remove created at field from dict
 
         vehicle_ser.pop('created_at')

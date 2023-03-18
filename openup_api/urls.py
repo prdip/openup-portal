@@ -20,8 +20,6 @@ urlpatterns = [
   path('activate', auth_views.activate_account,name='activate'),
 
 
-
-
 # UPDATE
   path('email_update', auth_views.email_update,name='email-update'),
 
@@ -45,13 +43,16 @@ urlpatterns = [
 # Force Update
   path('force_update', force_update.force_update,name='force_update'),
 
+
 # Vehicle information
 
   path('add_vehicle', vehicle_views.add_vehicle,name='add_vehicle'),
   path('vehicle_edit', vehicle_views.vehicle_edit,name='vehicle_edit'),
   path('vehicle_details', vehicle_views.vehicle_details,name='vehicle_details'),
 
+
 # Add card
+
   path('add_card', payment_views.add_card,name='add_card'),
   path('card_details', payment_views.card_details,name='card_details'),
   path('card_delete', payment_views.card_delete,name='card_delete'),
@@ -70,6 +71,7 @@ urlpatterns = [
   path('remove_job', job_views.remove_job,name='remove_job'),
   path('job_accept', job_views.accept_job,name='job_accept'),
   path('complete_job', job_views.complete_job,name='complete_job'),
+  path('reject_job', job_views.reject_job,name='reject_job'),
 
 
 # Settings

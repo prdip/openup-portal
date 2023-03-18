@@ -1,17 +1,25 @@
-
+# IMPORT CELERY
 from openup import celery_app
+
+# IMPORT SHARED TASK
 from celery import shared_task,Celery
+
+# IMPORT TIME
 from time import sleep
 
-# Import thead
+# IMPORT GEODESIC FROM GEOPY
+from geopy.distance import geodesic as gd
 
+# Import thead
 import threading
 
 # Create your views here.
 from rest_framework.decorators import api_view
 
+# IMPORT SOCKET
 import socket
 
+# IMPORT TASK HERE
 from .tasks import send_push_notifications
 
 # import Json Response
@@ -65,13 +73,12 @@ def add_job(request):
         current_location_long   =   request.data.get('longitude',None)
         vehicle_details         =   request.data.get('vehicle_details',None)
         vehicle_modification    =   request.data.get('vehicle_modification',None)
-        license         =   request.data.get('vehicle_license',None)
+        license                 =   request.data.get('vehicle_license',None)
         created_at              =   datetime.now()
         licence_name            =   request.data.get('licence_name',None)
         vehicle_id              =   request.data.get('vehicle_id',None)
 
-        print(vehicle_id)
-        print(license)
+        
         # job type accepts only employee and emergency
 
         if job_type is None or job_type == "" or (job_type != "service" and job_type != "emergency"):
@@ -107,13 +114,13 @@ def add_job(request):
         user_id     =       check_user['session_user']
 
         if vehicle_id == None and license ==  None:
-            # pass
-            print("No id provided and no image")
+            # No id No image
             license = None
         
         
         elif license == None and vehicle_id != None:
-            print("id provided and no image")
+
+            #  Old id and No image
             try:
                     veh_rec             =   VehicleDetails.objects.get(vehicle_id=int(vehicle_id))
                 
@@ -126,29 +133,25 @@ def add_job(request):
                 license = veh_rec.vehicle_license
 
         elif license != None and vehicle_id == None:
-                print(" No id provided and image provided")
-                try:
-                    veh_rec             =   VehicleDetails.objects.get(vehicle_id=vehicle_id)
-                
-                except:
-                   veh_rec = None
+                # New image No id 
 
-               
-                if veh_rec != None:
-                    license = veh_rec.vehicle_license
+            try:
+                    im = Image.open(license)
+            except:
+                    im = None
+            if im == None: 
+                    return JsonResponse({
+                        "success"     :   0,
+                        "message"     :   "Please provide valid image",
+                    })
 
         # id and new image
-        else:
-                
-                print("else")
-                
-                try:
-                        im = Image.open(license)
-
-                except:
-                        im = None
-
-                if im == None: 
+        else:                
+            try:
+                    im = Image.open(license)
+            except:
+                    im = None
+            if im == None: 
                     return JsonResponse({
                         "success"     :   0,
                         "message"     :   "Please provide valid image",
@@ -176,9 +179,9 @@ def add_job(request):
 
         if job_ser.is_valid():
             
-            id = job_ser.save()
-            # id = 97
-            jobAlert.delay(id)        
+            # id = job_ser.save()
+            id = 97
+            jobAlert.delay(id,current_location_lat,current_location_long)        
             data = {
 
                 "job_id" : id
@@ -186,7 +189,7 @@ def add_job(request):
             
             return JsonResponse({
                 "success"    :   1,
-                "message"   :   "Details Added successfully",
+                "message"   :   "Job added successfully",
             "data"          :       data
                 })
         
@@ -201,10 +204,8 @@ def add_job(request):
 
 
 @shared_task()
-def jobAlert(job_id):
+def jobAlert(job_id,latitude,longitude):
     # Fetch Employee List
-     
-    sleep(10)
     employees =  Registration.objects.exclude(Q(user_is_delete=1) or Q(user_role_id=2) ).filter(user_role=1)
 
     # get employee list
@@ -214,22 +215,51 @@ def jobAlert(job_id):
     emplist = {}
     
     for employees in employees:
-        if employees.user_fcm_token == "" or employees.user_fcm_token is None:
+        if employees.user_fcm_token == "" or employees.user_fcm_token == None:
             pass
         else:
-            user_list.append(employees.user_id)
-            emp_fcm.append(employees.user_fcm_token)
-            emplist[str(employees.user_fcm_token)] = list((str(employees.user_id),str(employees.device_type))) 
+            
 
+            user_location=(latitude,longitude)
+            emp_location = (employees.location_latitude,employees.location_longitude)
 
-    emp_list        =   ','.join(str(i) for i in user_list)
+            # calculate distance between two point 
+            dist = gd(user_location,emp_location).km
+
+            # if dist is less than 6 km append list
+            if dist <= 6:
+                user_list.append(employees.user_id)
+                emp_fcm.append(employees.user_fcm_token)
+                emplist[str(employees.user_id)] = list((str(employees.user_fcm_token),str(employees.device_type))) 
+
+                print(employees.user_id,dist)
+    print("Near employee is",emplist)
+    if len(user_list) == 0:
+        for employees in employees:
+            if employees.user_fcm_token == "" or employees.user_fcm_token == None:
+                pass
+            else:
+                dist_list = []
+
+                user_location       =   (latitude,longitude)
+                emp_location        =   (employees.location_latitude,employees.location_longitude)
+                # calculate distance between two point 
+                dist                =   gd(user_location,emp_location).km
+
+                # if dist is less than 6 km append list
+                if dist <= 10:
+                    user_list.append(employees.user_id)
+                    emp_fcm.append(employees.user_fcm_token)
+                    emplist[str(employees.user_fcm_token)] = list((str(employees.user_id),str(employees.device_type))) 
+
+    emp_lis        =   ','.join(str(i) for i in user_list)
     job_id          =    Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
     alert_title     =    "new job added"
     alert_messages  =    "job generated"
     created_at      =     datetime.now()
     
     # Alert Table Save entry
-    data            = Alerts(alert_job=job_id, alert_users=emp_list,alert_title=alert_title,
+    data            =   Alerts(alert_job=job_id, alert_users=emp_lis,alert_title=alert_title,
                              alert_messages=alert_messages,
                             created_at=created_at)
     
@@ -252,7 +282,7 @@ def jobAlert(job_id):
 
     #     send_push_notifications(emp,noti_data)
 
-    return  JsonResponse("executed")
+    return  True
     
 
 
@@ -350,8 +380,18 @@ def job_details(request):
                     "message"     :   "Please provide job id",
             })
         
-        # get job instance using if  
-        job_data        =   Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
+        # get job instance using if
+        try:  
+            job_data        =   Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
+        except:
+            job_data        =   None
+        
+        if job_data==None:
+            return JsonResponse({
+                    "success"     :   0,
+                    "message"     :   "Please provide job id",
+            })
+          
         # send instance to serializer 
         job_serializer  =   JobsSerializer(job_data).data
         
@@ -391,9 +431,9 @@ def job_details(request):
         }
         return JsonResponse({
                     "success"     :   1,
-                    "message"     :   "Job Details fetched",
+                    "message"     :   "Job details fetched",
                     "data"        :     data
-            })
+                    })
     
 
 
@@ -414,7 +454,7 @@ def remove_job(request):
         # required data
         job_id      =       request.data.get('job_id',None)
 
-        # check if jon id is blank
+        # check if job id is blank
         if job_id is None or job_id == "":
             return JsonResponse({
                     "success"     :   0,
@@ -457,7 +497,7 @@ def accept_job(request):
         return JsonResponse({
                 "success"     :   0,
                 "message"     :   "Unauthorized User",
-        })
+            })
     
     # if token verified
     else:
@@ -508,7 +548,7 @@ def accept_job(request):
 
             return JsonResponse({
                             "success"     :   1,
-                            "message"     :   "job accepted",
+                            "message"     :   "Job accepted",
                             "data"        :     data
                     })
         
@@ -537,16 +577,14 @@ def reject_job(request):
     # if token verified
     else:
 
+        job_id      =       request.data.get(job_id,None)
+
+
         return JsonResponse({
-            "success"   :       1,
-            "message"   :   "job rejacted"
-        })
+            "success"   :    1,
+            "message"   :   "job rejected"
+            })
 
-
-
-
-
-    pass
 
 
 
@@ -565,11 +603,10 @@ def complete_job(request):
         return JsonResponse({
                 "success"     :   0,
                 "message"     :   "Unauthorized User",
-        })
+            })
     
     # if token verified
     else:
-
 
         job_id      =       request.data.get("job_id",None)
         user_id     =       check_user['session_user']
@@ -581,7 +618,7 @@ def complete_job(request):
         if job_record == None:
             return JsonResponse({
                 "success"   :   0,
-                "message"   :   "no record found"
+                "message"   :   "No record found"
             })
 
 
@@ -612,3 +649,4 @@ def complete_job(request):
                 "success"   :   0,
                 "message"   :   "error occured"
                 })
+
