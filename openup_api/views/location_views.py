@@ -112,17 +112,17 @@ def service_available(request):
         user_record     =       Registration.objects.exclude(Q(user_is_delete=1) and Q(user_role=2) and Q(user_status=0)).values('user_id','location_latitude','location_longitude')
         
         # user current location
-        user_loc = (latitude,longitude)
+        user_loc        =       (latitude,longitude)
         # dist_val = { }
         # list of services in km
-        services_list = []
+        services_list   =       []
 
         for user in user_record:        
             # employee location
-            emp_loc =   (user['location_latitude'],user['location_longitude'])
+            emp_loc     =       (user['location_latitude'],user['location_longitude'])
             
             # Employee client distance
-            dist    =   gd(user_loc,emp_loc).km
+            dist        =       gd(user_loc,emp_loc).km
 
             # Services list between 5 km.
             if dist < 5:
