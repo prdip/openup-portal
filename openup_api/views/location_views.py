@@ -17,6 +17,7 @@ from math import radians, cos, sin, asin, sqrt
 # Import Q
 from django.db.models import Q
 
+# import geopy
 
 from geopy.distance import geodesic as gd
 
@@ -98,58 +99,64 @@ def service_available(request):
     else:
         # required data
 
-        latitude     =       request.data.get('latitude',None)
-        longitude    =       request.data.get('longitude',None)
+        latitude     =       float(request.data.get('latitude',None))
+        longitude    =       float(request.data.get('longitude',None))
+
 
         if latitude is None or longitude is None:
             return JsonResponse({
                 "success"     :   0,
                 "message"     :   "location not provi",
             })
+
         user_record     =       Registration.objects.exclude(Q(user_is_delete=1) and Q(user_role=2) and Q(user_status=0)).values('user_id','location_latitude','location_longitude')
+        
+        # user current location
+        user_loc = (latitude,longitude)
+        # dist_val = { }
+        # list of services in km
+        services_list = []
 
-        user = (latitude,longitude)
-        dist_val = { }
-        for user in user_record:
+        for user in user_record:        
+            # employee location
+            emp_loc =   (user['location_latitude'],user['location_longitude'])
             
+            # Employee client distance
+            dist    =   gd(user_loc,emp_loc).km
 
-            # d1 = dist(float(latitude),float(longitude),float(user['location_latitude']),float(user['location_longitude']))
-            
-            # dist_val[str(user['user_id'])] = str(d1)
+            # Services list between 5 km.
+            if dist < 5:
+                services_list.append(dist)
 
-            emp_loc = (user['location_latitude'],user['location_longitude'])
-            dist = gd(user,emp_loc)
-
-            dist_val[str(user['user_id'])] = str(dist)
-
-            print(dist_val)
-        data = {
-            "service_available" :   True
-        }
+        if len(services_list) == 0:
+            data = {
+                
+                "service_available" :   False
+            }
+        
+        else:
+            data = {
+                "service_available" :   True
+            }
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   1,
                 "message"     :   "location fetched",
                 "data"        :     data
             })
 
-        # latitude         =       user_record.location_latitude
-        # longitude        =       user_record.location_latitude
+      
 
-
-        # pass
-
-
-def dist(lat1, long1, lat2, long2):
-    """
-Replicating the same formula as mentioned in Wiki
-    """
-    # convert decimal degrees to radians 
-    lat1, long1, lat2, long2 = map(radians, [lat1, long1, lat2, long2])
-    # haversine formula 
-    dlon = long2 - long1 
-    dlat = lat2 - lat1 
-    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-    c = 2 * asin(sqrt(a)) 
-    # Radius of earth in kilometers is 6371
-    km = 6371* c
-    return km
+# def dist(lat1, long1, lat2, long2):
+#     """
+# Replicating the same formula as mentioned in Wiki
+#     """
+#     # convert decimal degrees to radians 
+#     lat1, long1, lat2, long2 = map(radians, [lat1, long1, lat2, long2])
+#     # haversine formula 
+#     dlon = long2 - long1 
+#     dlat = lat2 - lat1 
+#     a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+#     c = 2 * asin(sqrt(a)) 
+#     # Radius of earth in kilometers is 6371
+#     km = 6371* c
+#     return km

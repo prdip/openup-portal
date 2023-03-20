@@ -1,7 +1,7 @@
 from django.shortcuts import render
 
 #  Import Serializer
-from openup_app.serializers import RegisterSerializer,SessionSerializer,ForgotPasswordSerializer
+from openup_app.serializers import RegisterSerializer,SessionSerializer,ForgotPasswordSerializer,SettingsSerializer
 
 
 # Import Models here
@@ -244,6 +244,29 @@ def user_register(request):
         myemail = render_to_string(text_template,email_data)  #Converts text file to string 
         email = EmailMessage(Subject, myemail, to=["swapnilpathak@gmail.com"])  #Formats Email message 
         email.send()  #Sends Email to the user
+        setting_dict ={
+                "user_screen"       :0,
+                "location":0,
+                "while_using":0,
+                "service_notification":0,
+                "location_notification":0,
+                "service_feed_not":0
+
+            }
+        for setting in setting_dict:
+                setting_data    =       {
+                           
+                            "setting_user"      :       user.user_id,
+                            "setting_name"      :       setting,
+                            "setting_value"     :       setting_dict[setting],
+                            "created_at"        :       datetime.now()
+                        }
+               
+                setting_ser     =       SettingsSerializer(data=setting_data)
+                if setting_ser.is_valid():
+                    setting_ser.save()
+
+
         return JsonResponse({
                     "success"       :   1,
                     "message"       :   "Employee Registered Successfully !",
@@ -252,7 +275,28 @@ def user_register(request):
     user_session                    =         SessionSerializer(data=session_data)
     
     if user_session.is_valid():
-        user_session.save()     
+        user_session.save()
+        setting_dict ={
+                "user_screen"       :0,
+                "location":0,
+                "while_using":0,
+                "service_notification":0,
+                "location_notification":0,
+                "service_feed_not":0
+
+            }
+        for setting in setting_dict:
+                setting_data    =       {
+                           
+                            "setting_user"      :       user.user_id,
+                            "setting_name"      :       setting,
+                            "setting_value"     :       setting_dict[setting],
+                            "created_at"        :       datetime.datetime.now()
+                        }
+               
+                setting_ser     =       SettingsSerializer(data=setting_data)
+                if setting_ser.is_valid():
+                    setting_ser.save()
         # SEND TOKEN BACK TO THE USER
         user_token =  {
                 "user_token"  : session_token

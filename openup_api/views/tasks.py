@@ -37,49 +37,49 @@ import json,time
 # CODE TO ALERT PUSH NOTIFICATION
 
 def send_push_notifications(fcm_token,noti_data):
-    # print(fcm_token)
-    # print(noti_data)
 
+   
     for val in fcm_token:
-        # print("key is", val)
-        # print("token is", fcm_token[val][0]) 
-        # print("device is", fcm_token[val][1])
+        print("datetime for push notification",datetime.now())
+        print("key is", val)
+        print("token is", fcm_token[val][0]) 
+        print("device is", fcm_token[val][1])
+    return True
 
 
-    # return "send" 
-        serverKey = '***REMOVED_FCM_KEY***' 
+        # serverKey = '***REMOVED_FCM_KEY***' 
     
-        seconds     = 60*60*24
-        expireTime  = int(time.mktime(time.localtime()))+int(seconds)
-        url = 'https://fcm.googleapis.com/fcm/send'
+        # seconds     = 60*60*24
+        # expireTime  = int(time.mktime(time.localtime()))+int(seconds)
+        # url = 'https://fcm.googleapis.com/fcm/send'
 
     #  true == 1 false ==0
-        body = {
-              "data"  :   noti_data,
-                  "notification":{  
-                      "title"             :   noti_data['title'],
-                      "body"              :   noti_data['message'],
-                      "sound"             :   "notification.wav",
-                      "content_available" :   "true" 
-                  }, 
+        # body = {
+        #       "data"  :   noti_data,
+        #           "notification":{  
+        #               "title"             :   noti_data['title'],
+        #               "body"              :   noti_data['message'],
+        #               "sound"             :   "notification.wav",
+        #               "content_available" :   "true" 
+        #           }, 
 
-                "to"  :    val,   
+        #         "to"  :    val,   
 
-                "apns":{
-                    "headers":{
-                        "apns-expiration":expireTime
-                    }
-                },
-                "android":{
-                    "ttl":str(seconds)+"s"
-                },
-                "webpush":{
-                    "headers":{
-                        "TTL":str(seconds)
-                    }
-                }  
+        #         "apns":{
+        #             "headers":{
+        #                 "apns-expiration":expireTime
+        #             }
+        #         },
+        #         "android":{
+        #             "ttl":str(seconds)+"s"
+        #         },
+        #         "webpush":{
+        #             "headers":{
+        #                 "TTL":str(seconds)
+        #             }
+        #         }  
                         
-            }
+        #     }
     
 
     # Device type 
@@ -103,14 +103,15 @@ def send_push_notifications(fcm_token,noti_data):
     #             }  
     #         }
          
-        headers = {
-            "Content-Type":"application/json",
-            "Authorization": "key="+str(serverKey)+""
-        } 
+        # headers = {
+        #     "Content-Type":"application/json",
+        #     "Authorization": "key="+str(serverKey)+""
+        # } 
         
-        response  = requests.post(url, data=json.dumps(body), headers=headers)
-        result =  response.content 
-        return result
+        # response  = requests.post(url, data=json.dumps(body), headers=headers)
+        # result =  response.content
+        # print("result is",result)
+        # return result
 
 
 

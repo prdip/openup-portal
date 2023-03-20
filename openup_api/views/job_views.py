@@ -180,8 +180,9 @@ def add_job(request):
         if job_ser.is_valid():
             
             # id = job_ser.save()
-            id = 97
-            jobAlert.delay(id,current_location_lat,current_location_long)        
+            id = 104
+            jobAlert.delay(id,current_location_lat,current_location_long)
+            print("Job saved and alert started",datetime.now())      
             data = {
 
                 "job_id" : id
@@ -190,10 +191,10 @@ def add_job(request):
             return JsonResponse({
                 "success"    :   1,
                 "message"   :   "Job added successfully",
-            "data"          :       data
+                "data"          :       data
                 })
         
-        return JsonResponse({
+        return JsonResponse({   
                 "success"    :   0,
                 "message"   :   "error occured",
               
@@ -206,7 +207,8 @@ def add_job(request):
 @shared_task()
 def jobAlert(job_id,latitude,longitude):
     # Fetch Employee List
-    employees =  Registration.objects.exclude(Q(user_is_delete=1) or Q(user_role_id=2) ).filter(user_role=1)
+
+    employees =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
 
     # get employee list
     user_list = []
@@ -219,8 +221,10 @@ def jobAlert(job_id,latitude,longitude):
             pass
         else:
             
-
+            # user location
             user_location=(latitude,longitude)
+
+            # employee location
             emp_location = (employees.location_latitude,employees.location_longitude)
 
             # calculate distance between two point 
@@ -231,9 +235,7 @@ def jobAlert(job_id,latitude,longitude):
                 user_list.append(employees.user_id)
                 emp_fcm.append(employees.user_fcm_token)
                 emplist[str(employees.user_id)] = list((str(employees.user_fcm_token),str(employees.device_type))) 
-
-                print(employees.user_id,dist)
-    print("Near employee is",emplist)
+    
     if len(user_list) == 0:
         for employees in employees:
             if employees.user_fcm_token == "" or employees.user_fcm_token == None:
@@ -252,7 +254,7 @@ def jobAlert(job_id,latitude,longitude):
                     emp_fcm.append(employees.user_fcm_token)
                     emplist[str(employees.user_fcm_token)] = list((str(employees.user_id),str(employees.device_type))) 
 
-    emp_lis        =   ','.join(str(i) for i in user_list)
+    emp_lis         =   ','.join(str(i) for i in user_list)
     job_id          =    Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
     alert_title     =    "new job added"
     alert_messages  =    "job generated"
@@ -276,13 +278,11 @@ def jobAlert(job_id,latitude,longitude):
 
     send_push_notifications(emplist,noti_data)
 
-
-    # import datetime
     # for emp in emp_fcm: 
+    #     print("send not",emp)
+        # send_push_notifications(emp,noti_data)
 
-    #     send_push_notifications(emp,noti_data)
-
-    return  True
+    return True
     
 
 

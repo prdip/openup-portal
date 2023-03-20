@@ -241,13 +241,9 @@ class Jobs(models.Model):
 class Settings(models.Model):
 
     setting_id      =    models.AutoField(primary_key=True)         
-    user            =    models.ForeignKey(Registration,on_delete=models.CASCADE)
-    screen          =    models.BooleanField(default=1)
-    location        =    models.BooleanField(default=1)
-    only_using      =    models.BooleanField(default=1)
-    service_not     =    models.BooleanField(default=1)
-    location_not    =    models.BooleanField(default=1)
-    ser_feed_not    =    models.BooleanField(default=1)
+    setting_user            =    models.ForeignKey(Registration,on_delete=models.CASCADE)
+    setting_name    =    models.CharField(max_length=50,default="user")
+    setting_value   =    models.BooleanField(default=0)
     created_at      =    models.DateTimeField()
     update_at       =    models.DateTimeField(null=True)
     is_delete       =    models.BooleanField(default=0)
@@ -255,6 +251,14 @@ class Settings(models.Model):
 
     class Meta:
         db_table = 'user_setting'
+
+    def update(self,*args, **kwargs):
+        for name,values in kwargs.items():
+            try:
+                setattr(self,name,values)
+            except KeyError:
+                pass
+        self.save()
 
 
 

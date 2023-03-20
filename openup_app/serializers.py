@@ -197,30 +197,29 @@ class JobsSerializer(serializers.Serializer):
 
 class SettingsSerializer(serializers.Serializer):
 
-    user            =    serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
-    screen          =    serializers.BooleanField(default=1)
-    location        =    serializers.BooleanField(default=1)
-    only_using      =    serializers.BooleanField(default=1)
-    service_not     =    serializers.BooleanField(default=1)
-    location_not    =    serializers.BooleanField(default=1)
-    ser_feed_not    =    serializers.BooleanField(default=1)
+    setting_user            =    serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
+    setting_name    =    serializers.CharField()
+    setting_value   =    serializers.BooleanField()
     created_at      =    serializers.DateTimeField()
    
 
     def create(self,validated_data):     
         return Settings.objects.create(**validated_data)
     
-    def update(self,validated_data):     
-        return Settings.objects.update(**validated_data)
+    # def update(self,validated_data):     
+    #     return Settings.objects.update(**validated_data)
+
+    def update(self,instance,validated_data):     
+        demo = Settings.objects.get(setting_id=instance.setting_id)
+        demo.update(**validated_data)
+        return demo
 
 
     class Meta:
         model = Settings
 
-        fields = ('user','screen','location',
-                  'only_using','service_not',
-                  'location_not','created_at',
-                  'ser_feed_not')
+        fields = ('setting_user','created_at',
+                  'setting_name','setting_value')
 
 
 
