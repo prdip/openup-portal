@@ -17,9 +17,7 @@ from django.http.response import JsonResponse
 
 # Import token verifications
 from openup_api.views.auth_views import token_verification
-
-# import datetime
-import datetime
+ 
 
 # import datetime
 from datetime import datetime,timedelta,timezone
@@ -47,10 +45,10 @@ def send_push_notifications(fcm_token,noti_data):
     
     
 
-        serverKey = '***REMOVED_FCM_KEY***' 
+        serverKey   =   '***REMOVED_FCM_KEY***' 
         # serverKey   = str(settings.FCM_DJANGO_SETTINGS["FCM_SERVER_KEY"])
-        seconds     = 60*60*24
-        expireTime  = int(time.mktime(time.localtime()))+int(seconds)
+        seconds     =   60*60*24
+        expireTime  =   int(time.mktime(time.localtime()))+int(seconds)
 
         print(expireTime)
         url = 'https://fcm.googleapis.com/fcm/send'
