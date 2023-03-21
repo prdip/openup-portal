@@ -73,8 +73,7 @@ INSTALLED_APPS = [
     'openup_api',
     'openup_app',
     'rest_framework',
-    'django_celery_results',
-    'fcm_django'
+    'django_celery_results' 
     
 ]
 
