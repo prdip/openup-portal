@@ -716,7 +716,6 @@ def complete_job(request):
 @shared_task()
 def complete_job_notification(job_id):
     
-    print(job_id)
     noti_data = {
 
                 "title" : "job completed",
@@ -728,14 +727,6 @@ def complete_job_notification(job_id):
     
     # client data with fcm token 
     client_data = { }
-    client_data[str(client_record.user_id)] = list((str(client_record.user_fcm_token),str(client_record.device_type)))
-    
-    print("client ",client_id)
-    print(noti_data)
-    print(client_record)
-    print(client_data)
-
-
+    client_data[str(client_record.user_id)] = list((str(client_record.user_fcm_token),str(client_record.device_type)))    
     send_push_notifications(client_data,noti_data)
-
     return True
