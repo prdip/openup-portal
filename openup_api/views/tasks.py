@@ -30,6 +30,7 @@ from openup_app.models import Registration,JobsType,Jobs,Alerts,VehicleDetails
 
 from django.db.models import Q
 
+from openup import settings
 
 import requests
 import json,time
@@ -40,78 +41,86 @@ def send_push_notifications(fcm_token,noti_data):
 
    
     for val in fcm_token:
-        print("datetime for push notification",datetime.now())
         print("key is", val)
         print("token is", fcm_token[val][0]) 
-        print("device is", fcm_token[val][1])
-    return True
-
-
-        # serverKey = '***REMOVED_FCM_KEY***' 
+        print("device is", type('fcm_token[val][1]'))
     
-        # seconds     = 60*60*24
-        # expireTime  = int(time.mktime(time.localtime()))+int(seconds)
-        # url = 'https://fcm.googleapis.com/fcm/send'
-
-    #  true == 1 false ==0
-        # body = {
-        #       "data"  :   noti_data,
-        #           "notification":{  
-        #               "title"             :   noti_data['title'],
-        #               "body"              :   noti_data['message'],
-        #               "sound"             :   "notification.wav",
-        #               "content_available" :   "true" 
-        #           }, 
-
-        #         "to"  :    val,   
-
-        #         "apns":{
-        #             "headers":{
-        #                 "apns-expiration":expireTime
-        #             }
-        #         },
-        #         "android":{
-        #             "ttl":str(seconds)+"s"
-        #         },
-        #         "webpush":{
-        #             "headers":{
-        #                 "TTL":str(seconds)
-        #             }
-        #         }  
-                        
-        #     }
     
 
-    # Device type 
+        serverKey = '***REMOVED_FCM_KEY***' 
+        # serverKey   = str(settings.FCM_DJANGO_SETTINGS["FCM_SERVER_KEY"])
+        seconds     = 60*60*24
+        expireTime  = int(time.mktime(time.localtime()))+int(seconds)
 
-    #     if(fcm_token[val][1] ==1): 
-    #         body = {  
-    #             "data"  :   dataDict['data'], 
-    #             "to"    :   dataDict['fcm_token'], 
-    #             "apns":{
-    #                 "headers":{
-    #                     "apns-expiration":expireTime
-    #                 }
-    #             },
-    #             "android":{
-    #                 "ttl":str(seconds)+"s"
-    #             },
-    #             "webpush":{
-    #                 "headers":{
-    #                     "TTL":str(seconds)
-    #                 }
-    #             }  
-    #         }
+        print(expireTime)
+        url = 'https://fcm.googleapis.com/fcm/send'
+
+    # #  true == 1 false ==0
+
+        # if fcm_token[val][1] == "True":
+        #     body = {
+        #           "data"  :   noti_data,
+        #               "notification":{  
+        #                   "title"             :   noti_data['title'],
+        #                   "body"              :   noti_data['message'],
+        #                   "sound"             :   "notification.wav",
+        #                   "content_available" :   "true" 
+        #               }, 
+
+        #             "to"  :    fcm_token[val][0],   
+
+        #             "apns":{
+        #                 "headers":{
+        #                     "apns-expiration":expireTime
+        #                 }
+        #             },
+        #             "android":{
+        #                 "ttl":str(seconds)+"s"
+        #             },
+        #             "webpush":{
+        #                 "headers":{
+        #                     "TTL":str(seconds)
+        #                 }
+        #             }  
+
+        #         }
+
+
+    # # Device type  anaroid
+
+        if fcm_token[val][1] == "True": 
+
+            body = {  
+                "data"  :   noti_data, 
+                "to"    :   fcm_token[val][0], 
+                "apns":{
+                    "headers":{
+                        "apns-expiration":expireTime
+                    }
+                },
+                "android":{
+                    "ttl":str(seconds)+"s"
+                },
+                "webpush":{
+                    "headers":{
+                        "TTL":str(seconds)
+                    }
+                }  
+            }
          
-        # headers = {
-        #     "Content-Type":"application/json",
-        #     "Authorization": "key="+str(serverKey)+""
-        # } 
+        headers = {
+            "Content-Type":"application/json",
+            "Authorization": "key="+serverKey
+        } 
+
+        print("header",headers)
+
+        print("Body",body)
         
-        # response  = requests.post(url, data=json.dumps(body), headers=headers)
-        # result =  response.content
-        # print("result is",result)
-        # return result
+        response  = requests.post(url, data=json.dumps(body), headers=headers)
+        result =  response.content
+        print("result is",result)
+        return result
 
 
 

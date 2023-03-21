@@ -49,7 +49,7 @@ class Registration(models.Model):
     location_latitude        =   models.FloatField(null=True)
     location_longitude       =   models.FloatField(null=True)
     device_type              =   models.BooleanField(null=True,default=0)   # 0 == > Anaroid  1==> IOS
-    user_fcm_token           =   models.CharField(max_length=150,null=True)
+    user_fcm_token           =   models.CharField(max_length=500,null=True)
     user_status              =   models.BooleanField(null=True,default=0)
     update_at                =   models.DateTimeField(null=True,blank=True)
     user_is_delete           =   models.BooleanField(default=0)

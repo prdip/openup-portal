@@ -2,10 +2,10 @@
 from openup import celery_app
 
 # IMPORT SHARED TASK
-from celery import shared_task,Celery
+from celery import shared_task
 
 # IMPORT TIME
-from time import sleep
+from time import sleep,time
 
 # IMPORT GEODESIC FROM GEOPY
 from geopy.distance import geodesic as gd
@@ -48,6 +48,12 @@ from PIL import Image
 from django.db.models import Q
 
 from background_task import background
+
+
+import requests
+import json,time
+
+
 
 # ADD NEW JOB 
 @api_view(['POST'])
@@ -179,8 +185,8 @@ def add_job(request):
 
         if job_ser.is_valid():
             
-            # id = job_ser.save()
-            id = 104
+            id = job_ser.save()
+            # id = 104
             jobAlert.delay(id,current_location_lat,current_location_long)
             print("Job saved and alert started",datetime.now())      
             data = {
@@ -424,7 +430,21 @@ def job_details(request):
         if job_serializer['job_status'] == "3":
             job_serializer['job_status']="completed"
 
+        if job_data.job_accepted_by != None:
+
+            try:
+                user_record = Registration.objects.exclude(user_is_delete=1).get(user_id=job_data.job_accepted_by)
+            except:
+                user_record = None
+            
+            if user_record != None:
+            
+                job_serializer['employee_name'] = user_record.user_first_name+' '+user_record.user_last_name
+
+
         job_serializer.pop('vehicle_license')
+
+
 
         data = {
             "job_details":job_serializer
@@ -546,9 +566,17 @@ def accept_job(request):
         if job_serializer.is_valid():
             job_serializer.save(**data)
 
+            noti_data = {
+
+                "title" : "job acepted",
+                "message": "Your job acepted"
+            }
+
+            # accept_job_notification.delay(user_id,noti_data)
+
             return JsonResponse({
                             "success"     :   1,
-                            "message"     :   "Job accepted",
+                            "message"     :   "Job accepted by employee",
                             "data"        :     data
                     })
         
@@ -558,6 +586,28 @@ def accept_job(request):
                             "success"     :   0,
                             "message"     :   "some error occured",
                         })
+        
+
+
+#  Notification generate for accept job
+
+
+@shared_task()
+def accept_job_notification(user_id,noti_data):
+
+    user_record = Registration.objects.exclude(user_is_delete = 1).get(user_id=user_id)
+
+    # User information dictionary
+
+    fcm_token = {}
+    fcm_token[str(user_id)] = list((str(user_record.user_fcm_token),str(user_record.device_type)))
+    
+
+    send_push_notifications(fcm_token,noti_data)
+
+    return True
+
+    
 
 
 
@@ -620,6 +670,13 @@ def complete_job(request):
                 "success"   :   0,
                 "message"   :   "No record found"
             })
+        
+        if job_record.job_status_id == 3:
+            return JsonResponse({
+                "success"   :   0,
+                "message"   :   "Job already completed"
+            })
+
 
 
         job_accepted_by = job_record.job_accepted_by
@@ -640,6 +697,10 @@ def complete_job(request):
 
         if job_serializer.is_valid():
             job_serializer.save()
+
+            # complete job notification function
+            complete_job_notification.delay(job_id)
+
             return JsonResponse({
                 "success"   :   1,
                 "message"   :   "job completed"
@@ -650,3 +711,31 @@ def complete_job(request):
                 "message"   :   "error occured"
                 })
 
+
+
+@shared_task()
+def complete_job_notification(job_id):
+    
+    print(job_id)
+    noti_data = {
+
+                "title" : "job completed",
+                "message": "Your job completed"
+            }
+    # exclude(Q(job_status_id=1) & Q(job_status_id=2) & Q(is_delete=1))
+    client_id       =       Jobs.objects.filter(job_id=job_id).values('user_id').first()['user_id']
+    client_record   =       Registration.objects.exclude(user_is_delete=1).get(user_id=client_id)
+    
+    # client data with fcm token 
+    client_data = { }
+    client_data[str(client_record.user_id)] = list((str(client_record.user_fcm_token),str(client_record.device_type)))
+    
+    print("client ",client_id)
+    print(noti_data)
+    print(client_record)
+    print(client_data)
+
+
+    send_push_notifications(client_data,noti_data)
+
+    return True
