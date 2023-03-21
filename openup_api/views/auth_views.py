@@ -14,19 +14,15 @@ from rest_framework.decorators import api_view
 from django.http.response import JsonResponse,HttpResponse
 
 # Import datetime
-import datetime,time
+import datetime,time,secrets
 
-# import timezone 
-from datetime import timedelta,timezone
+from datetime import timezone
 
 # Import Validation
 from .validation import check_text,email_address,mobile_number
 
 #  Make hash password 
 from django.contrib.auth.hashers import make_password, check_password
-
-# Import Secret for token
-import secrets
 
 # Get object
 from django.shortcuts import get_object_or_404
@@ -218,7 +214,7 @@ def user_register(request):
     # STORE SESSION DATA AFTER REGISTRATION   
     session_token       =       secrets.token_hex() # SESSION TOKEN
     # SESSION EXPIRY
-    exp_time            =       datetime.datetime.now()+ timedelta(days=30)  
+    exp_time            =       datetime.datetime.now()+ datetime.timedelta(days=30)  
     
     # SESSION DATA TO STORE
     session_data= {
@@ -402,7 +398,7 @@ def login(request):
        
     # Create session token
     session_token       =       secrets.token_hex()
-    exp_time            =       datetime.datetime.now()+ timedelta(days=30)
+    exp_time            =       datetime.datetime.now()+ datetime.timedelta(days=30)
 
     # STORE TOKEN IN SESSION DATA 
     data= {
@@ -681,7 +677,6 @@ def email_update(request,*args,**kwargs):
 # CHANGE PASSWORD API
 
 @api_view(['POST'])
-
 def change_password(request,*args,**kwargs):
     
     # CHECK TOKEN VALUE
@@ -774,7 +769,6 @@ def change_password(request,*args,**kwargs):
 # FORGOT PASSWORD  GENERATES EMAIL FOR USER
 
 @api_view(['POST'])
-
 def forget_password(request):
 
     user_email  = request.data.get('user_email',None)
@@ -818,7 +812,7 @@ def forget_password(request):
     email = EmailMessage(Subject, myemail, to=[user_email])  #Formats Email message 
     email.send()  #Sends Email to the user
     # GENERATED EXPIRY TIME 
-    time                =       datetime.datetime.now()+timedelta(days=30)
+    time                =       datetime.datetime.now()+datetime.timedelta(days=30)
     send_time           =       datetime.datetime.timestamp(time)*1000
     # DATA FOR FORGOT PASSWORD TO STORE
     forgot_pass_data    =      {

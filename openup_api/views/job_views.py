@@ -20,7 +20,7 @@ from rest_framework.decorators import api_view
 import socket
 
 # IMPORT TASK HERE
-from .tasks import send_push_notifications
+from openup.fcm import FCM
 
 # import Json Response
 from django.http.response import JsonResponse,HttpResponse
@@ -29,11 +29,7 @@ from django.http.response import JsonResponse,HttpResponse
 # Import token verifications
 from openup_api.views.auth_views import token_verification
 
-# import datetime
 import datetime
-
-# import datetime
-from datetime import datetime,timedelta,timezone
 
 # Import Models here
 from openup_app.models import Registration,JobsType,Jobs,Alerts,VehicleDetails
@@ -46,13 +42,6 @@ from PIL import Image
 
 # Import Q
 from django.db.models import Q
-
-from background_task import background
-
-
-import requests
-import json,time
-
 
 
 # ADD NEW JOB 
@@ -80,7 +69,7 @@ def add_job(request):
         vehicle_details         =   request.data.get('vehicle_details',None)
         vehicle_modification    =   request.data.get('vehicle_modification',None)
         license                 =   request.data.get('vehicle_license',None)
-        created_at              =   datetime.now()
+        created_at              =   datetime.datetime.now()
         licence_name            =   request.data.get('licence_name',None)
         vehicle_id              =   request.data.get('vehicle_id',None)
 
@@ -185,10 +174,10 @@ def add_job(request):
 
         if job_ser.is_valid():
             
-            id = job_ser.save()
-            # id = 104
+            # id = job_ser.save()
+            id = 104
             jobAlert.delay(id,current_location_lat,current_location_long)
-            print("Job saved and alert started",datetime.now())      
+
             data = {
 
                 "job_id" : id
@@ -206,7 +195,18 @@ def add_job(request):
               
                 })
        
-        
+
+
+# @api_view(['POST'])  
+# def test_noti(request):  
+#     jobAlert(104,'20.705518','76.996083')
+#     return JsonResponse({
+#         "success"     :   200,
+#         "message"     :   "ss User",
+#     })
+    
+     
+
 
 
 
@@ -214,80 +214,79 @@ def add_job(request):
 def jobAlert(job_id,latitude,longitude):
     # Fetch Employee List
 
-    employees =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
+    employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
 
     # get employee list
-    user_list = []
-    emp_fcm   = []
+    user_list   =   []
+    emp_fcm     =   []
 
-    emplist = {}
+    emplist     =   {}
+
+   
     
-    for employees in employees:
-        if employees.user_fcm_token == "" or employees.user_fcm_token == None:
-            pass
-        else:
-            
+    for employee in employees:
+        if employee.user_fcm_token != "" or employee.user_fcm_token != None: 
             # user location
             user_location=(latitude,longitude)
 
             # employee location
-            emp_location = (employees.location_latitude,employees.location_longitude)
+            emp_location = (employee.location_latitude,employee.location_longitude)
 
             # calculate distance between two point 
             dist = gd(user_location,emp_location).km
 
             # if dist is less than 6 km append list
-            if dist <= 6:
-                user_list.append(employees.user_id)
-                emp_fcm.append(employees.user_fcm_token)
-                emplist[str(employees.user_id)] = list((str(employees.user_fcm_token),str(employees.device_type))) 
-    
-    if len(user_list) == 0:
-        for employees in employees:
-            if employees.user_fcm_token == "" or employees.user_fcm_token == None:
-                pass
-            else:
-                dist_list = []
+            # if dist <= 6:
+            user_list.append(employee.user_id)
+            emp_fcm.append(employee.user_fcm_token)
+            emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
+    # if len(user_list) == 0:
+    #     for employees in employees:
+    #         if employees.user_fcm_token == "" or employees.user_fcm_token == None:
+    #             pass
+    #         else:
+    #             dist_list = []
 
-                user_location       =   (latitude,longitude)
-                emp_location        =   (employees.location_latitude,employees.location_longitude)
-                # calculate distance between two point 
-                dist                =   gd(user_location,emp_location).km
+    #             user_location       =   (latitude,longitude)
+    #             emp_location        =   (employees.location_latitude,employees.location_longitude)
+    #             # calculate distance between two point 
+    #             dist                =   gd(user_location,emp_location).km
 
-                # if dist is less than 6 km append list
-                if dist <= 10:
-                    user_list.append(employees.user_id)
-                    emp_fcm.append(employees.user_fcm_token)
-                    emplist[str(employees.user_fcm_token)] = list((str(employees.user_id),str(employees.device_type))) 
+    #             # if dist is less than 6 km append list
+    #             if dist <= 10:
+    #                 user_list.append(employees.user_id)
+    #                 emp_fcm.append(employees.user_fcm_token)
+    #                 emplist[str(employees.user_fcm_token)] = list((str(employees.user_id),str(employees.device_type))) 
 
     emp_lis         =   ','.join(str(i) for i in user_list)
-    job_id          =    Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
+    job_instance    =    Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
     alert_title     =    "new job added"
     alert_messages  =    "job generated"
-    created_at      =     datetime.now()
+    created_at      =     datetime.datetime.now()
     
     # Alert Table Save entry
-    data            =   Alerts(alert_job=job_id, alert_users=emp_lis,alert_title=alert_title,
+    data            =   Alerts(alert_job=job_instance, alert_users=emp_lis,alert_title=alert_title,
                              alert_messages=alert_messages,
-                            created_at=created_at)
-    
+                            created_at=created_at) 
     # data.save() 
+    
+    data = { 'title'     :   'New job request',
+        'type'      :   "addjob",
+        'message'   :   'Please acccept this asap',
+        'job_id'    :   str(job_id)  }
+    
 
     # SEND NOTIFICATIONS 
-    noti_data={
-        'title'     :   'New job request',
-        'message'   :   'Please acccept this asap',
-        'job_id'    :   job_id, 
-    }
 
-    # for emp in emplist:
 
-    send_push_notifications(emplist,noti_data)
-
-    # for emp in emp_fcm: 
-    #     print("send not",emp)
-        # send_push_notifications(emp,noti_data)
-
+    noti_data={ }  
+    for employee in employees:
+        if employee.user_fcm_token!=None and employee.user_fcm_token!='':
+            noti_data['data']       =   data
+            noti_data['fcm_token']  =   employee.user_fcm_token 
+            noti_data['device']     =   str(employee.device_type)
+            FCM.send_notification(noti_data)
+     
     return True
     
 
@@ -306,9 +305,7 @@ def removeElements(items,lists):
 
 
 
-@api_view(['POST'])
-
-
+@api_view(['POST'])  
 def job_list(request):
     #  Token Verification
 
@@ -444,8 +441,6 @@ def job_details(request):
 
         job_serializer.pop('vehicle_license')
 
-
-
         data = {
             "job_details":job_serializer
         }
@@ -566,13 +561,10 @@ def accept_job(request):
         if job_serializer.is_valid():
             job_serializer.save(**data)
 
-            noti_data = {
+            # Notification data
+           
 
-                "title" : "job acepted",
-                "message": "Your job acepted"
-            }
-
-            # accept_job_notification.delay(user_id,noti_data)
+            accept_job_notification.delay(job_id)
 
             return JsonResponse({
                             "success"     :   1,
@@ -590,22 +582,34 @@ def accept_job(request):
 
 
 #  Notification generate for accept job
-
+#  NOTIFY CLIENT THAT JOB ACCEPTED
 
 @shared_task()
-def accept_job_notification(user_id,noti_data):
+def accept_job_notification(job_id):
 
-    user_record = Registration.objects.exclude(user_is_delete = 1).get(user_id=user_id)
-
+    user_id     = Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
+    user_record = Registration.objects.exclude(user_is_delete = 1).get(user_id=user_id.user_id)
     # User information dictionary
 
-    fcm_token = {}
-    fcm_token[str(user_id)] = list((str(user_record.user_fcm_token),str(user_record.device_type)))
+    data = { 'title'     :   'job acepted',
+        'type'           :   "acceptjob",
+        'message'        :   'Your job acepted',
+        
+        }
     
+    # SEND NOTIFICATIONS 
 
-    send_push_notifications(fcm_token,noti_data)
+    noti_data={ }  
+    noti_data['data'] = data
+    noti_data['fcm_token']  =  (str(user_record.user_fcm_token))
+    noti_data['device']     =   str(user_record.device_type)
+    
+    FCM.send_notification(noti_data)
 
+    
+     
     return True
+
 
     
 
@@ -677,8 +681,6 @@ def complete_job(request):
                 "message"   :   "Job already completed"
             })
 
-
-
         job_accepted_by = job_record.job_accepted_by
 
         if job_accepted_by == None or user_id != int(job_record.job_accepted_by):
@@ -716,17 +718,26 @@ def complete_job(request):
 @shared_task()
 def complete_job_notification(job_id):
     
-    noti_data = {
-
-                "title" : "job completed",
-                "message": "Your job completed"
-            }
-    # exclude(Q(job_status_id=1) & Q(job_status_id=2) & Q(is_delete=1))
     client_id       =       Jobs.objects.filter(job_id=job_id).values('user_id').first()['user_id']
     client_record   =       Registration.objects.exclude(user_is_delete=1).get(user_id=client_id)
     
-    # client data with fcm token 
-    client_data = { }
-    client_data[str(client_record.user_id)] = list((str(client_record.user_fcm_token),str(client_record.device_type)))    
-    send_push_notifications(client_data,noti_data)
+    # User information dictionary
+
+    data = { 'title'     :   'job completed',
+        'type'           :   "completejob",
+        'message'        :   'Your job completed',
+        
+        }
+    
+    # SEND NOTIFICATIONS 
+
+    noti_data={ }  
+    noti_data['data'] = data
+    noti_data['fcm_token']  =  (str(client_record.user_fcm_token))
+    noti_data['device']     =   str(client_record.device_type)
+    
+    FCM.send_notification(noti_data)
+
+    
+     
     return True

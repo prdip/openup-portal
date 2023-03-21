@@ -4,16 +4,9 @@ from django.shortcuts import render
 # Create your views here.
 from rest_framework.decorators import api_view
 
-
-# Import token verifivations
-
-from openup_api.views.auth_views import token_verification
-
-
 # Import json response
 from django.http import JsonResponse
 
-import socket
 
 
 # Generate links for cms 

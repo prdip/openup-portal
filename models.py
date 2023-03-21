@@ -183,7 +183,7 @@ class UserRegistration(models.Model):
 class UserSessions(models.Model):
     session_id = models.AutoField(primary_key=True)
     session_user_email = models.CharField(max_length=254)
-    session_token = models.CharField(unique=True, max_length=150)
+    session_token = models.CharField(unique=True, max_length=500)
     session_exp = models.DateTimeField()
     session_status = models.IntegerField()
     session_created_at = models.DateTimeField()

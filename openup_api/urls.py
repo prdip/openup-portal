@@ -82,7 +82,7 @@ urlpatterns = [
   path('add_feedback', feedback_views.add_feedback,name='add_feedback'),
   
 
-  path('test-notification', feedback_views.add_feedback,name='add_feedback'),
+  # path('test-noti', job_views.test_noti,name='test_noti'),
 
 
 ]

@@ -2,7 +2,7 @@
 from rest_framework.decorators import api_view
 
 # import Json Response
-from django.http.response import JsonResponse,HttpResponse
+from django.http.response import JsonResponse
 
 # Import token verifications
 from openup_api.views.auth_views import token_verification
@@ -13,7 +13,6 @@ from openup_app.serializers import RegisterSerializer
 # Import Models here
 from openup_app.models import Registration
 
-from math import radians, cos, sin, asin, sqrt
 # Import Q
 from django.db.models import Q
 

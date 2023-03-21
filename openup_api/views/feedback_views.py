@@ -4,7 +4,6 @@ from rest_framework.decorators import api_view
 # import Json Response
 from django.http.response import JsonResponse
 
-
 # Import token verifications
 from openup_api.views.auth_views import token_verification
 
