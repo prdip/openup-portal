@@ -72,7 +72,6 @@ def add_job(request):
         licence_name            =   request.data.get('licence_name',None)
         vehicle_id              =   request.data.get('vehicle_id',None)
 
-        
         # job type accepts only employee and emergency
 
         if job_type is None or job_type == "" or (job_type != "service" and job_type != "emergency"):
@@ -81,7 +80,7 @@ def add_job(request):
                     "message"   :   "please provide job type"
                     })
         
-        if current_location_lat is None or current_location_lat ==  "":
+        if current_location_lat == None or current_location_lat ==  "":
             return JsonResponse({
                     "success"    :   0,
                     "message"   :   "please provide current location "
@@ -159,8 +158,8 @@ def add_job(request):
         job_details = {
 
                 "job_type"              :   job_type,
-                "location_latitude"     :   current_location_lat,
-                "location_longitude"    :   current_location_long,
+                "location_latitude"     :   float(current_location_lat),
+                "location_longitude"    :   float(current_location_long),
                 "vehicle_details"       :   vehicle_details,
                 "vehicle_modification"  :   vehicle_modification,
                 "vehicle_license"       :   license,
@@ -168,13 +167,13 @@ def add_job(request):
                 "user"                  :   user_rec.user_id,
                 "job_status"            :   job_id.status_id               
         }
-        # get serializer data
         job_ser     =   JobsSerializer(data=job_details)
 
+        # get serializer data
         if job_ser.is_valid():
             
-            # id = job_ser.save()
-            id = 114
+            id = job_ser.save()
+            # id=115
             '''
                 JOB ALERT IS SHARED TASK FUNCTION RUN IN BACKGROUND @shardtask decorator required
             '''
@@ -190,10 +189,11 @@ def add_job(request):
                 "message"   :   "Job added successfully",
                 "data"          :       data
                 })
-        
-        return JsonResponse({   
+        else:
+            return JsonResponse({   
                 "success"    :   0,
                 "message"   :   "error occured",
+                "error"     :   job_ser.errors
               
                 })
        
@@ -210,7 +210,17 @@ def add_job(request):
 def jobAlert(job_id,latitude,longitude):
     # Fetch Employee List
 
-    employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
+    job_instance    =    Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
+
+    if job_instance.job_type == "emergency":
+        
+        employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
+
+    else:
+        employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(employee_status=1).filter(user_role_id=1)
+
+
+    # employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
 
     # get employee list
     user_list   =   []
@@ -257,7 +267,6 @@ def jobAlert(job_id,latitude,longitude):
     #                 emplist[str(employees.user_fcm_token)] = list((str(employees.user_id),str(employees.device_type))) 
 
     emp_lis         =   ','.join(str(i) for i in user_list)
-    job_instance    =    Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
     alert_title     =    "new job added"
     alert_messages  =    "job generated"
     created_at      =     datetime.datetime.now()
@@ -616,10 +625,12 @@ def accept_job_notification(job_id):
 
     noti_data={ }  
     noti_data['data']       =   data
-    noti_data['fcm_token']  =   (str(user_record.user_fcm_token))
+    noti_data['fcm_token']  =   str(user_record.user_fcm_token)
     noti_data['device']     =   str(user_record.device_type)
     
     FCM.send_notification(noti_data)     
+
+    print(noti_data)
     return True
 
 

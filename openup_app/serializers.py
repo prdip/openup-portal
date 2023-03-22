@@ -21,10 +21,11 @@ class RegisterSerializer(serializers.ModelSerializer):
     location_latitude        =   serializers.FloatField(allow_null=True,required=False)
     location_longitude       =   serializers.FloatField(allow_null=True,required=False)
     create_at                =   serializers.DateTimeField()
+    employee_status          =   serializers.BooleanField(default=0,allow_null=True)
     user_role                =   serializers.PrimaryKeyRelatedField(queryset = UserRole.objects.all())
     user_is_delete           =   serializers.BooleanField(default=0,allow_null=True)
-    device_type              =   serializers.IntegerField(required=False)   # 0 == > Anaroid  1==> IOS
-    user_fcm_token           =   serializers.CharField(required=False,allow_blank=True)
+    device_type              =   serializers.IntegerField(required=False,allow_null=True)   # 0 == > Anaroid  1==> IOS
+    user_fcm_token           =   serializers.CharField(required=False,allow_null=True   )
 
 
     # Field level validation  
@@ -48,7 +49,7 @@ class RegisterSerializer(serializers.ModelSerializer):
                   'user_phone_number','user_password',
                   'location_latitude','location_longitude',
                   'create_at','user_role','user_is_delete',
-                  'device_type','user_fcm_token')
+                  'device_type','user_fcm_token','employee_status')
 
 
 
@@ -159,7 +160,7 @@ class JobsTypeSerializer(serializers.Serializer):
 class JobsSerializer(serializers.Serializer):
 
     job_type                 =   serializers.CharField()
-    user                     =   serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
+    user                     =   serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all(),allow_null=True)
     location_latitude        =   serializers.FloatField(required=False)
     location_longitude       =   serializers.FloatField(required=False)
     job_accepted_by          =   serializers.CharField(required=False)

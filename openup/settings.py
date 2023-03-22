@@ -52,17 +52,15 @@ CELERY_RESULT_BACKEND               =       'redis://127.0.0.1:6379'
 CELERY_ACCEPT_CONTENT               =       ['application/json']
 CELERY_RESULT_SERIALIZER            =       'json'
 CELERY_TASK_SERIALIZER              =       'json'
-
-CELERY_RESULT_BACKEND = 'django-db'
+CELERY_RESULT_BACKEND               =       'django-db'
 CELERY_STORE_ERRORS_EVEN_IF_IGNORED =       True
-
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'openup.settings')
 
+
+
+
 # Application definition
-
-
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -78,6 +76,8 @@ INSTALLED_APPS = [
 ]
 
 BACKGROUND_TASK_RUN_ASYNC = True
+
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -88,13 +88,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# fcm_server_key = ''
-FCM_DJANGO_SETTINGS = {
-        "FCM_SERVER_KEY": "***REMOVED_FCM_KEY***"
-}
 
 
-# TEMPLATE 
+# TEMPLATE CONFIGURAION
 
 TEMPLATE_DIR = os.path.join(BASE_DIR,'templates')
 TEMPLATES = [
@@ -125,6 +121,8 @@ EMAIL_HOST = 'sandbox.smtp.mailtrap.io'
 EMAIL_HOST_USER = '57e9943f5f2fed'
 EMAIL_HOST_PASSWORD = '80ecacaa53a317'
 EMAIL_PORT = '2525'
+
+
 
 
 

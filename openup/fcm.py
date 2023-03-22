@@ -5,13 +5,15 @@ env = environ.Env()
 environ.Env.read_env()
 
 
+
+
 class FCM: 
     def send_notification(dataDict): 
         
-        serverKey   = '***REMOVED_FCM_KEY***'
-        
+        serverKey   =       '***REMOVED_FCM_KEY***'
+        seconds     =        60*60*24
 
-        seconds     = 60*60*24
+        
         if 'expiry' in dataDict and  dataDict['expiry']!=None:
             seconds = dataDict['expiry'] 
         expireTime  = int(time.mktime(time.localtime()))+int(seconds)
@@ -45,7 +47,7 @@ class FCM:
             }
         if dataDict['device'] and dataDict['device']=='1':
 
-            body = {  
+            body = {    
                 "data"  :   dataDict['data'], 
                 "to"    :   dataDict['fcm_token'],
                 "notification":{  
@@ -69,6 +71,7 @@ class FCM:
                 }  
             }
         
+        print(body)
         headers = {
             "Content-Type":"application/json",
             "Authorization": "key="+str(serverKey)+""

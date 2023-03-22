@@ -54,6 +54,9 @@ def user_register(request):
     last_name       = request.data.get('user_last_name', None)
     email           = request.data.get('user_email', None)
     phone_number    = request.data.get('user_phone_number', None)
+    fcm_token    = request.data.get('fcm_token', None)
+
+    device_type     =   request.data.get('device_type', None)
 
     # string format employee or client 
     user_type       = request.data.get('user_type', None)   
@@ -161,13 +164,47 @@ def user_register(request):
             "success"       :   0,
             "message"       :   "Phone Number already exist",
        })
-        
-    #   CHECK EMAIL ALREADY EXIST 
-    try:
-       check_email = Registration.objects.exclude(user_is_delete=1).filter(user_email=email).exists()
     
-    except:
-       check_email = None
+   
+
+    # print("queryset",check_email)
+    
+    if user_type == "employee":
+     
+    #   CHECK EMAIL ALREADY EXIST 
+        try:
+            
+            check_email = Registration.objects.exclude(user_is_delete=1).filter(Q(user_email=email) and Q(user_role_id=1)).exists()
+
+            
+        except:
+           check_email = False
+
+        if check_email:
+           return JsonResponse({
+           
+            "success"       :   0,
+            "message"       :   "employee already exist",
+            })
+
+    else:
+        
+         #   CHECK EMAIL ALREADY EXIST 
+        try:
+           check_email = Registration.objects.exclude(user_is_delete=1).filter(user_role_id=2).filter(user_email=email).exists()
+
+        except:
+           check_email = None
+        
+        if check_email:
+           return JsonResponse({
+           
+            "success"       :   0,
+            "message"       :   "client already exist",
+       })
+
+
+        
            
     # Validate email address
     check_email = email_address(email)
@@ -206,7 +243,9 @@ def user_register(request):
         "user_password"          :   make_pass,
         "create_at"              :   created_at,
         "user_role"              :   role_id.role_id,
-        "user_is_delete"         :   0
+        "user_is_delete"         :   0,
+        "user_fcm_token"         :   fcm_token,
+        "device_type"            :   device_type
 
     }
 
@@ -215,10 +254,37 @@ def user_register(request):
 
     if registration_data.is_valid():
         registration_data.save()
+
+    
         time.sleep(5)
-        user_id             =       Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']    
-        user                =       Registration.objects.get(user_id=user_id)
-        
+
+        if user_type == "employee":
+
+            print("employee")
+            Subject             =   "Request for Password Reset"
+            text_template       =   "email/confirm_user.txt"
+            # EMAIL FORMAT
+            email_data = {
+                    "email"     :   email,
+                    'domain'    :   '192.168.1.2:8000',
+	        		'site_name' :   'Website',     #Data which will send with E-mail id
+	        		'protocol'  :   'http',
+                }
+
+            myemail = render_to_string(text_template,email_data)  # Converts text file to string 
+
+            email = EmailMessage(Subject, myemail, to=["swapnilpathak@gmail.com"])  #Formats Email message 
+            email.send()  #Sends Email to the user
+
+
+
+            return JsonResponse({
+                        "success"       :   1,
+                        "message"       :   "Employee Registered Successfully !",
+            })
+    user_id             =       Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']    
+    user                =       Registration.objects.get(user_id=user_id)
+ 
     # STORE SESSION DATA AFTER REGISTRATION   
     session_token       =       secrets.token_hex() # SESSION TOKEN
     # SESSION EXPIRY
@@ -234,48 +300,7 @@ def user_register(request):
             "session_created_at"        :         datetime.datetime.now(),
             "session_is_delete"         :         False           
         }
-    if user_type == "employee":
-        Subject             =   "Request for Password Reset"
-        text_template       =   "email/confirm_user.txt"
-        # EMAIL FORMAT
-        email_data = {
-                "email"     :   email,
-                'domain'    :   '192.168.1.4:8000',
-	    		'site_name' :   'Website',     #Data which will send with E-mail id
-	    		'protocol'  :   'http',
-            }
-
-        myemail = render_to_string(text_template,email_data)  # Converts text file to string 
-
-        email = EmailMessage(Subject, myemail, to=["swapnilpathak@gmail.com"])  #Formats Email message 
-        email.send()  #Sends Email to the user
-        setting_dict ={
-                "user_screen"       :0,
-                "location":0,
-                "while_using":0,
-                "service_notification":0,
-                "location_notification":0,
-                "service_feed_not":0
-
-            }
-        for setting in setting_dict:
-                setting_data    =       {
-                           
-                            "setting_user"      :       user.user_id,
-                            "setting_name"      :       setting,
-                            "setting_value"     :       setting_dict[setting],
-                            "created_at"        :       datetime.now()
-                        }
-               
-                setting_ser     =       SettingsSerializer(data=setting_data)
-                if setting_ser.is_valid():
-                    setting_ser.save()
-
-
-        return JsonResponse({
-                    "success"       :   1,
-                    "message"       :   "Employee Registered Successfully !",
-        })
+    
 
     user_session                    =         SessionSerializer(data=session_data)
     
@@ -331,10 +356,7 @@ def login(request):
     fcm_token       =   request.data.get('fcm_token', None)
     device_type     =   request.data.get('device_type', None)
     
-    if device_type == "1":
-        device_type = 1
-    else:
-        device_type = 0
+    
 
 
     if fcm_token == "" or fcm_token ==None:
@@ -388,8 +410,14 @@ def login(request):
 
     role_id     =   UserRole.objects.exclude(role_is_delete=1).filter(role_name = user_type).values('role_id').first()['role_id']
     
+
+    if user_type == "employee":
     # get user record
-    user_rec    =   Registration.objects.exclude(user_is_delete=1).get(user_id=check_user_id)
+        user_rec    =   Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).get(user_id=check_user_id)
+
+    else:
+
+        user_rec    =   Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=1)).get(user_id=check_user_id)
 
     # Verify user type 
     if user_rec.user_role.role_id != role_id:
@@ -406,6 +434,9 @@ def login(request):
             "message"       :   "account is inactive",
             })
     
+
+
+
     # CHECK HASH PASSWORD
     check_pass          =       check_password(password,user_rec.user_password)
     if check_pass is False:
@@ -451,6 +482,29 @@ def login(request):
         
         if user_ser.is_valid():
             user_ser.save(**update_data)
+
+            if user_type=="employee":
+                setting_dict ={
+                "user_screen"       :0,
+                "location":0,
+                "while_using":0,
+                "service_notification":0,
+                "location_notification":0,
+                "service_feed_not":0
+
+            }
+                for setting in setting_dict:
+                    setting_data    =       {
+                           
+                            "setting_user"      :       user_rec.user_id,
+                            "setting_name"      :       setting,
+                            "setting_value"     :       setting_dict[setting],
+                            "created_at"        :       datetime.datetime.now()
+                        }
+               
+                setting_ser     =       SettingsSerializer(data=setting_data)
+                if setting_ser.is_valid():
+                    setting_ser.save()
 
     return JsonResponse({
                 "success"    :   1,
@@ -1131,7 +1185,12 @@ def get_user_details(request):
 
             if accepted_job is None:
 
-                get_user_details['accepted_job'] = None
+                get_user_details['accepted_job']    = None
+
+            if user_record.employee_status == 1:
+                get_user_details['employee_status'] = "1"
+            else:
+                get_user_details['employee_status'] = "0" 
 
         else:
             try:
@@ -1145,10 +1204,9 @@ def get_user_details(request):
                 get_user_details['posted_job'] = None
 
         data={
-
             "user_details"  :   get_user_details,
+            }
             
-        }
         return JsonResponse({
                             "success"        :       1,
                             "message"        :      "user details fetched",
@@ -1156,3 +1214,47 @@ def get_user_details(request):
             })
 
 
+
+
+
+
+@api_view(['POST'])
+def employee_status(request):
+
+    user_token            =       request.data.get('user_token',None)
+    check_user            =       token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+        }) 
+    
+    else:
+        
+        emp_status      =       int(request.data.get('emp_status',None))
+
+        if emp_status == None:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "please provide employee status",
+                })
+        
+        update_data = {
+                "employee_status"   :      emp_status  
+                }
+
+        user_id         =       check_user['session_user']
+
+        # get user record
+        user_record     =       Registration.objects.exclude(Q(user_is_delete=1) & Q(user_status=1)).get(user_id=user_id)
+
+        # user instance 
+        user_serializer =       RegisterSerializer(instance=user_record,data=update_data,partial=True)
+
+        if user_serializer.is_valid():
+            user_serializer.save(**update_data)
+            return JsonResponse({
+                "success"     :   1,
+                "message"     :   "status changed",
+                })

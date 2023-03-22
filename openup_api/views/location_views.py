@@ -83,7 +83,6 @@ def update_location(request):
 
 # API FOR 
 @api_view(['POST'])
-
 def service_available(request):
         # CHECK TOKEN VALUE
     user_token            =       request.data.get('user_token',None)
@@ -112,7 +111,7 @@ def service_available(request):
         
         # user current location
         user_loc        =       (latitude,longitude)
-        # dist_val = { }
+
         # list of services in km
         services_list   =       []
 

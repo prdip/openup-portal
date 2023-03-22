@@ -81,5 +81,9 @@ urlpatterns = [
   path('add_feedback', feedback_views.add_feedback,name='add_feedback'),
   
 
+  path('employee-status', auth_views.employee_status,name='employee_status'),
+
+  
+
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
