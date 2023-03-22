@@ -76,14 +76,10 @@ urlpatterns = [
 
 # Settings
   path('add_settings', setting.add_settings,name='add_settings'),
-  path('setting_details', setting.setting_details,name='setting_details'),
 
 # Feedback
   path('add_feedback', feedback_views.add_feedback,name='add_feedback'),
   
-
-  # path('test-noti', job_views.test_noti,name='test_noti'),
-
 
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

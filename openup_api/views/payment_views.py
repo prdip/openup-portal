@@ -9,7 +9,7 @@ from openup_api.views.auth_views import token_verification
 
 import datetime
 
-from datetime import datetime,timedelta
+from datetime import datetime
 
 # Import Models here
 from openup_app.models import Payment,Registration
@@ -18,7 +18,7 @@ from openup_app.models import Payment,Registration
 from openup_app.serializers import PaymentSerializer
 
 # Import validation
-from .validation import check_text,check_number
+from .validation import check_text
 
 
 

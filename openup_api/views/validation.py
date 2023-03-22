@@ -63,4 +63,16 @@ def check_number(check_no):
 
 '''
 
+convert queryset to dict
+list_result = [entry for entry in verify]   Queryset to dict
+        verify  =verify.__dict__
+        session= list_result[0]
+       
 '''
+
+
+'''
+        # s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+        # s.bind(('', 0))
+        # owners_port = int(s.getsockname()[1])
+        '''

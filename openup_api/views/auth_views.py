@@ -36,9 +36,14 @@ from django.contrib import messages
 #import mail library
 from django.core.mail import EmailMessage
 
-
-# Import Q
+# Import Queryset
 from django.db.models import Q
+
+
+
+
+# USER REGISTRATION API 
+
 
 @api_view(['POST'])
 def user_register(request):
@@ -49,7 +54,9 @@ def user_register(request):
     last_name       = request.data.get('user_last_name', None)
     email           = request.data.get('user_email', None)
     phone_number    = request.data.get('user_phone_number', None)
-    user_type       = request.data.get('user_type', None)
+
+    # string format employee or client 
+    user_type       = request.data.get('user_type', None)   
     password        = request.data.get('user_password', None)
     confirm_pass    = request.data.get('confirm_password', None)
 
@@ -158,10 +165,11 @@ def user_register(request):
     #   CHECK EMAIL ALREADY EXIST 
     try:
        check_email = Registration.objects.exclude(user_is_delete=1).filter(user_email=email).exists()
+    
     except:
        check_email = None
            
-    # Validate email address  ==> Validate email address
+    # Validate email address
     check_email = email_address(email)
     if check_email == False:
        return JsonResponse({
@@ -178,7 +186,7 @@ def user_register(request):
             "success"       :   0,
             "message"       :   "Please Provide Valid Moile Number",
        })
-    # Get Role id from role type
+    # Get Role id from role type employee==1 or client==2
     role        =   UserRole.objects.filter(role_name=user_type).values('role_id').first()['role_id']        
     role_id     =   UserRole.objects.get(role_id=role)
 
@@ -237,7 +245,8 @@ def user_register(request):
 	    		'protocol'  :   'http',
             }
 
-        myemail = render_to_string(text_template,email_data)  #Converts text file to string 
+        myemail = render_to_string(text_template,email_data)  # Converts text file to string 
+
         email = EmailMessage(Subject, myemail, to=["swapnilpathak@gmail.com"])  #Formats Email message 
         email.send()  #Sends Email to the user
         setting_dict ={
@@ -273,12 +282,12 @@ def user_register(request):
     if user_session.is_valid():
         user_session.save()
         setting_dict ={
-                "user_screen"       :0,
-                "location":0,
-                "while_using":0,
-                "service_notification":0,
-                "location_notification":0,
-                "service_feed_not":0
+                "user_screen"           :       0,
+                "location"              :       0,
+                "while_using"           :       0,
+                "service_notification"  :       0,
+                "location_notification" :       0,
+                "service_feed_not"      :       0
 
             }
         for setting in setting_dict:
@@ -305,21 +314,29 @@ def user_register(request):
    
 
 
-# Login API
+
+
+
+'''
+Login API
+'''
 
 @api_view(['POST'])
-
 def login(request):
+    
     # Required data    
     email           =   request.data.get('user_email', None)
     password        =   request.data.get('user_password', None)
     user_type       =   request.data.get('user_type', None)
     fcm_token       =   request.data.get('fcm_token', None)
     device_type     =   request.data.get('device_type', None)
+    
     if device_type == "1":
         device_type = 1
     else:
         device_type = 0
+
+
     if fcm_token == "" or fcm_token ==None:
        return JsonResponse({
             "success"       :   0,
@@ -354,7 +371,7 @@ def login(request):
             "success"       :   0,
             "message"       :   "please Provide Valid Email",
             })
-    
+    # Get user id through email
     try:
         check_user_id = Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']
     except:       
@@ -370,6 +387,7 @@ def login(request):
     # get role_id  to verify user role type
 
     role_id     =   UserRole.objects.exclude(role_is_delete=1).filter(role_name = user_type).values('role_id').first()['role_id']
+    
     # get user record
     user_rec    =   Registration.objects.exclude(user_is_delete=1).get(user_id=check_user_id)
 
@@ -424,10 +442,11 @@ def login(request):
                     }
         
         update_data = {
-                "device_type"       :   device_type,
+                "device_type"        :   device_type,
                 "user_fcm_token"     :   fcm_token
             }
         
+        # provide user instance to serializer
         user_ser = RegisterSerializer(instance=user_rec,data=update_data,partial=True)
         
         if user_ser.is_valid():
@@ -441,41 +460,52 @@ def login(request):
 
 
 
+'''
+Renders confirm_account html page. 
+confirm employee account 
 
-# Renders confirm account 
+'''
 
 def confirm_account(request,email):
-    
+    # get user_id through email
     user_id       =  Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']
     user_record   =  Registration.objects.get(user_id=user_id)
     
     return render(request,'Authentication/admin_conf.html',{"user":user_record})
 
-# activate account 
 
+'''
+ activate employee account 
+'''
 
 def activate_account(request):
 
     id = request.POST.get('id')
+
     # get user record
-    user_rec     =       Registration.objects.exclude(user_is_delete=1).get(user_id=id)
+    user_record     =       Registration.objects.exclude(user_is_delete=1).get(user_id=id)
+    
     # if account already activated
-    if user_rec.user_status == 1:
+    if user_record.user_status == 1:
         return HttpResponse("Account Already activated")            
 
     update_data =   {
         "user_status"   :   1
     }
-    user_ser    =       RegisterSerializer(instance=user_rec,data=update_data,partial=True)
+    # pass user instance to serializer
+    user_ser    =       RegisterSerializer(instance=user_record,data=update_data,partial=True)
+    
     if user_ser.is_valid():
         user_ser.save(**update_data)
         return HttpResponse("Account Activated")
     
-    # return 
 
 
 
-# Logout API
+'''
+API for Logout user
+
+'''
 
 
 @api_view(['POST'])
@@ -488,20 +518,25 @@ def logout(request,*args,**kwargs):
         return JsonResponse({
                 "success"     :   0,
                 "message"     :   "Unauthorized User",
-        })    
+        })
+        
     else:
         # get user from token
         associated_user     =       Session.objects.filter(session_token=user_token).values('session_id').first()['session_id']       
         session_record      =       get_object_or_404(Session,session_id=associated_user) 
-        # get user id
+        
+        # get user id of login user
         user_id             =       session_record.session_user
+        
         # get user Record
         user_record         =       Registration.objects.exclude(user_is_delete = 1).get(user_id=user_id.user_id)
-        
+
+        # Update FCM token to blank 
         update_data = {
             "user_fcm_token" :   ""
+            }
 
-        }
+
         user_data       =   RegisterSerializer(instance=user_record,data=update_data,partial=True)
 
         if user_data.is_valid():
@@ -529,14 +564,17 @@ def logout(request,*args,**kwargs):
             })
 
 
-#  EMAIL ADDRESS UPDATE
+
+'''
+API FOR UPDATE  EMAIL ADDRESS 
+'''
 
 @api_view(['POST'])
 def email_update(request,*args,**kwargs):
 
     # CHECK TOKEN VALUE
-    user_token = request.data.get('user_token',None)
-    check_user              =       token_verification(user_token)
+    user_token     =       request.data.get('user_token',None)
+    check_user     =       token_verification(user_token)
 
     if check_user is None:
         return JsonResponse({
@@ -674,7 +712,10 @@ def email_update(request,*args,**kwargs):
 
   
 
-# CHANGE PASSWORD API
+'''
+API FOR CHANGE PASSWORD 
+'''
+
 
 @api_view(['POST'])
 def change_password(request,*args,**kwargs):
@@ -766,7 +807,10 @@ def change_password(request,*args,**kwargs):
 
 
 
-# FORGOT PASSWORD  GENERATES EMAIL FOR USER
+'''
+FORGOT PASSWORD  GENERATES EMAIL FOR USER
+'''
+
 
 @api_view(['POST'])
 def forget_password(request):
@@ -800,7 +844,7 @@ def forget_password(request):
     # EMAIL FORMAT
     data = {
             "email"     :   user.user_email,
-            'domain'    :   '192.168.1.4:8000',
+            'domain'    :   '192.168.1.2:8000',
 			'site_name' :   'Website',     #Data which will send with E-mail id
 			"user"      :   user.user_id,
 			'token'     :   token,
@@ -834,10 +878,13 @@ def forget_password(request):
 
 
 
-# UPDATE PASSWORD
 
-# Renders forget password template 
+'''
+Renders forget password template 
+and do UPDATE PASSWORD 
+'''
 
+ 
 def reset_password(request,token):
 
     user_token              =       token
@@ -868,7 +915,7 @@ def reset_password(request,token):
                 pass2       =       request.POST.get('confirm_pass')
 
                 if  pass1 == pass2:
-                    enc_pass    = make_password(pass1)
+                    enc_pass    = make_password(pass1)   #encrypt password
                     update_pass = {
                                 'user_password':enc_pass 
                                 }
@@ -881,16 +928,16 @@ def reset_password(request,token):
                 else:
                     messages.error(request,message="password not matched")                
         else:
-            messages.error(request,message="Link Expired")
-    
+            messages.error(request,message="Link Expired")    
     return render(request,'Authentication/forget_password.html',{"token":user_token})
 
 
 
 
+'''
+API FOR DELETE ACCOUNT
+''' 
 @api_view(['POST'])
-# DELETE ACCOUNT 
-
 def delete_account(request):
 
       # CHECK TOKEN VALUE
@@ -944,7 +991,9 @@ def delete_account(request):
 
 
 
-# TOKEN VERIFICATION DONE HERE
+'''
+TOKEN VERIFICATION DONE HERE
+'''
     
 
 def token_verification(token):
@@ -962,10 +1011,7 @@ def token_verification(token):
     if verify is None:
         return None
     else:
-        # list_result = [entry for entry in verify]   Queryset to dict
-        # verify  =verify.__dict__
-        # session= list_result[0]
-       
+        
         # Convert time to unix time to compare
         exp_time            =       session_record.session_exp 
         #CONVERT TIME TO UTC TIME
@@ -1005,7 +1051,10 @@ def token_verification(token):
 
 
 
-# API call for get user details
+'''
+API call for get user details
+
+'''
 
 @api_view(['POST'])
 
@@ -1103,7 +1152,7 @@ def get_user_details(request):
         return JsonResponse({
                             "success"        :       1,
                             "message"        :      "user details fetched",
-                            "data"          :       data
+                            "data"           :       data
             })
 
 

@@ -7,7 +7,6 @@ from django.http.response import JsonResponse
 # Import token verifications
 from openup_api.views.auth_views import token_verification
 
-
 # import datetime
 import datetime
 
@@ -20,6 +19,8 @@ from openup_app.models import Feedback,Jobs
 # Import Serializer
 from openup_app.serializers import FeedbackSerializer
 
+
+
 '''FEEDBACK  VIEWS'''
 
 
@@ -27,8 +28,6 @@ from openup_app.serializers import FeedbackSerializer
 
 
 @api_view(['POST'])
-
-
 def add_feedback(request):
     user_token      =       request.data.get('user_token',None)
     check_user      =       token_verification(user_token)
@@ -67,8 +66,7 @@ def add_feedback(request):
                 "message"   :   "Please provide data"
             })
 
-        # filters job record of login user.
-        # if job id 
+        # try to found job id found 
         try:
             job_record      =       Jobs.objects.exclude(Q(is_delete=1) and Q(job_status_id=1)).get(job_id=job_id)
         except:
@@ -100,19 +98,18 @@ def add_feedback(request):
         }
 
         # FEEDBACK SERIALIZER
-
         feedback_ser    =       FeedbackSerializer(data=feedback_data)
         if feedback_ser.is_valid():
             feedback_ser.save()
             return JsonResponse({
                 "success"    :   1,
                 "message"   :   "Feedback saved successfully"
-            })
+                })
         else:
              return JsonResponse({
                 "success"    :   0,
                 "message"   :   "error occured"
-            })
+                })
 
 
 

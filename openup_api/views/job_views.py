@@ -4,14 +4,8 @@ from openup import celery_app
 # IMPORT SHARED TASK
 from celery import shared_task
 
-# IMPORT TIME
-from time import sleep,time
-
 # IMPORT GEODESIC FROM GEOPY
 from geopy.distance import geodesic as gd
-
-# Import thead
-import threading
 
 # Create your views here.
 from rest_framework.decorators import api_view
@@ -23,8 +17,7 @@ import socket
 from openup.fcm import FCM
 
 # import Json Response
-from django.http.response import JsonResponse,HttpResponse
-
+from django.http.response import JsonResponse
 
 # Import token verifications
 from openup_api.views.auth_views import token_verification
@@ -44,9 +37,15 @@ from PIL import Image
 from django.db.models import Q
 
 
-# ADD NEW JOB 
-@api_view(['POST'])
 
+
+
+'''
+    ADD NEW JOB
+'''
+ 
+
+@api_view(['POST'])
 def add_job(request):
 
     #  Token Verification
@@ -175,7 +174,10 @@ def add_job(request):
         if job_ser.is_valid():
             
             # id = job_ser.save()
-            id = 104
+            id = 114
+            '''
+                JOB ALERT IS SHARED TASK FUNCTION RUN IN BACKGROUND @shardtask decorator required
+            '''
             jobAlert.delay(id,current_location_lat,current_location_long)
 
             data = {
@@ -196,18 +198,12 @@ def add_job(request):
                 })
        
 
+'''
+ JobAlert function calls whenever new job added by client
 
-# @api_view(['POST'])  
-# def test_noti(request):  
-#     jobAlert(104,'20.705518','76.996083')
-#     return JsonResponse({
-#         "success"     :   200,
-#         "message"     :   "ss User",
-#     })
-    
-     
+ latitude and longitude pass by client 
 
-
+'''
 
 
 @shared_task()
@@ -237,9 +233,11 @@ def jobAlert(job_id,latitude,longitude):
 
             # if dist is less than 6 km append list
             # if dist <= 6:
+
             user_list.append(employee.user_id)
             emp_fcm.append(employee.user_fcm_token)
             emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
+    
     # if len(user_list) == 0:
     #     for employees in employees:
     #         if employees.user_fcm_token == "" or employees.user_fcm_token == None:
@@ -270,21 +268,28 @@ def jobAlert(job_id,latitude,longitude):
                             created_at=created_at) 
     # data.save() 
     
-    data = { 'title'     :   'New job request',
-        'type'      :   "addjob",
-        'message'   :   'Please acccept this asap',
-        'job_id'    :   str(job_id)  }
+
+    # pass dictionary data to send notification
+    data = { 
+             'title'                      :   'New job request',             
+             'notificationScreenType'     :   'addjob',
+             'message'                    :   'Please acccept this asap',
+             'job_id'                     :   str(job_id),  
+             
+            }
     
 
     # SEND NOTIFICATIONS 
 
 
     noti_data={ }  
+    
     for employee in employees:
         if employee.user_fcm_token!=None and employee.user_fcm_token!='':
             noti_data['data']       =   data
             noti_data['fcm_token']  =   employee.user_fcm_token 
             noti_data['device']     =   str(employee.device_type)
+            # sends push notification
             FCM.send_notification(noti_data)
      
     return True
@@ -292,8 +297,11 @@ def jobAlert(job_id,latitude,longitude):
 
 
 
+'''
 
-# remove data from list
+function that removes data from list
+
+'''
 def removeElements(items,lists):
     for dict in lists:
         for item in items:
@@ -356,8 +364,12 @@ def job_list(request):
                 })
 
 
+'''
 
-# Get detail of job 
+API to Get detail of job by job id 
+'''
+
+
 
 @api_view(['POST'])
 def job_details(request):
@@ -409,12 +421,8 @@ def job_details(request):
         name = socket.gethostbyname(hostname)
         domain = name+":8000"
 
-        # s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-        # s.bind(('', 0))
-        # owners_port = int(s.getsockname()[1])
         obj     = job_serializer['vehicle_license']
         url     = 'http://{domain}{path}'.format(domain=domain, path=obj)
-
 
         job_serializer['vehicle_license_url'] = url
 
@@ -426,7 +434,11 @@ def job_details(request):
         
         if job_serializer['job_status'] == "3":
             job_serializer['job_status']="completed"
+        
 
+        
+        # if block execute when job_accepted_by in job record is null
+        
         if job_data.job_accepted_by != None:
 
             try:
@@ -435,7 +447,8 @@ def job_details(request):
                 user_record = None
             
             if user_record != None:
-            
+
+                '''to get employee name '''            
                 job_serializer['employee_name'] = user_record.user_first_name+' '+user_record.user_last_name
 
 
@@ -452,8 +465,9 @@ def job_details(request):
     
 
 
-@api_view(['POST'])
 
+
+@api_view(['POST'])
 def remove_job(request):
     user_token      =       request.data.get('user_token',None)
     check_user      =       token_verification(user_token)
@@ -499,11 +513,11 @@ def remove_job(request):
 
 
 
-# ACCEPT JOB 
+
+
+'''API to ACCEPT JOB.  job accepted by employee '''
 
 @api_view(['POST'])
-
-
 def accept_job(request):
     user_token      =       request.data.get('user_token',None)
     check_user      =       token_verification(user_token)
@@ -562,8 +576,6 @@ def accept_job(request):
             job_serializer.save(**data)
 
             # Notification data
-           
-
             accept_job_notification.delay(job_id)
 
             return JsonResponse({
@@ -582,7 +594,9 @@ def accept_job(request):
 
 
 #  Notification generate for accept job
-#  NOTIFY CLIENT THAT JOB ACCEPTED
+'''
+NOTIFY CLIENT THAT JOB ACCEPTED
+''' 
 
 @shared_task()
 def accept_job_notification(job_id):
@@ -591,30 +605,28 @@ def accept_job_notification(job_id):
     user_record = Registration.objects.exclude(user_is_delete = 1).get(user_id=user_id.user_id)
     # User information dictionary
 
-    data = { 'title'     :   'job acepted',
-        'type'           :   "acceptjob",
-        'message'        :   'Your job acepted',
+    data = { 
+            'title'                             :   'job acepted',
+            'notificationScreenType'            :   "acceptjob",
+            'message'                           :   'Your job acepted',
         
         }
     
     # SEND NOTIFICATIONS 
 
     noti_data={ }  
-    noti_data['data'] = data
-    noti_data['fcm_token']  =  (str(user_record.user_fcm_token))
+    noti_data['data']       =   data
+    noti_data['fcm_token']  =   (str(user_record.user_fcm_token))
     noti_data['device']     =   str(user_record.device_type)
     
-    FCM.send_notification(noti_data)
-
-    
-     
+    FCM.send_notification(noti_data)     
     return True
 
 
     
 
 
-
+'''API FOR REJECT JOB'''
 
 @api_view(['POST'])
 def reject_job(request):
@@ -644,11 +656,9 @@ def reject_job(request):
 
 
 
-# API FOR COMPLETE JOB 
+'''API FOR COMPLETE JOB '''
 
 @api_view(['POST'])
-
-
 def complete_job(request):
     user_token      =       request.data.get('user_token',None)
     check_user      =       token_verification(user_token)
@@ -683,6 +693,7 @@ def complete_job(request):
 
         job_accepted_by = job_record.job_accepted_by
 
+        
         if job_accepted_by == None or user_id != int(job_record.job_accepted_by):
             return JsonResponse({
                 "success"   :   0,
@@ -715,6 +726,9 @@ def complete_job(request):
 
 
 
+
+''' NOTIFY CLIENT THAT JOB IS COMPLETED '''
+
 @shared_task()
 def complete_job_notification(job_id):
     
@@ -723,11 +737,11 @@ def complete_job_notification(job_id):
     
     # User information dictionary
 
-    data = { 'title'     :   'job completed',
-        'type'           :   "completejob",
-        'message'        :   'Your job completed',
+    data = { 'title'                    :   'job completed',
+            'notificationScreenType'    :   "completejob",
+            'message'                   :   'Your job completed',
+            }
         
-        }
     
     # SEND NOTIFICATIONS 
 
@@ -737,7 +751,4 @@ def complete_job_notification(job_id):
     noti_data['device']     =   str(client_record.device_type)
     
     FCM.send_notification(noti_data)
-
-    
-     
     return True

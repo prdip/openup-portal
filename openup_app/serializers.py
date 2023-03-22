@@ -23,7 +23,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     create_at                =   serializers.DateTimeField()
     user_role                =   serializers.PrimaryKeyRelatedField(queryset = UserRole.objects.all())
     user_is_delete           =   serializers.BooleanField(default=0,allow_null=True)
-    device_type              =   serializers.BooleanField(required=False)   # 0 == > Anaroid  1==> IOS
+    device_type              =   serializers.IntegerField(required=False)   # 0 == > Anaroid  1==> IOS
     user_fcm_token           =   serializers.CharField(required=False,allow_blank=True)
 
 
@@ -197,7 +197,7 @@ class JobsSerializer(serializers.Serializer):
 
 class SettingsSerializer(serializers.Serializer):
 
-    setting_user            =    serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
+    setting_user    =    serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
     setting_name    =    serializers.CharField()
     setting_value   =    serializers.BooleanField()
     created_at      =    serializers.DateTimeField()
