@@ -55,9 +55,7 @@ def user_register(request):
     email           = request.data.get('user_email', None)
     phone_number    = request.data.get('user_phone_number', None)
     fcm_token    = request.data.get('fcm_token', None)
-
     device_type     =   request.data.get('device_type', None)
-
     # string format employee or client 
     user_type       = request.data.get('user_type', None)   
     password        = request.data.get('user_password', None)
@@ -165,46 +163,33 @@ def user_register(request):
             "message"       :   "Phone Number already exist",
        })
     
-   
-
-    # print("queryset",check_email)
     
     if user_type == "employee":
      
     #   CHECK EMAIL ALREADY EXIST 
-        try:
-            
+        try:            
             check_email = Registration.objects.exclude(user_is_delete=1).filter(Q(user_email=email) and Q(user_role_id=1)).exists()
-
-            
         except:
            check_email = False
 
         if check_email:
-           return JsonResponse({
-           
-            "success"       :   0,
-            "message"       :   "employee already exist",
-            })
+           return JsonResponse({           
+                    "success"       :   0,
+                    "message"       :   "employee already exist",
+                })
 
-    else:
-        
+    else:   
          #   CHECK EMAIL ALREADY EXIST 
         try:
            check_email = Registration.objects.exclude(user_is_delete=1).filter(user_role_id=2).filter(user_email=email).exists()
-
         except:
            check_email = None
         
         if check_email:
-           return JsonResponse({
-           
-            "success"       :   0,
-            "message"       :   "client already exist",
-       })
-
-
-        
+           return JsonResponse({           
+                "success"       :   0,
+                "message"       :   "client already exist",
+                })
            
     # Validate email address
     check_email = email_address(email)
@@ -218,11 +203,11 @@ def user_register(request):
     # Validate mobile numbers => allowed 12 digits only
     check_mobile_no = mobile_number(phone_number)
     if check_mobile_no is False:     
-        return JsonResponse({
-           
+        return JsonResponse({    
             "success"       :   0,
             "message"       :   "Please Provide Valid Moile Number",
        })
+    
     # Get Role id from role type employee==1 or client==2
     role        =   UserRole.objects.filter(role_name=user_type).values('role_id').first()['role_id']        
     role_id     =   UserRole.objects.get(role_id=role)
@@ -254,13 +239,11 @@ def user_register(request):
 
     if registration_data.is_valid():
         registration_data.save()
-
     
         time.sleep(5)
 
         if user_type == "employee":
 
-            print("employee")
             Subject             =   "Request for Password Reset"
             text_template       =   "email/confirm_user.txt"
             # EMAIL FORMAT
@@ -276,12 +259,10 @@ def user_register(request):
             email = EmailMessage(Subject, myemail, to=["swapnilpathak@gmail.com"])  #Formats Email message 
             email.send()  #Sends Email to the user
 
-
-
             return JsonResponse({
                         "success"       :   1,
                         "message"       :   "Employee Registered Successfully !",
-            })
+                })
     user_id             =       Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']    
     user                =       Registration.objects.get(user_id=user_id)
  

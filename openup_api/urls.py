@@ -73,6 +73,10 @@ urlpatterns = [
   path('complete_job', job_views.complete_job,name='complete_job'),
   path('reject_job', job_views.reject_job,name='reject_job'),
 
+# Job list of client
+  path('client-joblist', job_views.client_joblist,name='client_joblist'),
+# Job list of employee
+  path('employee-joblist', job_views.employee_joblist,name='employee_joblist'),
 
 # Settings
   path('add_settings', setting.add_settings,name='add_settings'),
@@ -80,10 +84,9 @@ urlpatterns = [
 # Feedback
   path('add_feedback', feedback_views.add_feedback,name='add_feedback'),
   
-
+# Employee active inactive
   path('employee-status', auth_views.employee_status,name='employee_status'),
 
-  
 
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

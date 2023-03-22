@@ -751,6 +751,7 @@ def complete_job_notification(job_id):
     data = { 'title'                    :   'job completed',
             'notificationScreenType'    :   "completejob",
             'message'                   :   'Your job completed',
+            'job_id'                    :   job_id
             }
         
     
@@ -763,3 +764,108 @@ def complete_job_notification(job_id):
     
     FCM.send_notification(noti_data)
     return True
+
+
+
+
+
+
+@api_view(['POST'])
+
+def client_joblist(request):
+
+
+    user_token      =       request.data.get('user_token',None)
+    check_user      =       token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+                })
+    
+    # if token verified
+    else:
+        user_id     =   check_user['session_user']
+      
+        jobs_list   =   Jobs.objects.exclude(is_delete=1).filter(user=user_id)
+    
+        job_serializer = JobsSerializer(jobs_list,many=True).data
+
+        removeElements(['is_delete','vehicle_license','location_latitude','location_longitude','user'],job_serializer) 
+
+        for job in job_serializer:
+
+            if job['job_status'] == 1:
+                job['job_status'] = "active"
+
+            elif job['job_status'] == 2:
+                job['job_status'] = "accepted"
+            
+            else:
+                job['job_status'] = "completed"
+
+            if job['job_accepted_by'] != None:
+                employee_record         =   Registration.objects.exclude(user_is_delete=1).get(user_id=int(job['job_accepted_by']))            
+                job['job_accepted_by']  =   employee_record.user_first_name+ ' ' +employee_record.user_last_name
+                
+
+        data = {
+            "client_joblist"  : job_serializer   
+        }
+        return JsonResponse({
+                "success"     :   1,
+                "message"     :   "joblist fetched",
+                "data"        :    data
+                })
+    
+
+    
+@api_view(['POST'])
+def employee_joblist(request):
+
+
+    user_token      =       request.data.get('user_token',None)
+    check_user      =       token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+                })
+    
+    # if token verified
+    else:
+        user_id     =   check_user['session_user']
+      
+        jobs_list   =   Jobs.objects.exclude(is_delete=1).filter(job_accepted_by=user_id)
+    
+        job_serializer = JobsSerializer(jobs_list,many=True).data
+
+        removeElements(['is_delete','vehicle_license','location_latitude','location_longitude','job_accepted_by'],job_serializer) 
+
+        for job in job_serializer:
+           
+            if job['job_status'] == 1:
+                job['job_status'] = "active"
+
+            elif job['job_status'] == 2:
+                job['job_status'] = "accepted"
+            
+            else:
+                job['job_status'] = "completed"
+
+          
+            if job['user'] != None:
+                employee_record         =   Registration.objects.exclude(user_is_delete=1).get(user_id=int(job['user']))            
+                job['client_name']      =   employee_record.user_first_name+ ' ' +employee_record.user_last_name
+                
+        removeElements(['user'],job_serializer)
+        data = {
+            "employee_joblist"  : job_serializer   
+        }
+        return JsonResponse({
+                "success"     :   1,
+                "message"     :   "joblist fetched",
+                "data"        :    data
+                })

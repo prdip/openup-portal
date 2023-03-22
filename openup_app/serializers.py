@@ -158,7 +158,7 @@ class JobsTypeSerializer(serializers.Serializer):
 
 # Job Serializer
 class JobsSerializer(serializers.Serializer):
-
+    job_id                   =   serializers.PrimaryKeyRelatedField( read_only=True)
     job_type                 =   serializers.CharField()
     user                     =   serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all(),allow_null=True)
     location_latitude        =   serializers.FloatField(required=False)
@@ -185,7 +185,7 @@ class JobsSerializer(serializers.Serializer):
 
     class Meta:
         model = Jobs
-        fields = ('job_type','user','location_latitude',
+        fields = ('job_id','job_type','user','location_latitude',
                   'location_longitude','vehicle_details',
                   'vehicle_modification','vehicle_license',
                   'created_at','is_delete','job_status','job_accepted_by')
