@@ -5,6 +5,7 @@ from openup_api.views import auth_views, cms_views, force_update,vehicle_views,p
 from openup_api.views import setting
 from django.urls import reverse
 
+from openup_api import views
 
 urlpatterns = [
 
@@ -86,6 +87,9 @@ urlpatterns = [
   
 # Employee active inactive
   path('employee-status', auth_views.employee_status,name='employee_status'),
+
+
+
 
 
 ]

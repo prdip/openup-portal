@@ -57,8 +57,7 @@ CELERY_STORE_ERRORS_EVEN_IF_IGNORED =       True
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'openup.settings')
 
-
-
+ 
 
 # Application definition
 INSTALLED_APPS = [
@@ -121,6 +120,11 @@ EMAIL_HOST = 'sandbox.smtp.mailtrap.io'
 EMAIL_HOST_USER = '57e9943f5f2fed'
 EMAIL_HOST_PASSWORD = '80ecacaa53a317'
 EMAIL_PORT = '2525'
+
+
+
+
+
 
 
 
@@ -204,3 +208,53 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+
+
+
+# ERROR LOG
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+
+
+    'loggers': {
+    
+            'django':{
+                
+                'handlers': ['file'],
+                # 'level': 'DEBUG'  
+                'level': 'WARNING'  
+    
+            }
+    
+
+    },
+    'handlers': {
+        'file':{
+            
+            # 'level': 'DEBUG',
+            # 'class':'logging.FileHandler',
+            # 'filename': os.path.join(BASE_DIR,'debug_logs')
+
+            
+            'level': 'WARNING',
+            'class':'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR,'warning_logs.log'),
+            'formatter':'simpleRe',
+        
+        }
+    },
+
+     'formatters':{
+        'simpleRe':{
+            'format': '{levelname} {message} ',
+            'style' :'{',
+        }
+
+    }
+
+}

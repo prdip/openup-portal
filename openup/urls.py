@@ -19,9 +19,16 @@ from django.urls import path,include
 from django.conf import settings
 from django.conf.urls.static import static
 
+from openup_app import views
+
+
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/',include('openup_api.urls'))
+    path('api/',include('openup_api.urls')),
+
+    path('',views.hello_reader),
+
+
 
 ]
 

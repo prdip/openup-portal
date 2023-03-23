@@ -768,6 +768,7 @@ def complete_job_notification(job_id):
 
 
 
+'''API for GET client job list'''
 
 
 @api_view(['POST'])
@@ -820,10 +821,12 @@ def client_joblist(request):
                 })
     
 
+
+'''API for GET Employee job list'''
+
     
 @api_view(['POST'])
 def employee_joblist(request):
-
 
     user_token      =       request.data.get('user_token',None)
     check_user      =       token_verification(user_token)
