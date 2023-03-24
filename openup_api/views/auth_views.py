@@ -68,6 +68,15 @@ def user_register(request):
             "message"       :   "Please Provide First Name",
        })
     
+    # Check first name == > allowed only text data
+    check_first_name = check_text(first_name)
+    if check_first_name == False:
+       return JsonResponse({
+            "success"       :   0,
+            "message"       :   "Please Provide Valid First Name",
+       })
+           
+   
     if middle_name == "" or middle_name == None:
        return JsonResponse({
            
@@ -75,12 +84,32 @@ def user_register(request):
             "message"       :   "Please Provide Middle Name",
             })
     
+     # Check Middle name== > allowed only text data
+
+    check_middle_name = check_text(middle_name)
+    if check_middle_name == False:
+       return JsonResponse({
+           
+            "success"       :   0,
+            "message"       :   "Please Provide Valid Middle Name",
+       })
+    
     if last_name == "" or last_name==None:
        return JsonResponse({
            
             "success"       :   0,
             "message"       :   "Please Provide Last Name",
        })
+    
+     # Check last name == > allowed only text data
+    check_last_name = check_text(last_name)
+    if check_last_name == False:
+       return JsonResponse({
+           
+            "success"       :   0,
+            "message"       :   "Please Provide Valid Last Name",
+       })
+    
     
     if email == "" or email==None:
        return JsonResponse({
@@ -121,34 +150,7 @@ def user_register(request):
        })
     # Validate data
 
-    # Check first name == > allowed only text data
-    check_first_name = check_text(first_name)
-    if check_first_name == False:
-       return JsonResponse({
-           
-            "success"       :   0,
-            "message"       :   "Please Provide Valid First Name",
-       })
-           
-    # Check Middle name== > allowed only text data
-
-    check_middle_name = check_text(middle_name)
-    if check_middle_name == False:
-       return JsonResponse({
-           
-            "success"       :   0,
-            "message"       :   "Please Provide Valid Middle Name",
-       })
     
-
-    # Check last name == > allowed only text data
-    check_last_name = check_text(last_name)
-    if check_last_name == False:
-       return JsonResponse({
-           
-            "success"       :   0,
-            "message"       :   "Please Provide Valid Last Name",
-       })
     
     #   CHECK Mobile Number ALREADY EXIST 
     try:
@@ -168,7 +170,8 @@ def user_register(request):
      
     #   CHECK EMAIL ALREADY EXIST 
         try:            
-            check_email = Registration.objects.exclude(user_is_delete=1).filter(Q(user_email=email) and Q(user_role_id=1)).exists()
+            check_email = Registration.objects.exclude(user_is_delete=1).filter(Q(user_email=email) & Q(user_role_id=1)).exists()
+
         except:
            check_email = False
 
@@ -202,14 +205,17 @@ def user_register(request):
 
     # Validate mobile numbers => allowed 12 digits only
     check_mobile_no = mobile_number(phone_number)
-    if check_mobile_no is False:     
+
+    if check_mobile_no !=True:     
         return JsonResponse({    
             "success"       :   0,
             "message"       :   "Please Provide Valid Moile Number",
        })
     
-    # Get Role id from role type employee==1 or client==2
-    role        =   UserRole.objects.filter(role_name=user_type).values('role_id').first()['role_id']        
+
+    role        =   UserRole.objects.filter(role_name= user_type).values('role_id').first()['role_id']        
+   
+    
     role_id     =   UserRole.objects.get(role_id=role)
 
     # To make hash password
@@ -308,6 +314,7 @@ def user_register(request):
                 setting_ser     =       SettingsSerializer(data=setting_data)
                 if setting_ser.is_valid():
                     setting_ser.save()
+                    pass
         # SEND TOKEN BACK TO THE USER
         user_token =  {
                 "user_token"  : session_token
@@ -416,8 +423,6 @@ def login(request):
             })
     
 
-
-
     # CHECK HASH PASSWORD
     check_pass          =       check_password(password,user_rec.user_password)
     if check_pass is False:
@@ -466,12 +471,11 @@ def login(request):
 
             if user_type=="employee":
                 setting_dict ={
-                "user_screen"       :0,
-                "location":0,
-                "while_using":0,
-                "service_notification":0,
-                "location_notification":0,
-                "service_feed_not":0
+                "location"              :   0,
+                "while_using"           :   0,
+                "service_notification"  :   0,
+                "location_notification" :   0,
+                "service_feed_not"      :   0
 
             }
                 for setting in setting_dict:
@@ -483,9 +487,9 @@ def login(request):
                             "created_at"        :       datetime.datetime.now()
                         }
                
-                setting_ser     =       SettingsSerializer(data=setting_data)
-                if setting_ser.is_valid():
-                    setting_ser.save()
+                    setting_ser     =       SettingsSerializer(data=setting_data)
+                    if setting_ser.is_valid():
+                        setting_ser.save()
 
     return JsonResponse({
                 "success"    :   1,
@@ -1006,19 +1010,26 @@ def delete_account(request):
             user_data.save(**update_data)
 
         # Update session data    
-        u_data                =       {   
-                                    "session_is_delete" :    True,
-                                    "session_status"    :    0
-                                    }        
-        
-        session_data        =       SessionSerializer(instance=session_record,data=u_data,partial=True)
+            u_data                =       {   
+                                        "session_is_delete" :    1,
+                                        "session_status"    :    0
+                                        }        
 
-        if session_data.is_valid():
-            session_data.save()
+            session_data        =       SessionSerializer(instance=session_record,data=u_data,partial=True)
+
+            if session_data.is_valid():
+                session_data.save()
+                return JsonResponse({
+                    "success"   :   1,
+                    "message"   :   "Your is account deleted",
+                })
+        else:
+            print(user_data.errors)
             return JsonResponse({
-                "success"   :   1,
-                "message"   :   "Your is account deleted",
-            })
+                    "success"   :   0,
+                    "message"   :   "some error occured",
+                })
+
 
 
 

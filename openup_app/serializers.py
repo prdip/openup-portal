@@ -25,7 +25,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     user_role                =   serializers.PrimaryKeyRelatedField(queryset = UserRole.objects.all())
     user_is_delete           =   serializers.BooleanField(default=0,allow_null=True)
     device_type              =   serializers.IntegerField(required=False,allow_null=True)   # 0 == > Anaroid  1==> IOS
-    user_fcm_token           =   serializers.CharField(required=False,allow_null=True   )
+    user_fcm_token           =   serializers.CharField(required=False,allow_null=True,allow_blank=True   )
 
 
     # Field level validation  
@@ -40,6 +40,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         demo = Registration.objects.get(user_id=instance.user_id)
         demo.update(**validated_data)
         return demo
+    
 
     class Meta:
         model = Registration
@@ -126,7 +127,7 @@ class VehicleSerializer(serializers.ModelSerializer):
 class PaymentSerializer(serializers.ModelSerializer):
 
     user            =       serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
-    user_card_no    =       serializers.IntegerField()
+    user_card_no    =       serializers.CharField()
     card_cvv        =       serializers.IntegerField()
     card_name       =       serializers.CharField()
     card_validity   =       serializers.DateTimeField()

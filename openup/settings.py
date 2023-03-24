@@ -140,8 +140,17 @@ DATABASES = {
         'PASSWORD'  : env('DATABASE_PASS'),
         'HOST'      : env('DATABASE_HOST'),   # Or an IP Address that your DB is hosted on
         'PORT'      : env('DATABASE_PORT'),
-    }
+        'TEST': {
+        # testing database customization here
+        'NAME': 'test_open',
+        }
+    },
+
 }
+
+  
+
+
 
 
 
@@ -212,8 +221,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 
-
-# ERROR LOG
+# ERROR LOG FOR WARNING
 
 
 LOGGING = {
@@ -226,25 +234,29 @@ LOGGING = {
             'django':{
                 
                 'handlers': ['file'],
-                # 'level': 'DEBUG'  
-                'level': 'WARNING'  
+                'level': 'DEBUG'  
+                # 'level': 'WARNING'  
     
             }
     
 
     },
+
+
     'handlers': {
         'file':{
             
-            # 'level': 'DEBUG',
-            # 'class':'logging.FileHandler',
-            # 'filename': os.path.join(BASE_DIR,'debug_logs')
+            'level': 'DEBUG',
+            'class':'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR,'debug_logs')
 
             
-            'level': 'WARNING',
-            'class':'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR,'warning_logs.log'),
-            'formatter':'simpleRe',
+            # 'level': 'WARNING',
+            # 'class':'logging.FileHandler',
+            # 'filename': os.path.join(BASE_DIR,'debug_logs'),
+            # 'formatter':'simpleRe',
+
+            
         
         }
     },
@@ -255,6 +267,10 @@ LOGGING = {
             'style' :'{',
         }
 
-    }
+    },
+
+
 
 }
+
+

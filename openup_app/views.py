@@ -12,5 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 def hello_reader(request):
-    logger.warning('Homepage was accessed at '+str(datetime.datetime.now())+' hours!')
+    logger.error('ERRROR HAPPENED '+str(datetime.datetime.now())+' hours!')
+    logger.warning('WARNING HAPPENED '+str(datetime.datetime.now())+' hours!')
     return HttpResponse("<h1>Hello FreeCodeCamp.org Reader :)</h1>")

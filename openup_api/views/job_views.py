@@ -768,6 +768,65 @@ def complete_job_notification(job_id):
 
 
 
+
+
+
+'''API FOR CANCEL JOB'''
+
+
+@api_view(['POST'])
+def cancel_job(request):
+
+    user_token      =       request.data.get('user_token',None)
+    check_user      =       token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+                })
+    
+    # if token verified
+    else:
+        user_id     =   check_user['session_user']
+      
+        try:
+            job_record  =   Jobs.objects.exclude(is_delete=1).filter(Q(user_id=int(user_id)) & Q(job_status=1)).values('job_id').order_by('job_id').reverse().first()
+
+        except:
+            job_record = None
+
+
+        if job_record == None:
+             return JsonResponse({
+                "success"     :   0,
+                "message"     :   "no job found",
+                })
+
+        job = Jobs.objects.get(job_id=job_record['job_id'])
+    
+        update_data = {
+            "job_status" : 4
+        }
+
+        job_ser = JobsSerializer(instance=job,data=update_data,partial=True)
+
+        if job_ser.is_valid():
+            job_ser.save()
+            return JsonResponse({
+                    "success"     :   1,
+                    "message"     :   "your job is canceled",
+                    })
+        else:
+            return JsonResponse({
+                    "success"     :   0,
+                    "message"     :   "some error occured",
+                    })
+
+    
+    
+
+
 '''API for GET client job list'''
 
 
@@ -827,6 +886,7 @@ def client_joblist(request):
     
 @api_view(['POST'])
 def employee_joblist(request):
+    
 
     user_token      =       request.data.get('user_token',None)
     check_user      =       token_verification(user_token)
@@ -872,3 +932,7 @@ def employee_joblist(request):
                 "message"     :   "joblist fetched",
                 "data"        :    data
                 })
+    
+
+
+

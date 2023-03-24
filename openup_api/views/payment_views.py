@@ -50,6 +50,7 @@ def add_card(request):
 
             # required data
             card_no             =   request.data.get('card_no',None)
+            print(card_no)
             card_cvv            =   request.data.get('card_cvv',None)
             card_holder_name    =   request.data.get('cust_name',None)
             card_validity       =   request.data.get('card_validity',None)
@@ -81,7 +82,7 @@ def add_card(request):
 
             # validates card holder name 
             check_name = check_text(card_holder_name)
-            if check_name is False:
+            if check_name == False:
                 return JsonResponse({
                                 "success"     :   0,
                                 "message"     :   "Name should be in string",

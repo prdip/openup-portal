@@ -2,7 +2,7 @@ from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
 from openup_api.views import auth_views, cms_views, force_update,vehicle_views,payment_views,job_views,feedback_views,location_views
-from openup_api.views import setting
+from openup_api.views import usersetting
 from django.urls import reverse
 
 from openup_api import views
@@ -74,13 +74,19 @@ urlpatterns = [
   path('complete_job', job_views.complete_job,name='complete_job'),
   path('reject_job', job_views.reject_job,name='reject_job'),
 
+  path('cancel-job', job_views.cancel_job,name='cancel_job'),
+
+
 # Job list of client
   path('client-joblist', job_views.client_joblist,name='client_joblist'),
 # Job list of employee
   path('employee-joblist', job_views.employee_joblist,name='employee_joblist'),
 
 # Settings
-  path('add_settings', setting.add_settings,name='add_settings'),
+  path('add_settings', usersetting.add_settings,name='add_settings'),
+  path('setting-details', usersetting.setting_details,name='setting_details'),
+
+
 
 # Feedback
   path('add_feedback', feedback_views.add_feedback,name='add_feedback'),

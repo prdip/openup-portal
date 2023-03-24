@@ -49,7 +49,7 @@ class Registration(models.Model):
     location_latitude        =   models.FloatField(null=True)
     location_longitude       =   models.FloatField(null=True)
     device_type              =   models.IntegerField(null=True,default=1)   # 1 == > Anaroid  2==> IOS
-    user_fcm_token           =   models.CharField(max_length=500,null=True)
+    user_fcm_token           =   models.CharField(max_length=500,null=True,blank=True)
     user_status              =   models.BooleanField(null=True,default=0)
     employee_status          =   models.BooleanField(null=True,default=0)
     update_at                =   models.DateTimeField(null=True,blank=True)
@@ -165,7 +165,7 @@ class Payment(models.Model):
 
     payment_id      =       models.AutoField(primary_key=True)
     user            =       models.ForeignKey(Registration,on_delete=models.CASCADE,null=True)
-    user_card_no    =       models.BigIntegerField()
+    user_card_no    =       models.CharField(max_length=20)
     card_cvv        =       models.IntegerField()
     card_name       =       models.CharField(max_length=250)
     card_validity   =       models.DateTimeField()
