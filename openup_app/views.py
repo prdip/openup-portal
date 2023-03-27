@@ -12,6 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 def hello_reader(request):
-    logger.error('ERRROR HAPPENED '+str(datetime.datetime.now())+' hours!')
-    logger.warning('WARNING HAPPENED '+str(datetime.datetime.now())+' hours!')
-    return HttpResponse("<h1>Hello FreeCodeCamp.org Reader :)</h1>")
+    # logger.error('ERRROR HAPPENED '+str(datetime.datetime.now())+' hours!')
+    logger.info('Infor HAPPENED '+str(datetime.datetime.now())+' hours!',exc_info=True)
+    # return HttpResponse("<h1>Hello FreeCodeCamp.org Reader :)</h1>")
+    return HttpResponse(undefied)
+
+

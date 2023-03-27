@@ -85,6 +85,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'openup_app.Middlewares.AsyncMiddleware.AsyncMiddleware',
 ]
 
 
@@ -224,53 +225,53 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ERROR LOG FOR WARNING
 
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
+# LOGGING = {
+#     'version': 1,
+#     'disable_existing_loggers': False,
 
 
-    'loggers': {
+#     'loggers': {
     
-            'django':{
+#             'django':{
                 
-                'handlers': ['file'],
-                'level': 'DEBUG'  
-                # 'level': 'WARNING'  
+#                 'handlers': ['file'],
+#                 'level': 'DEBUG'  
+#                 # 'level': 'WARNING'  
     
-            }
+#             }
     
 
-    },
+#     },
 
 
-    'handlers': {
-        'file':{
+#     'handlers': {
+#         'file':{
             
-            'level': 'DEBUG',
-            'class':'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR,'debug_logs')
+#             'level': 'DEBUG',
+#             'class':'logging.FileHandler',
+#             'filename': os.path.join(BASE_DIR,'debug_logs')
 
             
-            # 'level': 'WARNING',
-            # 'class':'logging.FileHandler',
-            # 'filename': os.path.join(BASE_DIR,'debug_logs'),
-            # 'formatter':'simpleRe',
+#             # 'level': 'WARNING',
+#             # 'class':'logging.FileHandler',
+#             # 'filename': os.path.join(BASE_DIR,'debug_logs'),
+#             # 'formatter':'simpleRe',
 
             
         
-        }
-    },
+#         }
+#     },
 
-     'formatters':{
-        'simpleRe':{
-            'format': '{levelname} {message} ',
-            'style' :'{',
-        }
+#      'formatters':{
+#         'simpleRe':{
+#             'format': '{levelname} {message} ',
+#             'style' :'{',
+#         }
 
-    },
+#     },
 
 
 
-}
+# }
 
 

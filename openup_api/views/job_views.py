@@ -11,7 +11,7 @@ from geopy.distance import geodesic as gd
 from rest_framework.decorators import api_view
 
 # IMPORT SOCKET
-import socket
+import socket,datetime,math
 
 # IMPORT TASK HERE
 from openup.fcm import FCM
@@ -22,7 +22,6 @@ from django.http.response import JsonResponse
 # Import token verifications
 from openup_api.views.auth_views import token_verification
 
-import datetime
 
 # Import Models here
 from openup_app.models import Registration,JobsType,Jobs,Alerts,VehicleDetails
@@ -35,6 +34,9 @@ from PIL import Image
 
 # Import Q
 from django.db.models import Q
+
+
+
 
 
 
@@ -173,7 +175,7 @@ def add_job(request):
         if job_ser.is_valid():
             
             id = job_ser.save()
-            # id=115
+            # id=162
             '''
                 JOB ALERT IS SHARED TASK FUNCTION RUN IN BACKGROUND @shardtask decorator required
             '''
@@ -210,7 +212,7 @@ def add_job(request):
 def jobAlert(job_id,latitude,longitude):
     # Fetch Employee List
 
-    job_instance    =    Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
+    job_instance    =    Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
 
     if job_instance.job_type == "emergency":
         
@@ -218,7 +220,6 @@ def jobAlert(job_id,latitude,longitude):
 
     else:
         employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(employee_status=1).filter(user_role_id=1)
-
 
     # employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
 
@@ -415,6 +416,8 @@ def job_details(request):
                     "success"     :   0,
                     "message"     :   "Please provide job id",
             })
+        
+
           
         # send instance to serializer 
         job_serializer  =   JobsSerializer(job_data).data
@@ -618,6 +621,7 @@ def accept_job_notification(job_id):
             'title'                             :   'job acepted',
             'notificationScreenType'            :   "acceptjob",
             'message'                           :   'Your job acepted',
+            'job_id'                            :    job_id
         
         }
     
@@ -630,7 +634,6 @@ def accept_job_notification(job_id):
     
     FCM.send_notification(noti_data)     
 
-    print(noti_data)
     return True
 
 
@@ -789,10 +792,11 @@ def cancel_job(request):
     # if token verified
     else:
         user_id     =   check_user['session_user']
+
+        job_id      =   request.data.get('job_id')
       
         try:
-            job_record  =   Jobs.objects.exclude(is_delete=1).filter(Q(user_id=int(user_id)) & Q(job_status=1)).values('job_id').order_by('job_id').reverse().first()
-
+            job_record  =   Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
         except:
             job_record = None
 
@@ -802,14 +806,12 @@ def cancel_job(request):
                 "success"     :   0,
                 "message"     :   "no job found",
                 })
-
-        job = Jobs.objects.get(job_id=job_record['job_id'])
     
         update_data = {
             "job_status" : 4
         }
 
-        job_ser = JobsSerializer(instance=job,data=update_data,partial=True)
+        job_ser = JobsSerializer(instance=job_record,data=update_data,partial=True)
 
         if job_ser.is_valid():
             job_ser.save()
@@ -846,10 +848,21 @@ def client_joblist(request):
     
     # if token verified
     else:
-        user_id     =   check_user['session_user']
-      
-        jobs_list   =   Jobs.objects.exclude(is_delete=1).filter(user=user_id)
-    
+        user_id         =   check_user['session_user']
+        '''REQUIRED DATA FOR PAGE NUMBER'''
+        page_no         =   int(request.data.get('page_no'))
+
+       
+        total_records   =   Jobs.objects.exclude(is_delete=1).filter(user=user_id).count()
+        
+        '''PAGE NUMBER STARTS WITH 0 AND ENDS WITH TOTAL PAGES-1'''
+        limit           =   10
+        offset          =   (page_no-1)*limit
+        total_pages     =   math.ceil(total_records / limit)
+
+
+        jobs_list   =   Jobs.objects.exclude(is_delete=1).filter(user=user_id)[offset:limit+offset]
+
         job_serializer = JobsSerializer(jobs_list,many=True).data
 
         removeElements(['is_delete','vehicle_license','location_latitude','location_longitude','user'],job_serializer) 
@@ -865,13 +878,19 @@ def client_joblist(request):
             else:
                 job['job_status'] = "completed"
 
+            ''' print employee name==> job accepted by '''   
+
             if job['job_accepted_by'] != None:
                 employee_record         =   Registration.objects.exclude(user_is_delete=1).get(user_id=int(job['job_accepted_by']))            
                 job['job_accepted_by']  =   employee_record.user_first_name+ ' ' +employee_record.user_last_name
                 
-
+        # response data
         data = {
-            "client_joblist"  : job_serializer   
+            "client_joblist"    :   job_serializer,
+            "total_pages"       :   total_pages,
+            "per_page_record"   :   10,
+            "current_page"      :   page_no,
+            "total_records"     :   total_records
         }
         return JsonResponse({
                 "success"     :   1,
@@ -900,11 +919,23 @@ def employee_joblist(request):
     # if token verified
     else:
         user_id     =   check_user['session_user']
-      
-        jobs_list   =   Jobs.objects.exclude(is_delete=1).filter(job_accepted_by=user_id)
-    
-        job_serializer = JobsSerializer(jobs_list,many=True).data
 
+        
+        
+        page_no         =   int(request.data.get('page_no'))
+        total_records   =   Jobs.objects.exclude(is_delete=1).filter(job_accepted_by=user_id).count()
+        
+        '''JOB LIST PAGINATION CODE'''
+        
+        limit           =   10
+        offset          =   (page_no-1)*limit    #multiply record each time
+        total_pages     =   math.ceil(total_records / limit) #TOTAL NO OF PAGES
+      
+        jobs_list       =   Jobs.objects.exclude(is_delete=1).filter(job_accepted_by=user_id)[offset:limit+offset]
+    
+        job_serializer  = JobsSerializer(jobs_list,many=True).data
+
+        '''Remove element from serlialized dict'''
         removeElements(['is_delete','vehicle_license','location_latitude','location_longitude','job_accepted_by'],job_serializer) 
 
         for job in job_serializer:
@@ -918,14 +949,21 @@ def employee_joblist(request):
             else:
                 job['job_status'] = "completed"
 
-          
+            '''if job accepted print client name'''  
             if job['user'] != None:
                 employee_record         =   Registration.objects.exclude(user_is_delete=1).get(user_id=int(job['user']))            
                 job['client_name']      =   employee_record.user_first_name+ ' ' +employee_record.user_last_name
                 
         removeElements(['user'],job_serializer)
+
+
+        '''response data'''
         data = {
-            "employee_joblist"  : job_serializer   
+            "employee_joblist"  : job_serializer,
+            "total_pages"       : total_pages,
+            "per_page_record"   : 10,
+            "current_page"      : page_no
+
         }
         return JsonResponse({
                 "success"     :   1,

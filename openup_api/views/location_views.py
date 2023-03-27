@@ -158,3 +158,6 @@ def service_available(request):
 #     # Radius of earth in kilometers is 6371
 #     km = 6371* c
 #     return km
+
+
+

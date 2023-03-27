@@ -53,7 +53,7 @@ def add_settings(request):
             update_data['location'] = location
         
         if while_using != None:
-            update_data['only_while_using'] = while_using
+            update_data['while_using'] = while_using
         
         if service_not != None:
             update_data['service_notification'] = service_not
@@ -63,20 +63,18 @@ def add_settings(request):
         
         if service_feed_not != None:
             update_data['service_feed_not'] = service_feed_not
-        
+
         for setting in update_data:
-        
-          
-            setting_id       =   Settings.objects.exclude(is_delete=1).filter(Q(setting_user_id=int(user_id)) & Q(setting_name=str(setting)) ).values('setting_id').first()['setting_id']  
-            
+            try:
+                setting_id       =   Settings.objects.exclude(is_delete=1).filter(Q(setting_user_id=int(user_id)) & Q(setting_name=str(setting)) ).values('setting_id').first()['setting_id']  
+            except:
+                pass
           
             try:
                 setting_record   =   Settings.objects.exclude(is_delete=1).get(setting_id=setting_id)          
             except:
                 pass
                 
-
-                       
             data = {
                 "setting_name"  :   str(setting),
                 "setting_value" :   int(update_data[setting])
@@ -121,8 +119,6 @@ def setting_details(request):
         
         setting_details = {}
         for seting in setting_record:
-
-          
               
             if seting['setting_value'] == True:
                 seting['setting_value'] = 1
@@ -131,7 +127,6 @@ def setting_details(request):
                 seting['setting_value'] = 0
 
             setting_details[seting['setting_name']] =  seting['setting_value']
-
 
 
         data = {

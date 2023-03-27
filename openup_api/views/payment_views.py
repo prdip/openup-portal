@@ -50,7 +50,6 @@ def add_card(request):
 
             # required data
             card_no             =   request.data.get('card_no',None)
-            print(card_no)
             card_cvv            =   request.data.get('card_cvv',None)
             card_holder_name    =   request.data.get('cust_name',None)
             card_validity       =   request.data.get('card_validity',None)

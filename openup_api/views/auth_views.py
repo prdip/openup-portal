@@ -255,7 +255,7 @@ def user_register(request):
             # EMAIL FORMAT
             email_data = {
                     "email"     :   email,
-                    'domain'    :   '192.168.1.2:8000',
+                    'domain'    :   '192.168.1.3:8000',
 	        		'site_name' :   'Website',     #Data which will send with E-mail id
 	        		'protocol'  :   'http',
                 }
@@ -294,7 +294,6 @@ def user_register(request):
     if user_session.is_valid():
         user_session.save()
         setting_dict ={
-                "user_screen"           :       0,
                 "location"              :       0,
                 "while_using"           :       0,
                 "service_notification"  :       0,
@@ -469,7 +468,16 @@ def login(request):
         if user_ser.is_valid():
             user_ser.save(**update_data)
 
-            if user_type=="employee":
+            # check user setting already inserted or not
+            try:
+             user_set = Settings.objects.exclude(is_delete = 1).filter(setting_user=user_rec.user_id).exists()
+            except:
+                user_set = False
+
+
+            if user_type=="employee" and user_set == False:
+
+                '''user setting data '''
                 setting_dict ={
                 "location"              :   0,
                 "while_using"           :   0,
@@ -477,7 +485,9 @@ def login(request):
                 "location_notification" :   0,
                 "service_feed_not"      :   0
 
-            }
+                }
+
+                '''save each setting in eav model'''
                 for setting in setting_dict:
                     setting_data    =       {
                            
@@ -1024,7 +1034,6 @@ def delete_account(request):
                     "message"   :   "Your is account deleted",
                 })
         else:
-            print(user_data.errors)
             return JsonResponse({
                     "success"   :   0,
                     "message"   :   "some error occured",
@@ -1103,7 +1112,6 @@ API call for get user details
 '''
 
 @api_view(['POST'])
-
 def get_user_details(request):
     user_token            =       request.data.get('user_token',None)
     check_user            =       token_verification(user_token)

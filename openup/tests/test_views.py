@@ -58,7 +58,6 @@ class RegisrationTest(APITestCase):
         )
         self.create_emp.save()
 
-        print(self.create_emp.user_id)
 
            # print
         # user_data = {'user_first_name'      :'swapnil',
