@@ -563,7 +563,14 @@ def accept_job(request):
                             "success"     :   0,
                             "message"     :   "Job already accepted",
                     })
+        
+        if  job_record.job_status_id==4:
+             return JsonResponse({
+                            "success"     :   0,
+                            "message"     :   "Job already canceled by client",
+                    })
 
+        
         
         data = {
             "job_status"     :   2,
@@ -657,7 +664,7 @@ def reject_job(request):
     # if token verified
     else:
 
-        job_id      =       request.data.get(job_id,None)
+        # job_id      =       request.data.get(job_id,None)
 
 
         return JsonResponse({
@@ -687,6 +694,7 @@ def complete_job(request):
     else:
 
         job_id      =       request.data.get("job_id",None)
+
         user_id     =       check_user['session_user']
         try:
             job_record  =       Jobs.objects.exclude(Q(job_status=1) and Q(job_status=3) and Q(is_delete=1)).get(job_id=job_id)
@@ -704,6 +712,12 @@ def complete_job(request):
                 "success"   :   0,
                 "message"   :   "Job already completed"
             })
+        
+        if job_record.job_status_id == 4:
+                return JsonResponse({
+                "success"   :   0,
+                "message"   :   "job is already canceled by client"
+                })
 
         job_accepted_by = job_record.job_accepted_by
 
@@ -726,6 +740,7 @@ def complete_job(request):
             job_serializer.save()
 
             # complete job notification function
+           
             complete_job_notification.delay(job_id)
 
             return JsonResponse({
@@ -745,8 +760,15 @@ def complete_job(request):
 
 @shared_task()
 def complete_job_notification(job_id):
+
+    try:
+        client_id       =       Jobs.objects.exclude(Q(job_status=1) and Q(job_status=3) and Q(job_status=4)).filter(job_id=job_id).values('user_id').first()['user_id']
+
+    except:
+
+        client_id   =   None
+
     
-    client_id       =       Jobs.objects.filter(job_id=job_id).values('user_id').first()['user_id']
     client_record   =       Registration.objects.exclude(user_is_delete=1).get(user_id=client_id)
     
     # User information dictionary
@@ -794,6 +816,7 @@ def cancel_job(request):
         user_id     =   check_user['session_user']
 
         job_id      =   request.data.get('job_id')
+
       
         try:
             job_record  =   Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
@@ -945,7 +968,7 @@ def employee_joblist(request):
 
             elif job['job_status'] == 2:
                 job['job_status'] = "accepted"
-            
+             
             else:
                 job['job_status'] = "completed"
 
@@ -958,6 +981,8 @@ def employee_joblist(request):
 
 
         '''response data'''
+
+        
         data = {
             "employee_joblist"  : job_serializer,
             "total_pages"       : total_pages,

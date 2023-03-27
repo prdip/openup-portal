@@ -214,8 +214,7 @@ def user_register(request):
     
 
     role        =   UserRole.objects.filter(role_name= user_type).values('role_id').first()['role_id']        
-   
-    
+       
     role_id     =   UserRole.objects.get(role_id=role)
 
     # To make hash password
@@ -250,12 +249,12 @@ def user_register(request):
 
         if user_type == "employee":
 
-            Subject             =   "Request for Password Reset"
+            Subject             =   "Request for Acount Activation"
             text_template       =   "email/confirm_user.txt"
             # EMAIL FORMAT
             email_data = {
                     "email"     :   email,
-                    'domain'    :   '192.168.1.3:8000',
+                    'domain'    :   '192.168.1.9:8000',
 	        		'site_name' :   'Website',     #Data which will send with E-mail id
 	        		'protocol'  :   'http',
                 }

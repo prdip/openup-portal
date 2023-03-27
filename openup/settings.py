@@ -141,13 +141,24 @@ DATABASES = {
         'PASSWORD'  : env('DATABASE_PASS'),
         'HOST'      : env('DATABASE_HOST'),   # Or an IP Address that your DB is hosted on
         'PORT'      : env('DATABASE_PORT'),
-        'TEST': {
-        # testing database customization here
-        'NAME': 'test_open',
-        }
     },
 
-}
+        # 'TEST': {
+        # # testing database customization here
+        # 'ENGINE': 'django.db.backends.mysql',  
+        # 'NAME': 'test_openup',
+        #  'USER'      : env('DATABASE_USER'),
+        # 'PASSWORD'  : env('DATABASE_PASS'),
+        # 'HOST'      : env('DATABASE_HOST'),   # Or an IP Address that your DB is hosted on
+        # 'PORT'      : env('DATABASE_PORT'),
+        # }
+    }
+
+
+
+
+# DATABASES['default'] = DATABASES['TEST']
+
 
   
 
@@ -218,7 +229,6 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 
 
 

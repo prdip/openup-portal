@@ -6,9 +6,7 @@ We received a request to activate employee account for this email address. To ac
 
 {{ protocol }}://{{ domain }}{% url 'confirm_account' email=email %}
 
-This link can only be used once. If you need to reset your password again, please visit {{ protocol }}://{{domain}} and request another reset.
-
-If you did not make this request, you can simply ignore this email.
+This link can only be used once. If you do not want to activate this account, you can simply ignore this email.
 
 Sincerely,
 The Openup Team
