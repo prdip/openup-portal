@@ -26,6 +26,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/',include('openup_api.urls')),
 
+    path('',views.openup_master),
 
 
 

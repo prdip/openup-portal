@@ -18,3 +18,10 @@ logger = logging.getLogger(__name__)
 #     return HttpResponse(undefied)
 
 
+
+
+
+def openup_master(request):
+    
+    return render(request,'Homepage/openup_homepage.html')
+
