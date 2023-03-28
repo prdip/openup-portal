@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 
-def hello_reader(request):
-    # logger.error('ERRROR HAPPENED '+str(datetime.datetime.now())+' hours!')
-    logger.info('Infor HAPPENED '+str(datetime.datetime.now())+' hours!',exc_info=True)
-    # return HttpResponse("<h1>Hello FreeCodeCamp.org Reader :)</h1>")
-    return HttpResponse(undefied)
+# def hello_reader(request):
+#     # logger.error('ERRROR HAPPENED '+str(datetime.datetime.now())+' hours!')
+#     logger.info('Infor HAPPENED '+str(datetime.datetime.now())+' hours!',exc_info=True)
+#     # return HttpResponse("<h1>Hello FreeCodeCamp.org Reader :)</h1>")
+#     return HttpResponse(undefied)
 
 
