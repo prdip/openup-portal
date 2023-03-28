@@ -163,16 +163,19 @@ class VehicleDetails(models.Model):
 
 class Payment(models.Model):
 
-    payment_id      =       models.AutoField(primary_key=True)
-    user            =       models.ForeignKey(Registration,on_delete=models.CASCADE,null=True)
-    user_card_no    =       models.CharField(max_length=20)
-    card_cvv        =       models.IntegerField()
-    card_name       =       models.CharField(max_length=250)
-    card_validity   =       models.DateTimeField()
-    card_type       =       models.CharField(max_length=250)
-    created_at      =       models.DateTimeField()
-    update_at       =       models.DateTimeField(null=True)
-    is_delete       =       models.BooleanField(default=0)
+    payment_id              =       models.AutoField(primary_key=True)
+    user                    =       models.ForeignKey(Registration,on_delete=models.CASCADE,null=True)
+    user_card_no            =       models.CharField(max_length=20)
+    card_customer_id        =       models.CharField(max_length=50,null=True)
+    card_method_id          =       models.CharField(max_length=50,null=True)
+
+    card_cvv                =       models.IntegerField()
+    card_name               =       models.CharField(max_length=250)
+    card_validity           =       models.DateTimeField()
+    card_type               =       models.CharField(max_length=250)
+    created_at              =       models.DateTimeField()
+    update_at               =       models.DateTimeField(null=True)
+    is_delete               =       models.BooleanField(default=0)
 
 
     class Meta:

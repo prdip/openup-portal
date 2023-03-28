@@ -49,17 +49,16 @@ from django.db.models import Q
 def user_register(request):
     
     # required data
-    first_name      = request.data.get('user_first_name', None)
-    middle_name     = request.data.get('user_middle_name', None)
-    last_name       = request.data.get('user_last_name', None)
-    email           = request.data.get('user_email', None)
-    phone_number    = request.data.get('user_phone_number', None)
-    fcm_token    = request.data.get('fcm_token', None)
-    device_type     =   request.data.get('device_type', None)
-    # string format employee or client 
-    user_type       = request.data.get('user_type', None)   
-    password        = request.data.get('user_password', None)
-    confirm_pass    = request.data.get('confirm_password', None)
+    first_name      =       request.data.get('user_first_name', None)
+    middle_name     =       request.data.get('user_middle_name', None)
+    last_name       =       request.data.get('user_last_name', None)
+    email           =       request.data.get('user_email', None)
+    phone_number    =       request.data.get('user_phone_number', None)
+    fcm_token       =       request.data.get('fcm_token', None)
+    device_type     =       request.data.get('device_type', None)
+    user_type       =       request.data.get('user_type', None)    # string datatype employee or client 
+    password        =       request.data.get('user_password', None)
+    confirm_pass    =       request.data.get('confirm_password', None)
 
     if first_name ==None or first_name == "":
        return JsonResponse({
@@ -68,15 +67,14 @@ def user_register(request):
             "message"       :   "Please Provide First Name",
        })
     
-    # Check first name == > allowed only text data
+    # Check first name == > allowed only text data returns True or False 
     check_first_name = check_text(first_name)
+
     if check_first_name == False:
        return JsonResponse({
             "success"       :   0,
             "message"       :   "Please Provide Valid First Name",
-       })
-           
-   
+       }) 
     if middle_name == "" or middle_name == None:
        return JsonResponse({
            
@@ -85,8 +83,8 @@ def user_register(request):
             })
     
      # Check Middle name== > allowed only text data
-
     check_middle_name = check_text(middle_name)
+
     if check_middle_name == False:
        return JsonResponse({
            
@@ -100,7 +98,6 @@ def user_register(request):
             "success"       :   0,
             "message"       :   "Please Provide Last Name",
        })
-    
      # Check last name == > allowed only text data
     check_last_name = check_text(last_name)
     if check_last_name == False:
@@ -109,8 +106,6 @@ def user_register(request):
             "success"       :   0,
             "message"       :   "Please Provide Valid Last Name",
        })
-    
-    
     if email == "" or email==None:
        return JsonResponse({
            
@@ -148,10 +143,7 @@ def user_register(request):
             "success"       :   0,
             "message"       :   "Password Mismatch",
        })
-    # Validate data
-
-    
-    
+    # Validate data   
     #   CHECK Mobile Number ALREADY EXIST 
     try:
        check_mob = Registration.objects.exclude(user_is_delete=1).filter(user_phone_number=phone_number).exists()
@@ -164,11 +156,8 @@ def user_register(request):
             "success"       :   0,
             "message"       :   "Phone Number already exist",
        })
-    
-    
-    if user_type == "employee":
-     
-    #   CHECK EMAIL ALREADY EXIST 
+    if user_type == "employee":  
+        #   CHECK EMAIL ALREADY EXIST 
         try:            
             check_email = Registration.objects.exclude(user_is_delete=1).filter(Q(user_email=email) & Q(user_role_id=1)).exists()
 
@@ -180,7 +169,6 @@ def user_register(request):
                     "success"       :   0,
                     "message"       :   "employee already exist",
                 })
-
     else:   
          #   CHECK EMAIL ALREADY EXIST 
         try:
@@ -195,7 +183,8 @@ def user_register(request):
                 })
            
     # Validate email address
-    check_email = email_address(email)
+    check_email     = email_address(email)
+
     if check_email == False:
        return JsonResponse({
            
@@ -213,17 +202,15 @@ def user_register(request):
        })
     
 
-    role        =   UserRole.objects.filter(role_name= user_type).values('role_id').first()['role_id']        
-       
+    role        =   UserRole.objects.filter(role_name= user_type).values('role_id').first()['role_id']              
     role_id     =   UserRole.objects.get(role_id=role)
 
     # To make hash password
-    make_pass = make_password(password)
-
-    # Created date is current date
-    created_at = datetime.datetime.now()
+    make_pass   =   make_password(password)   
+    created_at  =   datetime.datetime.now()
     # Employee status 0 ==> inactive 
     # USER REGISTRATION DATA 
+
     registration_data = {
         "user_first_name"        :   first_name,
         "user_middle_name"       :   middle_name,
@@ -236,19 +223,14 @@ def user_register(request):
         "user_is_delete"         :   0,
         "user_fcm_token"         :   fcm_token,
         "device_type"            :   device_type
-
     }
-
     # SERIALIZER INSTANCE
     registration_data      =   RegisterSerializer(data=registration_data)
 
     if registration_data.is_valid():
         registration_data.save()
-    
         time.sleep(5)
-
         if user_type == "employee":
-
             Subject             =   "Request for Acount Activation"
             text_template       =   "email/confirm_user.txt"
             # EMAIL FORMAT
@@ -258,16 +240,14 @@ def user_register(request):
 	        		'site_name' :   'Website',     #Data which will send with E-mail id
 	        		'protocol'  :   'http',
                 }
-
-            myemail = render_to_string(text_template,email_data)  # Converts text file to string 
-
-            email = EmailMessage(Subject, myemail, to=["swapnilpathak@gmail.com"])  #Formats Email message 
+            myemail     =       render_to_string(text_template,email_data)  # Converts text file to string 
+            email       =       EmailMessage(Subject, myemail, to=["swapnilpathak@gmail.com"])  #Formats Email message 
             email.send()  #Sends Email to the user
 
             return JsonResponse({
                         "success"       :   1,
                         "message"       :   "Employee Registered Successfully !",
-                })
+                    })
     user_id             =       Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']    
     user                =       Registration.objects.get(user_id=user_id)
  
@@ -275,7 +255,6 @@ def user_register(request):
     session_token       =       secrets.token_hex() # SESSION TOKEN
     # SESSION EXPIRY
     exp_time            =       datetime.datetime.now()+ datetime.timedelta(days=30)  
-    
     # SESSION DATA TO STORE
     session_data= {
             "session_user"              :         user.user_id,
@@ -286,33 +265,28 @@ def user_register(request):
             "session_created_at"        :         datetime.datetime.now(),
             "session_is_delete"         :         False           
         }
-    
-
-    user_session                    =         SessionSerializer(data=session_data)
-    
+    user_session                    =         SessionSerializer(data=session_data) 
     if user_session.is_valid():
         user_session.save()
+        '''save user settings eav model in setting'''
         setting_dict ={
                 "location"              :       0,
                 "while_using"           :       0,
                 "service_notification"  :       0,
                 "location_notification" :       0,
                 "service_feed_not"      :       0
-
-            }
+                }
         for setting in setting_dict:
-                setting_data    =       {
-                           
+                setting_data    = {
                             "setting_user"      :       user.user_id,
                             "setting_name"      :       setting,
                             "setting_value"     :       setting_dict[setting],
                             "created_at"        :       datetime.datetime.now()
-                        }
-               
+                        }               
                 setting_ser     =       SettingsSerializer(data=setting_data)
                 if setting_ser.is_valid():
                     setting_ser.save()
-                    pass
+                    
         # SEND TOKEN BACK TO THE USER
         user_token =  {
                 "user_token"  : session_token
@@ -342,9 +316,6 @@ def login(request):
     fcm_token       =   request.data.get('fcm_token', None)
     device_type     =   request.data.get('device_type', None)
     
-    
-
-
     if fcm_token == "" or fcm_token ==None:
        return JsonResponse({
             "success"       :   0,
@@ -365,7 +336,6 @@ def login(request):
             })
     
     # check password provided or not
-
     if password == None or password == "":
        return JsonResponse({           
             "success"       :   0,
@@ -379,6 +349,7 @@ def login(request):
             "success"       :   0,
             "message"       :   "please Provide Valid Email",
             })
+    
     # Get user id through email
     try:
         check_user_id = Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']
@@ -387,22 +358,18 @@ def login(request):
 
     if check_user_id == None:       
         return JsonResponse({
-           
             "success"       :   0,
             "message"       :   "user does not exist",
-       })
+            })
 
     # get role_id  to verify user role type
 
     role_id     =   UserRole.objects.exclude(role_is_delete=1).filter(role_name = user_type).values('role_id').first()['role_id']
-    
 
     if user_type == "employee":
     # get user record
         user_rec    =   Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).get(user_id=check_user_id)
-
     else:
-
         user_rec    =   Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=1)).get(user_id=check_user_id)
 
     # Verify user type 
@@ -420,7 +387,6 @@ def login(request):
             "message"       :   "account is inactive",
             })
     
-
     # CHECK HASH PASSWORD
     check_pass          =       check_password(password,user_rec.user_password)
     if check_pass is False:

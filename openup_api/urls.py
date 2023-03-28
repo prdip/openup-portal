@@ -60,13 +60,7 @@ urlpatterns = [
 
 
 # Payments
-
-
-  path('checkout-session', payment_views.checkout_session,name='checkout_session'),
-  path('success', payment_views.payment_success,name='success'),
-  path('cancel', payment_views.payment_failed,name='cancel'),
-
-
+  path('create-customer', payment_views.create_customer,name='create_customer'),
 
 
 # Update location

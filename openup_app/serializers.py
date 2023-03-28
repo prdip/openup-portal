@@ -126,24 +126,30 @@ class VehicleSerializer(serializers.ModelSerializer):
 
 class PaymentSerializer(serializers.ModelSerializer):
 
-    user            =       serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
-    user_card_no    =       serializers.CharField()
-    card_cvv        =       serializers.IntegerField()
-    card_name       =       serializers.CharField()
-    card_validity   =       serializers.DateTimeField()
-    card_type       =       serializers.CharField()
-    created_at      =       serializers.DateTimeField()
-    update_at       =       serializers.DateTimeField(required=False)
-    is_delete       =       serializers.BooleanField(default=0)
+    user                    =       serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
+    user_card_no            =       serializers.CharField()
+    card_cvv                =       serializers.IntegerField()
+    card_name               =       serializers.CharField()
+    card_customer_id        =       serializers.CharField(allow_null=True,required=False)
+    card_method_id          =       serializers.CharField(allow_null=True,required=False)
+    card_validity           =       serializers.DateTimeField()
+    card_type               =       serializers.CharField()
+    created_at              =       serializers.DateTimeField()
+    update_at               =       serializers.DateTimeField(required=False)
+    is_delete               =       serializers.BooleanField(default=0)
 
     class Meta:
         model = Payment
 
-
         fields = ('user','user_card_no','card_cvv',
                   'card_name','card_validity',
                     'card_type','created_at',
-                    'update_at','is_delete')
+                    'update_at','is_delete','card_customer_id','card_method_id')
+    
+    def update(self,instance,validated_data):     
+        card = Payment.objects.get(payment_id=instance.user_id)
+        card.update(**validated_data)
+        return card
 
 
 

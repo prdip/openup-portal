@@ -1,16 +1,12 @@
 # Create your views here.
 from rest_framework.decorators import api_view
 
-from django.shortcuts import render,redirect
-
-
 # import Json Response
 from django.http.response import JsonResponse
 
 # Import token verifications
 from openup_api.views.auth_views import token_verification
-
-import datetime
+ 
 
 from datetime import datetime
 
@@ -23,6 +19,7 @@ from openup_app.serializers import PaymentSerializer
 # Import validation
 from .validation import check_text,verify_card
 
+# import settings
 from django.conf import settings
 
 
@@ -46,10 +43,8 @@ def add_card(request):
     
     # if token verified
     else:
-
         # required data
         payment_id          =   request.data.get('payment_id',None)
-
         # if payment not provided new payment data added
         if payment_id == None:
 
@@ -59,24 +54,19 @@ def add_card(request):
             card_holder_name    =   request.data.get('cust_name',None)
             card_validity       =   request.data.get('card_validity',None)
             card_type           =   request.data.get('card_type',None)
-
             # check card_no provided or not
             if card_no is None or card_no == "":
                 return JsonResponse({
                                 "success"     :   0,
                                 "message"     :   "Please provide card number ",
                         })
-            
-
             flag = verify_card(card_no)
             if flag == False:
                 return JsonResponse({
                                 "success"     :   0,
                                 "message"     :   "Please provide valid card number ",
                         })
-
             # validates card number     
-
             # check cvv provided or not
             if  card_cvv is None or card_cvv == "":
                 return JsonResponse({
@@ -85,7 +75,6 @@ def add_card(request):
                         })
             # Validates cvv contains numbers only
             # check for card holder name 
-
             if card_holder_name is None or card_holder_name ==  "":
                 return JsonResponse({
                                 "success"     :   0,
@@ -349,60 +338,117 @@ def card_delete(request):
 
 
 import stripe
-stripe.api_key = settings.STRIPE_SECRET_KEY
 
+stripe.api_key = "***REMOVED_STRIPE_SK***"
 
 @api_view(['POST'])
-def checkout_session(request):
+def create_customer(request):
 
-    if settings.DEBUG:
-        domain = "http://192.168.1.2:8000" 
+    user_token      =       request.data.get('user_token',None)
+    check_user      =       token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+            })
+    else:
+        user_id         =   check_user['session_user']
+        payment_id      =   request.data.get('payment_id')
+        card            =   Payment.objects.get(payment_id=payment_id)
+       
+        if card.user.user_id != user_id:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "card auther not valid",
+                })
+
+        user_details    =   Registration.objects.exclude(user_is_delete = 1).get(user_id=card.user.user_id)
+        
+        # exp_month = card.card_validity
+        # date = datetime.date(exp_month)    
+        # response_data = stripe.PaymentMethod.create(
+        #     type="card",
+        #     card={
+        #     "number": card.user_card_no,
+        #     "exp_month": date.month,
+        #     "exp_year": date.year,
+        #     "cvc": card.card_cvv,
+        # },)
+
+        # payment_method_id = response_data['id'] 
+
+        # update_data = {
+
+        #     "card_stripe_payment_id" : payment_method_id
+        # }
+
+        # payment_ser = PaymentSerializer(instance=card,data=update_data,partial=True)
+
+        # if payment_ser.is_valid():
+        #     card.update(**update_data)
+
+        #     data = {
+
+        #         "response_data":response_data
+        #     }
+        #     return JsonResponse({
+        #         "status"    :   200,
+        #         "message"   :   "payment method added successfully",
+        #         "data"      :   data
+        #     })
+
+        # else:
+
+        #      return JsonResponse({
+        #         "status" : 500,
+        #         "message":"some error occured"
+        #     })
+
     
-    pass
-    checkout_session = stripe.checkout.Session.create(
-        payment_method_types=['card'],
-        line_items=[{
-               'price_data': 
-                    {
-                    'currency': 'inr',
-                    'product_data': {
-                        'name': 'paymant to openup',
-                        },
-                    'unit_amount': 10000,
-                    },
-                'quantity': 1,
-            }],
-        mode='payment',
-        success_url=domain + '/success/',
-        cancel_url=domain + '/cancel/',
-    )
-    return redirect(checkout_session.url)
+        response_data   =  stripe.Customer.create(description="client added to stripe",
+                           email = user_details.user_email,
+                           name  = card.card_name)
+        
+        payment_method_id = response_data['id']
+        update_data = {
+
+            "card_customer_id" : payment_method_id
+        }
+
+        payment_ser = PaymentSerializer(instance=card,data=update_data,partial=True)
+
+        if payment_ser.is_valid():
+            card.update(update_data)
+
+            '''code for payment intent'''
+
+            # intent = stripe.PaymentIntent.create(
+            #     customer=payment_method_id,
+            #     setup_future_usage='off_session',
+            #     amount=20,
+            #     currency='usd',
+            #     automatic_payment_methods={
+            #       'enabled': True,
+            #     },
+
+            data = {
+                "response_data" : response_data
+            }
+
+            return JsonResponse({
+                "status"    :   200,
+                "message"   :   "payment method added successfully",
+                "data"      :   data
+            })
+
+        else:
+
+             return JsonResponse({
+                "status" : 500,
+                "message":"some error occured"
+            })
 
 
-
-
-
-def payment_success(request):
-    return True
-
-
-
-
-def payment_failed(request):
-    return True
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+   
+    

@@ -8,12 +8,9 @@ environ.Env.read_env()
 class FCM: 
     def send_notification(dataDict):
         
-        serverKey   =       '***REMOVED_FCM_KEY***'
         seconds     =        60*60*24
+        serverKey   =       env('FCM_SERVER_KEY11')
 
-        # serverKey   =       env('FCM_SERVER_KEY11')
-
-        
         if 'expiry' in dataDict and  dataDict['expiry']!=None:
             seconds = dataDict['expiry'] 
         expireTime  = int(time.mktime(time.localtime()))+int(seconds)
@@ -77,7 +74,6 @@ class FCM:
         } 
         response    =   requests.post(url, data=json.dumps(body), headers=headers)
         result      =   response.content 
-        print(result)
         return result
     
 

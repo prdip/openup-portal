@@ -57,27 +57,16 @@ def check_number(check_no):
         return True
     
 
+'''
+LAUH ALGORITHM TO CHECK VALID CARD NUMBER
 
+STEP 1:  double every second number from right 
 
+STEP 2:  If double > 9 then add both values i.e 19 = 1+9
 
+STEP 3: sum all numebers if sum % 10 == 0: card is valid
 
 '''
-
-convert queryset to dict
-list_result = [entry for entry in verify]   Queryset to dict
-        verify  =verify.__dict__
-        session= list_result[0]
-       
-'''
-
-
-'''
-        # s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-        # s.bind(('', 0))
-        # owners_port = int(s.getsockname()[1])
-        '''
-
-
 
 def verify_card(card_no):
     sum=0
@@ -97,12 +86,9 @@ def verify_card(card_no):
                     sum = int(num)+sum
             else:
                 not_greater_sum = not_greater_sum+double
-        else:
-             
-            
+        else:           
             even_no_sum = even_no_sum+int(card_no[i])
- 
-            
+    
         Total_sum = even_no_sum+not_greater_sum+sum
 
       
@@ -111,13 +97,3 @@ def verify_card(card_no):
         return True
     else:
         return False
-
-
-
-# card_no = "4111111111111111"
-
-# flag = verify_card(card_no)
-
-# print(flag)
-
-
