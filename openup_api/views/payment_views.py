@@ -1,6 +1,9 @@
 # Create your views here.
 from rest_framework.decorators import api_view
 
+from django.shortcuts import render,redirect
+
+
 # import Json Response
 from django.http.response import JsonResponse
 
@@ -18,7 +21,9 @@ from openup_app.models import Payment,Registration
 from openup_app.serializers import PaymentSerializer
 
 # Import validation
-from .validation import check_text
+from .validation import check_text,verify_card
+
+from django.conf import settings
 
 
 
@@ -60,6 +65,14 @@ def add_card(request):
                 return JsonResponse({
                                 "success"     :   0,
                                 "message"     :   "Please provide card number ",
+                        })
+            
+
+            flag = verify_card(card_no)
+            if flag == False:
+                return JsonResponse({
+                                "success"     :   0,
+                                "message"     :   "Please provide valid card number ",
                         })
 
             # validates card number     
@@ -226,7 +239,6 @@ def add_card(request):
 # Api for card details
 
 @api_view(['POST'])
-
 def card_details(request):
 
     # token verification
@@ -290,7 +302,6 @@ def card_details(request):
 # Api for card details
 
 @api_view(['POST'])
-
 def card_delete(request):
 
      # token verification
@@ -336,6 +347,49 @@ def card_delete(request):
 
 
 
+
+import stripe
+stripe.api_key = settings.STRIPE_SECRET_KEY
+
+
+@api_view(['POST'])
+def checkout_session(request):
+
+    if settings.DEBUG:
+        domain = "http://192.168.1.2:8000" 
+    
+    pass
+    checkout_session = stripe.checkout.Session.create(
+        payment_method_types=['card'],
+        line_items=[{
+               'price_data': 
+                    {
+                    'currency': 'inr',
+                    'product_data': {
+                        'name': 'paymant to openup',
+                        },
+                    'unit_amount': 10000,
+                    },
+                'quantity': 1,
+            }],
+        mode='payment',
+        success_url=domain + '/success/',
+        cancel_url=domain + '/cancel/',
+    )
+    return redirect(checkout_session.url)
+
+
+
+
+
+def payment_success(request):
+    return True
+
+
+
+
+def payment_failed(request):
+    return True
 
 
 

@@ -160,7 +160,10 @@ DATABASES = {
 # DATABASES['default'] = DATABASES['TEST']
 
 
-  
+'''STRIPE CONFIGURATION'''
+
+STRIPE_PUBLIC_KEY = "pk_test_1234"
+STRIPE_SECRET_KEY = "sk_test_1234"
 
 
 

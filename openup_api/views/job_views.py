@@ -829,6 +829,13 @@ def cancel_job(request):
                 "success"     :   0,
                 "message"     :   "no job found",
                 })
+        
+        if job_record.job_status==4:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "job is already canceled",
+                })
+
     
         update_data = {
             "job_status" : 4
@@ -941,10 +948,7 @@ def employee_joblist(request):
     
     # if token verified
     else:
-        user_id     =   check_user['session_user']
-
-        
-        
+        user_id         =   check_user['session_user']
         page_no         =   int(request.data.get('page_no'))
         total_records   =   Jobs.objects.exclude(is_delete=1).filter(job_accepted_by=user_id).count()
         
@@ -973,16 +977,16 @@ def employee_joblist(request):
                 job['job_status'] = "completed"
 
             '''if job accepted print client name'''  
+
             if job['user'] != None:
                 employee_record         =   Registration.objects.exclude(user_is_delete=1).get(user_id=int(job['user']))            
                 job['client_name']      =   employee_record.user_first_name+ ' ' +employee_record.user_last_name
                 
+
+
         removeElements(['user'],job_serializer)
-
-
         '''response data'''
 
-        
         data = {
             "employee_joblist"  : job_serializer,
             "total_pages"       : total_pages,

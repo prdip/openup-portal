@@ -254,7 +254,7 @@ def user_register(request):
             # EMAIL FORMAT
             email_data = {
                     "email"     :   email,
-                    'domain'    :   '192.168.1.9:8000',
+                    'domain'    :   '192.168.1.2:8000',
 	        		'site_name' :   'Website',     #Data which will send with E-mail id
 	        		'protocol'  :   'http',
                 }

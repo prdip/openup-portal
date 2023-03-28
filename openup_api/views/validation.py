@@ -76,3 +76,48 @@ list_result = [entry for entry in verify]   Queryset to dict
         # s.bind(('', 0))
         # owners_port = int(s.getsockname()[1])
         '''
+
+
+
+def verify_card(card_no):
+    sum=0
+    even_no_sum = 0
+    not_greater_sum = 0
+    card = len(card_no)
+    
+    card_no= card_no.replace(" ", "")
+    for i in range (card-1,-1,-1):
+
+        if i % 2 == 0:
+            d = ord(card_no[i]) - ord('0')
+            double = 2*d
+
+            if double > 9:
+                for num in str(double):
+                    sum = int(num)+sum
+            else:
+                not_greater_sum = not_greater_sum+double
+        else:
+             
+            
+            even_no_sum = even_no_sum+int(card_no[i])
+ 
+            
+        Total_sum = even_no_sum+not_greater_sum+sum
+
+      
+
+    if Total_sum % 10==0:
+        return True
+    else:
+        return False
+
+
+
+# card_no = "4111111111111111"
+
+# flag = verify_card(card_no)
+
+# print(flag)
+
+

@@ -59,6 +59,16 @@ urlpatterns = [
   path('card_delete', payment_views.card_delete,name='card_delete'),
 
 
+# Payments
+
+
+  path('checkout-session', payment_views.checkout_session,name='checkout_session'),
+  path('success', payment_views.payment_success,name='success'),
+  path('cancel', payment_views.payment_failed,name='cancel'),
+
+
+
+
 # Update location
 
   path('update_location', location_views.update_location,name='update_location'),
