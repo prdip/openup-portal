@@ -19,8 +19,9 @@ urlpatterns = [
   # Account confirm
   path('confirm_account/<str:email>', auth_views.confirm_account,name='confirm_account'),
   path('activate', auth_views.activate_account,name='activate'),
-
-
+  path('verify-account/<str:email>', auth_views.verify_account,name='verify_account'),
+  path('verify-client', auth_views.verify_client,name='verify_client'),
+ 
 # UPDATE
   path('email_update', auth_views.email_update,name='email-update'),
 

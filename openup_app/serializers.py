@@ -22,6 +22,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     location_longitude       =   serializers.FloatField(allow_null=True,required=False)
     create_at                =   serializers.DateTimeField()
     employee_status          =   serializers.BooleanField(default=0,allow_null=True)
+    user_is_verified         =   serializers.BooleanField(default=0,allow_null=True)
     user_role                =   serializers.PrimaryKeyRelatedField(queryset = UserRole.objects.all())
     user_is_delete           =   serializers.BooleanField(default=0,allow_null=True)
     device_type              =   serializers.IntegerField(required=False,allow_null=True)   # 0 == > Anaroid  1==> IOS
@@ -50,7 +51,7 @@ class RegisterSerializer(serializers.ModelSerializer):
                   'user_phone_number','user_password',
                   'location_latitude','location_longitude',
                   'create_at','user_role','user_is_delete',
-                  'device_type','user_fcm_token','employee_status')
+                  'device_type','user_fcm_token','employee_status','user_is_verified')
 
 
 
@@ -147,7 +148,7 @@ class PaymentSerializer(serializers.ModelSerializer):
                     'update_at','is_delete','card_customer_id','card_method_id')
     
     def update(self,instance,validated_data):     
-        card = Payment.objects.get(payment_id=instance.user_id)
+        card = Payment.objects.get(payment_id=instance.payment_id)
         card.update(**validated_data)
         return card
 

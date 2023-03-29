@@ -85,7 +85,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'openup_app.Middlewares.AsyncMiddleware.AsyncMiddleware',
+    # 'openup_app.Middlewares.AsyncMiddleware.AsyncMiddleware',
 ]
 
 
@@ -161,13 +161,7 @@ DATABASES = {
 
 
 '''STRIPE CONFIGURATION'''
-
-STRIPE_PUBLIC_KEY = "pk_test_1234"
-STRIPE_SECRET_KEY = "sk_test_1234"
-
-
-
-
+ 
 
 
 #Static File Configuration

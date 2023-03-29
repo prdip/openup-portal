@@ -51,6 +51,8 @@ class Registration(models.Model):
     device_type              =   models.IntegerField(null=True,default=1)   # 1 == > Anaroid  2==> IOS
     user_fcm_token           =   models.CharField(max_length=500,null=True,blank=True)
     user_status              =   models.BooleanField(null=True,default=0)
+
+    user_is_verified         =   models.BooleanField(default=1)
     employee_status          =   models.BooleanField(null=True,default=0)
     update_at                =   models.DateTimeField(null=True,blank=True)
     user_is_delete           =   models.BooleanField(default=0)

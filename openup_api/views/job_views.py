@@ -156,6 +156,12 @@ def add_job(request):
         
         # get instance of login user
         user_rec    =       Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
+        
+        if user_rec.user_is_verified == 0:
+             return JsonResponse({   
+                "success"    :   0,
+                "message"   :   "You are not allowed to add job! please verify email to use service ",
+                })
         job_id      =       JobsType.objects.first()
         job_details = {
 
@@ -863,10 +869,7 @@ def cancel_job(request):
 
 
 @api_view(['POST'])
-
 def client_joblist(request):
-
-
     user_token      =       request.data.get('user_token',None)
     check_user      =       token_verification(user_token)
 
@@ -882,7 +885,6 @@ def client_joblist(request):
         '''REQUIRED DATA FOR PAGE NUMBER'''
         page_no         =   int(request.data.get('page_no'))
 
-       
         total_records   =   Jobs.objects.exclude(is_delete=1).filter(user=user_id).count()
         
         '''PAGE NUMBER STARTS WITH 0 AND ENDS WITH TOTAL PAGES-1'''
@@ -890,10 +892,8 @@ def client_joblist(request):
         offset          =   (page_no-1)*limit
         total_pages     =   math.ceil(total_records / limit)
 
-
-        jobs_list   =   Jobs.objects.exclude(is_delete=1).filter(user=user_id)[offset:limit+offset]
-
-        job_serializer = JobsSerializer(jobs_list,many=True).data
+        jobs_list       =   Jobs.objects.exclude(is_delete=1).filter(user=user_id)[offset:limit+offset]
+        job_serializer  =   JobsSerializer(jobs_list,many=True).data
 
         removeElements(['is_delete','vehicle_license','location_latitude','location_longitude','user'],job_serializer) 
 

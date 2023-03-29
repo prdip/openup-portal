@@ -334,15 +334,12 @@ def card_delete(request):
 
 
 
-
-
-
 import stripe
 
 stripe.api_key = "***REMOVED_STRIPE_SK***"
 
 @api_view(['POST'])
-def create_customer(request):
+def create_customer(request,*args,**kwargs):
 
     user_token      =       request.data.get('user_token',None)
     check_user      =       token_verification(user_token)
@@ -354,63 +351,37 @@ def create_customer(request):
             })
     else:
         user_id         =   check_user['session_user']
-        payment_id      =   request.data.get('payment_id')
-        card            =   Payment.objects.get(payment_id=payment_id)
-       
-        if card.user.user_id != user_id:
-            return JsonResponse({
-                "success"     :   0,
-                "message"     :   "card auther not valid",
-                })
-
-        user_details    =   Registration.objects.exclude(user_is_delete = 1).get(user_id=card.user.user_id)
+        # payment_id      =   request.data.get('payment_id')
+        # user_details    =   Registration.objects.exclude(user_is_delete = 1).get(user_id=user_id)
         
-        # exp_month = card.card_validity
-        # date = datetime.date(exp_month)    
-        # response_data = stripe.PaymentMethod.create(
-        #     type="card",
-        #     card={
-        #     "number": card.user_card_no,
-        #     "exp_month": date.month,
-        #     "exp_year": date.year,
-        #     "cvc": card.card_cvv,
-        # },)
+        try:
+            card_id         =   Payment.objects.exclude(is_delete=1).filter(user_id=user_id).values('payment_id').first()['payment_id']
+        except:
+            card_id         =   None
+        
+        if card_id==None: return JsonResponse({
+                "success"     :   0,
+                "message"     :   "please enter card details",
+                })
+        card            =   Payment.objects.get(payment_id=card_id)
+        
+        exp_month = card.card_validity
+        date = datetime.date(exp_month)    
+        response_data = stripe.PaymentMethod.create(
+            type="card",
+            card={
+            "number": card.user_card_no,
+            "exp_month": date.month,
+            "exp_year": date.year,
+            "cvc": card.card_cvv,
+        },)
 
-        # payment_method_id = response_data['id'] 
-
-        # update_data = {
-
-        #     "card_stripe_payment_id" : payment_method_id
-        # }
-
-        # payment_ser = PaymentSerializer(instance=card,data=update_data,partial=True)
-
-        # if payment_ser.is_valid():
-        #     card.update(**update_data)
-
-        #     data = {
-
-        #         "response_data":response_data
-        #     }
-        #     return JsonResponse({
-        #         "status"    :   200,
-        #         "message"   :   "payment method added successfully",
-        #         "data"      :   data
-        #     })
-
-        # else:
-
-        #      return JsonResponse({
-        #         "status" : 500,
-        #         "message":"some error occured"
-        #     })
-
-    
-        response_data   =  stripe.Customer.create(description="client added to stripe",
-                           email = user_details.user_email,
-                           name  = card.card_name)
         
         payment_method_id = response_data['id']
+        intent = stripe.SetupIntent.create(
+                customer=payment_method_id,
+                payment_method_types=["card"],
+                    )
         update_data = {
 
             "card_customer_id" : payment_method_id
@@ -419,21 +390,13 @@ def create_customer(request):
         payment_ser = PaymentSerializer(instance=card,data=update_data,partial=True)
 
         if payment_ser.is_valid():
-            card.update(update_data)
-
+            # card.update(**update_data)
+            payment_ser.save()
             '''code for payment intent'''
 
-            # intent = stripe.PaymentIntent.create(
-            #     customer=payment_method_id,
-            #     setup_future_usage='off_session',
-            #     amount=20,
-            #     currency='usd',
-            #     automatic_payment_methods={
-            #       'enabled': True,
-            #     },
-
             data = {
-                "response_data" : response_data
+                "response_data" : response_data,
+                "intent"        : intent
             }
 
             return JsonResponse({

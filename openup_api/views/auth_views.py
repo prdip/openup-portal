@@ -39,12 +39,16 @@ from django.core.mail import EmailMessage
 # Import Queryset
 from django.db.models import Q
 
+from openup.send_email import SendEmail
+
+
+# IMPORT SHARED TASK
+from celery import shared_task
+
 
 
 
 # USER REGISTRATION API 
-
-
 @api_view(['POST'])
 def user_register(request):
     
@@ -228,21 +232,30 @@ def user_register(request):
     registration_data      =   RegisterSerializer(data=registration_data)
 
     if registration_data.is_valid():
-        registration_data.save()
+        # registration_data.save()
         time.sleep(5)
         if user_type == "employee":
-            Subject             =   "Request for Acount Activation"
-            text_template       =   "email/confirm_user.txt"
-            # EMAIL FORMAT
-            email_data = {
-                    "email"     :   email,
-                    'domain'    :   '192.168.1.2:8000',
-	        		'site_name' :   'Website',     #Data which will send with E-mail id
-	        		'protocol'  :   'http',
-                }
-            myemail     =       render_to_string(text_template,email_data)  # Converts text file to string 
-            email       =       EmailMessage(Subject, myemail, to=["swapnilpathak@gmail.com"])  #Formats Email message 
-            email.send()  #Sends Email to the user
+
+            data_dict = {
+            "Subject"             :   "Request for Acount Activation",
+            "text_template"       :   "email/confirm_user.txt",
+            "email"               :     email,
+            "to"                  :     "swapnilpathak@gmail.com"
+            }
+            send_email.delay(data_dict)
+
+            # Subject             =   "Request for Acount Activation"
+            # text_template       =   "email/confirm_user.txt"
+            # # EMAIL FORMAT
+            # email_data = {
+            #         "email"     :   email,
+            #         'domain'    :   '192.168.1.2:8000',
+	        # 		'site_name' :   'Website',     #Data which will send with E-mail id
+	        # 		'protocol'  :   'http',
+            #     }
+            # myemail     =       render_to_string(text_template,email_data)  # Converts text file to string 
+            # email       =       EmailMessage(Subject, myemail, to=["swapnilpathak@gmail.com"])  #Formats Email message 
+            # email.send()  #Sends Email to the user
 
             return JsonResponse({
                         "success"       :   1,
@@ -268,6 +281,14 @@ def user_register(request):
     user_session                    =         SessionSerializer(data=session_data) 
     if user_session.is_valid():
         user_session.save()
+        # email_verification(email)
+        data_dict = {
+            "Subject"            :   "Please Verify Your email to start using Openup emergency service",
+            "text_template"      :   "email/verify_user.txt",
+            "email"              :    email,
+            "to"                 :    email
+            }
+        send_email.delay(data_dict)
         '''save user settings eav model in setting'''
         setting_dict ={
                 "location"              :       0,
@@ -293,19 +314,20 @@ def user_register(request):
             }        
         return JsonResponse({
                     "success"       :   1,
-                    "message"       :   "user registered successfully !",
+                    "message"       :   "user registered successfully ! and please verify your email",
                     "data"          :   user_token
                 })
    
 
-
-
+@shared_task
+def send_email(data_dict):
+    '''call send_email function'''
+    SendEmail.send_email(data_dict)
 
 
 '''
 Login API
 '''
-
 @api_view(['POST'])
 def login(request):
     
@@ -477,9 +499,7 @@ def login(request):
 '''
 Renders confirm_account html page. 
 confirm employee account 
-
 '''
-
 def confirm_account(request,email):
     # get user_id through email
     user_id       =  Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']
@@ -491,7 +511,6 @@ def confirm_account(request,email):
 '''
  activate employee account 
 '''
-
 def activate_account(request):
 
     id = request.POST.get('id')
@@ -515,13 +534,9 @@ def activate_account(request):
     
 
 
-
 '''
 API for Logout user
-
 '''
-
-
 @api_view(['POST'])
 def logout(request,*args,**kwargs):
     # required data
@@ -582,7 +597,6 @@ def logout(request,*args,**kwargs):
 '''
 API FOR UPDATE  EMAIL ADDRESS 
 '''
-
 @api_view(['POST'])
 def email_update(request,*args,**kwargs):
 
@@ -729,8 +743,6 @@ def email_update(request,*args,**kwargs):
 '''
 API FOR CHANGE PASSWORD 
 '''
-
-
 @api_view(['POST'])
 def change_password(request,*args,**kwargs):
     
@@ -824,8 +836,6 @@ def change_password(request,*args,**kwargs):
 '''
 FORGOT PASSWORD  GENERATES EMAIL FOR USER
 '''
-
-
 @api_view(['POST'])
 def forget_password(request):
 
@@ -858,14 +868,12 @@ def forget_password(request):
     # EMAIL FORMAT
     data = {
             "email"     :   user.user_email,
-            'domain'    :   '192.168.1.2:8000',
+            'domain'    :   '192.168.1.6:8000',
 			'site_name' :   'Website',     #Data which will send with E-mail id
 			"user"      :   user.user_id,
 			'token'     :   token,
 			'protocol'  :   'http',
         }
-
-
     myemail = render_to_string(text_template,data)  #Converts text file to string 
     email = EmailMessage(Subject, myemail, to=[user_email])  #Formats Email message 
     email.send()  #Sends Email to the user
@@ -897,8 +905,6 @@ def forget_password(request):
 Renders forget password template 
 and do UPDATE PASSWORD 
 '''
-
- 
 def reset_password(request,token):
 
     user_token              =       token
@@ -914,8 +920,14 @@ def reset_password(request,token):
 
         email                   =       pass_reset_data.values('email').first()['email']
         # filters record using email addresss
-        myuser_id               =       Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values_list('user_id')[0][0]    
+        try:
+            myuser_id               =       Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values_list('user_id')[0][0]    
         #  get single user instance
+        except:
+            myuser_id = None
+
+        if myuser_id == None:
+           return HttpResponse("user not found")
         user                    =       Registration.objects.exclude(user_is_delete=1).get(user_id=myuser_id)
         status_code             =       pass_reset_data.values_list('status')[0][0] #status value for checking link been used or not        
         exp_time                =       pass_reset_data.values_list('timestamp')[0][0] # get timestamp from database
@@ -1014,8 +1026,6 @@ def delete_account(request):
 '''
 TOKEN VERIFICATION DONE HERE
 '''
-    
-
 def token_verification(token):
     token_val       =       token
     if token_val is None:
@@ -1075,7 +1085,6 @@ def token_verification(token):
 API call for get user details
 
 '''
-
 @api_view(['POST'])
 def get_user_details(request):
     user_token            =       request.data.get('user_token',None)
@@ -1223,3 +1232,53 @@ def employee_status(request):
                 "success"     :   1,
                 "message"     :   "status changed",
                 })
+
+
+
+
+
+
+# def email_verification(email_id):
+#     Subject             =   "Please Verify Your email to start using Openup emergency service"
+#     text_template       =   "email/verify_user.txt"
+#     # EMAIL FORMAT
+#     email_data = {
+#             "email"     :   email_id,
+#             'domain'    :   '192.168.1.6:8000',
+# 			'site_name' :   'Website',     #Data which will send with E-mail id
+# 			'protocol'  :   'http',
+#         }
+#     myemail     =       render_to_string(text_template,email_data)  # Converts text file to string 
+#     email       =       EmailMessage(Subject, myemail, to=[email_id])  #Formats Email message 
+#     email.send()
+
+
+ 
+
+'''Verify client account'''
+def verify_account(request,email):
+    return render(request,'Authentication/verify_client_email.html',{'email':email})
+
+
+
+def verify_client(request):
+
+    if request.method == "POST":
+        email  = request.POST.get('email')
+        try:
+            client_id = Registration.objects.exclude(user_is_delete=1).filter(Q (user_email=email) & Q(user_is_verified =0)).values('user_id').first()['user_id']
+        except:
+            client_id = None
+
+        client_rec = Registration.objects.get(user_id=client_id)
+
+        if client_rec.user_is_verified == 1:
+            return HttpResponse("Your account is already verified")
+        else:
+            update_data = {
+            "user_is_verified"  :   1
+            }
+            client_rec.update(**update_data)
+
+    return HttpResponse("Thank you ! Your account is verified")
+     
