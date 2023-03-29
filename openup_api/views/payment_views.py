@@ -336,9 +336,9 @@ def card_delete(request):
 
 
 
-
+ 
 import stripe
-
+ 
 stripe.api_key = "***REMOVED_STRIPE_SK***"
 
 @api_view(['POST'])
@@ -404,7 +404,7 @@ def create_customer(request):
         #         "status" : 500,
         #         "message":"some error occured"
         #     })
-
+ 
     
         response_data   =  stripe.Customer.create(description="client added to stripe",
                            email = user_details.user_email,
@@ -447,8 +447,50 @@ def create_customer(request):
              return JsonResponse({
                 "status" : 500,
                 "message":"some error occured"
-            })
+ 
+    # if settings.DEBUG:
+    #     domain = "http://192.168.1.2:8000" 
+    
+    # pass
+    # checkout_session = stripe.checkout.Session.create(
+    #     payment_method_types=['card'],
+    #     line_items=[{
+    #            'price_data': 
+    #                 {
+    #                 'currency': 'inr',
+    #                 'product_data': {
+    #                     'name': 'paymant to openup',
+    #                     },
+    #                 'unit_amount': 10000,
+    #                 },
+    #             'quantity': 1,
+    #         }],
+    #     mode='payment',
+    #     success_url=domain + '/success/',
+    #     cancel_url=domain + '/cancel/',
+    # )
+    # return redirect(checkout_session.url)
+
+    return True
 
 
+
+def payment_success(request):
+    return True
+
+
+
+
+def payment_failed(request):
+    return True
+
+
+
+
+
+
+
+
+ 
    
     
