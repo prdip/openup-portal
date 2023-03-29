@@ -7,7 +7,7 @@ from django.http.response import JsonResponse
 # Import token verifications
 from openup_api.views.auth_views import token_verification
  
-
+# import datetime
 from datetime import datetime
 
 # Import Models here
@@ -19,12 +19,14 @@ from openup_app.serializers import PaymentSerializer
 # Import validation
 from .validation import check_text,verify_card
 
-# import settings
-from django.conf import settings
+
+# import stripe
+import stripe
 
 
-
-
+import environ
+env = environ.Env()
+environ.Env.read_env()
 
 # Api for add and edit card data
 
@@ -332,9 +334,8 @@ def card_delete(request):
             })
        
 
-
-
-
+stripe.api_key = env('STRIPE_API')
+ 
 @api_view(['POST'])
 def create_customer(request,*args,**kwargs):
 
@@ -347,77 +348,37 @@ def create_customer(request,*args,**kwargs):
                 "message"     :   "Unauthorized User",
             })
     else:
-        user_id         =   check_user['session_user']
-        # payment_id      =   request.data.get('payment_id')
-        # user_details    =   Registration.objects.exclude(user_is_delete = 1).get(user_id=user_id)
+        user_id         =       check_user['session_user']
+        user_details    =       Registration.objects.exclude(user_is_delete = 1).get(user_id=user_id)
         
         try:
-            card_id         =   Payment.objects.exclude(is_delete=1).filter(user_id=user_id).values('payment_id').first()['payment_id']
+            card_id     =       Payment.objects.exclude(is_delete=1).filter(user_id=user_id).values('payment_id').first()['payment_id']
         except:
-            card_id         =   None
-        
+            card_id     =       None
+
         if card_id==None: return JsonResponse({
                 "success"     :   0,
                 "message"     :   "please enter card details",
                 })
-        card            =   Payment.objects.get(payment_id=card_id)
         
-        exp_month = card.card_validity
-        date = datetime.date(exp_month)    
-        # response_data = stripe.PaymentMethod.create(
-        #     type="card",
-        #     card={
-        #     "number": card.user_card_no,
-        #     "exp_month": date.month,
-        #     "exp_year": date.year,
-        #     "cvc": card.card_cvv,
-        # },)
-
- # payment_method_id = response_data['id'] 
-
-        # update_data = {
-
-        #     "card_stripe_payment_id" : payment_method_id
-        # }
-
-        # payment_ser = PaymentSerializer(instance=card,data=update_data,partial=True)
-
-        # if payment_ser.is_valid():
-        #     card.update(**update_data)
-
-        #     data = {
-
-        #         "response_data":response_data
-        #     }
-        #     return JsonResponse({
-        #         "status"    :   200,
-        #         "message"   :   "payment method added successfully",
-        #         "data"      :   data
-        #     })
-
-        # else:
-
-        #      return JsonResponse({
-        #         "status" : 500,
-        #         "message":"some error occured"
-        #     })
- 
-    
+        card            =   Payment.objects.get(payment_id=card_id)            
         response_data   =  stripe.Customer.create(description="client added to stripe",
                            email = user_details.user_email,
                            name  = card.card_name)
 
-        
-        payment_method_id = response_data['id']
-        intent = stripe.SetupIntent.create(
-                customer=payment_method_id,
-                payment_method_types=["card"],
-                    )
+        cust_id         = response_data['id'] 
+        ephemeralKey    = stripe.EphemeralKey.create(
+                            customer=cust_id,
+                            stripe_version='2022-11-15',)
+
+        setupIntent  = stripe.SetupIntent.create(customer=cust_id,payment_method_types=["card"])  
+
+ 
+
         update_data = {
-
-            "card_customer_id" : payment_method_id
-        }
-
+            "card_customer_id" : cust_id
+            }
+        
         payment_ser = PaymentSerializer(instance=card,data=update_data,partial=True)
 
         if payment_ser.is_valid():
@@ -426,12 +387,14 @@ def create_customer(request,*args,**kwargs):
             '''code for payment intent'''
 
             data = {
-                "response_data" : response_data,
-                "intent"        : intent
+            "response_data" :   response_data,
+            "customer_id"   :   cust_id,
+            "setup_intent"  :   setupIntent.client_secret,
+            "ephemeralKey"  :   ephemeralKey
             }
 
             return JsonResponse({
-                "status"    :   200,
+                "status"    :   1,
                 "message"   :   "payment method added successfully",
                 "data"      :   data
             })
@@ -439,40 +402,12 @@ def create_customer(request,*args,**kwargs):
         else:
 
              return JsonResponse({
-                "status" : 500,
-                "message":"some error occured"
- 
-    # if settings.DEBUG:
-    #     domain = "http://192.168.1.2:8000" 
-    
-    # pass
-    # checkout_session = stripe.checkout.Session.create(
-    #     payment_method_types=['card'],
-    #     line_items=[{
-    #            'price_data': 
-    #                 {
-    #                 'currency': 'inr',
-    #                 'product_data': {
-    #                     'name': 'paymant to openup',
-    #                     },
-    #                 'unit_amount': 10000,
-    #                 },
-    #             'quantity': 1,
-    #         }],
-    #     mode='payment',
-    #     success_url=domain + '/success/',
-    #     cancel_url=domain + '/cancel/',
-    # )
-    # return redirect(checkout_session.url)
-
-    return True
-
-
+                "status"    :    0,
+                "message"   :   "some error occured"
+             })
 
 def payment_success(request):
     return True
-
-
 
 
 def payment_failed(request):
@@ -481,10 +416,10 @@ def payment_failed(request):
 
 
 
+# @api_view(['POST'])
+# def retrieve_customer(request):
 
-
-
-
+ 
  
    
     

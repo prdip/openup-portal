@@ -51,7 +51,6 @@ class Registration(models.Model):
     device_type              =   models.IntegerField(null=True,default=1)   # 1 == > Anaroid  2==> IOS
     user_fcm_token           =   models.CharField(max_length=500,null=True,blank=True)
     user_status              =   models.BooleanField(null=True,default=0)
-
     user_is_verified         =   models.BooleanField(default=1)
     employee_status          =   models.BooleanField(null=True,default=0)
     update_at                =   models.DateTimeField(null=True,blank=True)
@@ -114,27 +113,29 @@ class ForgotPassword(models.Model):
 
 
 
-# VEHICLE DETAILS MODEL
-
 
 # change filename 
 import os
 def file_name(instance, filename):
-        ext = filename.split('.')[-1]
-        name = filename.split('.')[0]
-
-        count = 0
+        ext     =   filename.split('.')[-1]
+        name    =   filename.split('.')[0]
+        count   =   0
 
         for i in range(0, len(name)):  
             if(name[i] != ' '):  
-                count = count + 1;
+                count = count + 1
 
         if count >=12:
               name = str(name)[0:12]
-        time = (datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S")
-                      
-        filename = "'%s','%s',.%s'" % (name,str(time),ext)
+
+        time     =      (datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S")
+
+        filename =      "'%s','%s',.%s'" % (name,str(time),ext)
         return os.path.join('licenses',filename)
+
+
+
+# VEHICLE DETAILS MODEL
 
 class VehicleDetails(models.Model):
 
@@ -170,7 +171,6 @@ class Payment(models.Model):
     user_card_no            =       models.CharField(max_length=20)
     card_customer_id        =       models.CharField(max_length=50,null=True)
     card_method_id          =       models.CharField(max_length=50,null=True)
-
     card_cvv                =       models.IntegerField()
     card_name               =       models.CharField(max_length=250)
     card_validity           =       models.DateTimeField()
@@ -212,8 +212,8 @@ class Jobs(models.Model):
     choice = (
         ('service','service'),
         ('emergency','emergency'),
+        )
         
-    )
     job_id                   =       models.AutoField(primary_key=True) 
     job_type                 =       models.CharField(max_length=20,choices=choice,default="service")
 
@@ -244,10 +244,14 @@ class Jobs(models.Model):
         db_table = 'userjob'
 
 
+
+
+
+# SETTING MODEL EAV STRUCTURE
 class Settings(models.Model):
 
     setting_id      =    models.AutoField(primary_key=True)         
-    setting_user            =    models.ForeignKey(Registration,on_delete=models.CASCADE)
+    setting_user    =    models.ForeignKey(Registration,on_delete=models.CASCADE)
     setting_name    =    models.CharField(max_length=50,default="user")
     setting_value   =    models.BooleanField(default=0)
     created_at      =    models.DateTimeField()
@@ -267,7 +271,7 @@ class Settings(models.Model):
         self.save()
 
 
-
+# SAVE ALERTS
 
 class Alerts(models.Model):
     alert_id         =      models.AutoField(primary_key=True)

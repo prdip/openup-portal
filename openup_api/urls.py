@@ -16,7 +16,7 @@ urlpatterns = [
   path('delete_account', auth_views.delete_account,name='delete_account'),
   path('user_details', auth_views.get_user_details,name='user-details'),
   
-  # Account confirm
+  # Account confirm or verify user 
   path('confirm_account/<str:email>', auth_views.confirm_account,name='confirm_account'),
   path('activate', auth_views.activate_account,name='activate'),
   path('verify-account/<str:email>', auth_views.verify_account,name='verify_account'),
@@ -53,7 +53,7 @@ urlpatterns = [
   path('vehicle_details', vehicle_views.vehicle_details,name='vehicle_details'),
 
 
-# Add card
+# Add Payment
 
   path('add_card', payment_views.add_card,name='add_card'),
   path('card_details', payment_views.card_details,name='card_details'),
@@ -78,7 +78,6 @@ urlpatterns = [
   path('job_accept', job_views.accept_job,name='job_accept'),
   path('complete_job', job_views.complete_job,name='complete_job'),
   path('reject_job', job_views.reject_job,name='reject_job'),
-
   path('cancel-job', job_views.cancel_job,name='cancel_job'),
 
 
@@ -92,16 +91,11 @@ urlpatterns = [
   path('setting-details', usersetting.setting_details,name='setting_details'),
 
 
-
 # Feedback
   path('add_feedback', feedback_views.add_feedback,name='add_feedback'),
   
 # Employee active inactive
   path('employee-status', auth_views.employee_status,name='employee_status'),
-
-
-
-
 
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

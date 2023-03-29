@@ -39,8 +39,8 @@ from django.core.mail import EmailMessage
 # Import Queryset
 from django.db.models import Q
 
+# import send email to run in background process
 from openup.send_email import SendEmail
-
 
 # IMPORT SHARED TASK
 from celery import shared_task
@@ -66,7 +66,6 @@ def user_register(request):
 
     if first_name ==None or first_name == "":
        return JsonResponse({
-           
             "success"       :   0,
             "message"       :   "Please Provide First Name",
        })
@@ -81,7 +80,6 @@ def user_register(request):
        }) 
     if middle_name == "" or middle_name == None:
        return JsonResponse({
-           
             "success"       :   0,
             "message"       :   "Please Provide Middle Name",
             })
@@ -91,14 +89,12 @@ def user_register(request):
 
     if check_middle_name == False:
        return JsonResponse({
-           
             "success"       :   0,
             "message"       :   "Please Provide Valid Middle Name",
        })
     
     if last_name == "" or last_name==None:
        return JsonResponse({
-           
             "success"       :   0,
             "message"       :   "Please Provide Last Name",
        })
@@ -106,44 +102,37 @@ def user_register(request):
     check_last_name = check_text(last_name)
     if check_last_name == False:
        return JsonResponse({
-           
             "success"       :   0,
             "message"       :   "Please Provide Valid Last Name",
        })
     if email == "" or email==None:
        return JsonResponse({
-           
             "success"       :   0,
             "message"       :   "Please Provide Email Address",
        })
     if phone_number == "" or phone_number==None:
        return JsonResponse({
-           
             "success"       :   0,
             "message"       :   "Please Provide phone_number",
        })
     
     if user_type is None or user_type == "":
          return JsonResponse({
-           
             "success"       :   0,
             "message"       :   "Please Provide User Type",
        })
     if password == None or password=="":
        return JsonResponse({
-           
             "success"       :   0,
             "message"       :   "Please Provide Password",
        })
     if confirm_pass == None or confirm_pass=="":
        return JsonResponse({
-           
             "success"       :   0,
             "message"       :   "Please Provide Confirm Password",
        })
     if password != confirm_pass:
        return JsonResponse({
-           
             "success"       :   0,
             "message"       :   "Password Mismatch",
        })
@@ -156,7 +145,6 @@ def user_register(request):
 
     if check_mob == True:
        return JsonResponse({
-           
             "success"       :   0,
             "message"       :   "Phone Number already exist",
        })
@@ -188,7 +176,6 @@ def user_register(request):
            
     # Validate email address
     check_email     = email_address(email)
-
     if check_email == False:
        return JsonResponse({
            
@@ -198,17 +185,14 @@ def user_register(request):
 
     # Validate mobile numbers => allowed 12 digits only
     check_mobile_no = mobile_number(phone_number)
-
     if check_mobile_no !=True:     
         return JsonResponse({    
             "success"       :   0,
             "message"       :   "Please Provide Valid Moile Number",
        })
     
-
     role        =   UserRole.objects.filter(role_name= user_type).values('role_id').first()['role_id']              
     role_id     =   UserRole.objects.get(role_id=role)
-
     # To make hash password
     make_pass   =   make_password(password)   
     created_at  =   datetime.datetime.now()
@@ -319,6 +303,9 @@ def user_register(request):
                 })
    
 
+
+
+'''send email in background'''
 @shared_task
 def send_email(data_dict):
     '''call send_email function'''

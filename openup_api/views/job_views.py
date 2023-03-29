@@ -36,12 +36,6 @@ from PIL import Image
 from django.db.models import Q
 
 
-
-
-
-
-
-
 '''
     ADD NEW JOB
 '''
@@ -112,7 +106,6 @@ def add_job(request):
             # No id No image
             license = None
         
-        
         elif license == None and vehicle_id != None:
 
             #  Old id and No image
@@ -129,7 +122,6 @@ def add_job(request):
 
         elif license != None and vehicle_id == None:
                 # New image No id 
-
             try:
                     im = Image.open(license)
             except:
@@ -164,7 +156,6 @@ def add_job(request):
                 })
         job_id      =       JobsType.objects.first()
         job_details = {
-
                 "job_type"              :   job_type,
                 "location_latitude"     :   float(current_location_lat),
                 "location_longitude"    :   float(current_location_long),
@@ -296,8 +287,6 @@ def jobAlert(job_id,latitude,longitude):
     
 
     # SEND NOTIFICATIONS 
-
-
     noti_data={ }  
     
     for employee in employees:
