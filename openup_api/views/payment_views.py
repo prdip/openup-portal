@@ -334,9 +334,6 @@ def card_delete(request):
 
 
 
-import stripe
-
-stripe.api_key = "***REMOVED_STRIPE_SK***"
 
 @api_view(['POST'])
 def create_customer(request,*args,**kwargs):
@@ -367,14 +364,48 @@ def create_customer(request,*args,**kwargs):
         
         exp_month = card.card_validity
         date = datetime.date(exp_month)    
-        response_data = stripe.PaymentMethod.create(
-            type="card",
-            card={
-            "number": card.user_card_no,
-            "exp_month": date.month,
-            "exp_year": date.year,
-            "cvc": card.card_cvv,
-        },)
+        # response_data = stripe.PaymentMethod.create(
+        #     type="card",
+        #     card={
+        #     "number": card.user_card_no,
+        #     "exp_month": date.month,
+        #     "exp_year": date.year,
+        #     "cvc": card.card_cvv,
+        # },)
+
+ # payment_method_id = response_data['id'] 
+
+        # update_data = {
+
+        #     "card_stripe_payment_id" : payment_method_id
+        # }
+
+        # payment_ser = PaymentSerializer(instance=card,data=update_data,partial=True)
+
+        # if payment_ser.is_valid():
+        #     card.update(**update_data)
+
+        #     data = {
+
+        #         "response_data":response_data
+        #     }
+        #     return JsonResponse({
+        #         "status"    :   200,
+        #         "message"   :   "payment method added successfully",
+        #         "data"      :   data
+        #     })
+
+        # else:
+
+        #      return JsonResponse({
+        #         "status" : 500,
+        #         "message":"some error occured"
+        #     })
+ 
+    
+        response_data   =  stripe.Customer.create(description="client added to stripe",
+                           email = user_details.user_email,
+                           name  = card.card_name)
 
         
         payment_method_id = response_data['id']
@@ -410,8 +441,50 @@ def create_customer(request,*args,**kwargs):
              return JsonResponse({
                 "status" : 500,
                 "message":"some error occured"
-            })
+ 
+    # if settings.DEBUG:
+    #     domain = "http://192.168.1.2:8000" 
+    
+    # pass
+    # checkout_session = stripe.checkout.Session.create(
+    #     payment_method_types=['card'],
+    #     line_items=[{
+    #            'price_data': 
+    #                 {
+    #                 'currency': 'inr',
+    #                 'product_data': {
+    #                     'name': 'paymant to openup',
+    #                     },
+    #                 'unit_amount': 10000,
+    #                 },
+    #             'quantity': 1,
+    #         }],
+    #     mode='payment',
+    #     success_url=domain + '/success/',
+    #     cancel_url=domain + '/cancel/',
+    # )
+    # return redirect(checkout_session.url)
+
+    return True
 
 
+
+def payment_success(request):
+    return True
+
+
+
+
+def payment_failed(request):
+    return True
+
+
+
+
+
+
+
+
+ 
    
     
