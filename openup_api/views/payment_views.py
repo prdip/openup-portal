@@ -11,16 +11,26 @@ from openup_api.views.auth_views import token_verification
 from datetime import datetime
 
 # Import Models here
-from openup_app.models import Payment,Registration
+from openup_app.models import Payment,Registration,Jobs
 
 # Import Serializer
-from openup_app.serializers import PaymentSerializer,RegisterSerializer
+from openup_app.serializers import PaymentSerializer,RegisterSerializer,JobsSerializer
 
 # Import validation
 from .validation import check_text,verify_card
 
 # import stripe
 import stripe
+
+from openup.fcm import FCM
+
+
+# IMPORT SHARED TASK
+from celery import shared_task
+
+
+# Import Queryset
+from django.db.models import Q
 
 import environ
 env = environ.Env()
@@ -464,7 +474,7 @@ def link_payment_method(request):
         card_data ={
             "card_method_id"    :       response_data["data"][0]['id'],
         }
-        
+
         if card_id != None:
             payment_instance   =   Payment.objects.get(payment_id=card_id)    
             payment_ser        =   PaymentSerializer(instance=payment_instance,data=card_data,partial=True)
@@ -520,6 +530,72 @@ def check_stripe(user_id):
         user_serializer.save()
         return True
 
+
+
+
+
+
+
+'''if payment failed in stripe then ask for payment api called by employee'''
+
+
+@api_view(['POST'])
+def ask_for_payment(request):
+    user_token      =       request.data.get('user_token',None)
+    check_user      =       token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+        })
+    else:
+        emp  =   check_user['session_user']
+        job  =   request.data.get('job_id')
+        if job == None:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "please provide job id",
+        })
+        
+        job_id  =  Jobs.objects.exclude(Q(is_delete=1) and Q(job_status_id=4)).get(job_id=int(job))
+
+        if emp != job_id.user.user_id:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "unauthorized access",
+        })
+
+        if job_id.job_pay_status == 0 and (job_id.job_payment_id == "" or job_id.job_payment_id == None):
     
-   
-    
+            user_id     =       job_id.user.user_id
+            user_record =       Registration.objects.exclude(user_is_delete=1).get(user_id= user_id)
+            data = { 
+             'title'                      :   'request for payment',             
+             'notificationScreenType'     :   'payment_request',
+             'message'                    :   'Please make payment asap',
+             'job_id'                     :   str(job_id.job_id),  
+            }             
+            noti_data   =   {
+                    "fcm_token"     :   user_record.user_fcm_token,
+                    "device"        :   user_record.device_type,
+            }                    
+            noti_data['data']       =   data
+            send_notification.delay(noti_data)
+            return JsonResponse({
+            "success"   :       1,
+            "message"   :   "payment notification done" 
+            })
+        
+        else:
+
+            return JsonResponse({
+            "success"   :       0,
+            "message"   :   "job payment is pending" 
+            })
+
+            
+     
+@shared_task()        
+def send_notification(noti_data):  
+    FCM.send_notification(noti_data)

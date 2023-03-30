@@ -169,12 +169,12 @@ def add_job(request):
 
         # get serializer data
         if job_ser.is_valid():
-            id = job_ser.save()
-            # id=221
+            # id = job_ser.save()
+            id=233
             '''
                 JOB ALERT IS SHARED TASK FUNCTION RUN IN BACKGROUND @shardtask decorator required
             '''
-            jobAlert.delay(id,current_location_lat,current_location_long)
+            # jobAlert.delay(id,current_location_lat,current_location_long)
 
             '''Payment code '''
 
@@ -207,8 +207,9 @@ def background_payment(user_id,job_id):
     payment     =   Payment.objects.get(payment_id=payment_id)
     
     if payment.card_customer_id == None and payment.card_method_id == None:
+        print("false")         
         return False
-         
+
     data = {
         "amount"            :     500*100,
         "currency"          :    "inr",
@@ -216,6 +217,7 @@ def background_payment(user_id,job_id):
         "payment_method_id" :     payment.card_method_id,
         "job_id"            :     job_id
         }
+     
     Payments.background_payments(data)
 
      

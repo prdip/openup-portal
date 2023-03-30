@@ -44,9 +44,9 @@ from openup.send_email import SendEmail
 
 # IMPORT SHARED TASK
 from celery import shared_task
+ 
 
-import stripe
-
+# import stripeCustomer to create cust in stripe run in background process
 from openup.create_cust import stripeCustomer
 
 
@@ -1156,6 +1156,11 @@ def get_user_details(request):
             except:
                 accepted_job = None
 
+            get_user_details.pop("payment_method_id")
+            get_user_details.pop("payment_id")
+            get_user_details.pop("setting_id")
+            get_user_details.pop("user_stripe_id")
+
             if accepted_job is None:
 
                 get_user_details['accepted_job']    = None
@@ -1165,6 +1170,14 @@ def get_user_details(request):
             else:
                 get_user_details['employee_status'] = "0" 
 
+            if accepted_job.job_pay_status == 1 and accepted_job != None:
+
+                get_user_details['payment_status'] = 1
+            
+            else:
+                get_user_details['payment_status'] = 0
+        
+        
         else:
             try:
                 job_posted  =   Jobs.objects.exclude(Q(is_delete=1) and Q(job_status=3)).filter(user_id=user_record.user_id).order_by('job_id').reverse().first()        

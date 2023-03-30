@@ -4,8 +4,7 @@ from django.conf.urls.static import static
 from openup_api.views import auth_views, cms_views, force_update,vehicle_views,payment_views,job_views,feedback_views,location_views
 from openup_api.views import usersetting
 from django.urls import reverse
-
-from openup_api import views
+ 
 
 urlpatterns = [
 
@@ -60,6 +59,7 @@ urlpatterns = [
 # Create customer using stripe
   path('create-customer', payment_views.create_customer,name='create_customer'),
   path('link-payment', payment_views.link_payment_method,name='link_payment'),
+  path('ask-for-payment', payment_views.ask_for_payment,name='ask_for_payment'),
  
 
 # Update location

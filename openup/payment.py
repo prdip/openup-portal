@@ -17,25 +17,29 @@ from openup_app.serializers import JobsSerializer
 class Payments:
     
     def background_payments(data): 
+        
         try:
            
             payment_data    =  stripe.PaymentIntent.create(
                 amount          =   data['amount'],
                 currency        =   data['currency'],
-                customer        =   data['customer'],
-                payment_method  =   data['payment_method_id'],
+                # customer        =   data['customer'],  
+                               
+                payment_method  =   data['payment_method_id'],                
                 off_session     =   True,
                 confirm         =   True,
             ) 
-         
+          
         except stripe.error.CardError as e:
             err = e.error
             # Error code will be authentication_required if authentication is needed
+
             print("Code is: %s" % err.code)
             payment_intent_id = err.payment_intent['id']
             payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
- 
-         
+
+        
+          
         job_record = Jobs.objects.exclude(is_delete=1).get(job_id=int(data['job_id']))   
         update_payment_status = {
                 "job_payment_id"    :      payment_data['id'],
@@ -46,7 +50,7 @@ class Payments:
         if job_ser.is_valid():
             job_ser.save()
             print(payment_data)
-        return True
+            return True
 
       
 
