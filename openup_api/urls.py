@@ -30,8 +30,7 @@ urlpatterns = [
   path('change_password', auth_views.change_password,name='change_password'),
   path('forget_password', auth_views.forget_password,name='forget_password'),
   path('reset_password/<slug:token>', auth_views.reset_password,name='reset_password'),
-  
-
+ 
 # CMS LINKS
   path('cms_details', cms_views.cms_details,name='cms_details'),
 
@@ -47,25 +46,23 @@ urlpatterns = [
 
 
 # Vehicle information
-
   path('add_vehicle', vehicle_views.add_vehicle,name='add_vehicle'),
   path('vehicle_edit', vehicle_views.vehicle_edit,name='vehicle_edit'),
   path('vehicle_details', vehicle_views.vehicle_details,name='vehicle_details'),
 
 
 # Add Payment
-
   path('add_card', payment_views.add_card,name='add_card'),
   path('card_details', payment_views.card_details,name='card_details'),
   path('card_delete', payment_views.card_delete,name='card_delete'),
 
 
-# Payments
+# Create customer using stripe
   path('create-customer', payment_views.create_customer,name='create_customer'),
-
+  path('link-payment', payment_views.link_payment_method,name='link_payment'),
+ 
 
 # Update location
-
   path('update_location', location_views.update_location,name='update_location'),
   path('service_available', location_views.service_available,name='service_available'),
 

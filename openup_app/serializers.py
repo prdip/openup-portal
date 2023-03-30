@@ -22,6 +22,8 @@ class RegisterSerializer(serializers.ModelSerializer):
     location_longitude       =   serializers.FloatField(allow_null=True,required=False)
     create_at                =   serializers.DateTimeField()
     employee_status          =   serializers.BooleanField(default=0,allow_null=True)
+    user_stripe_id           =    serializers.CharField(allow_null=True,required=False)
+    user_payment_id           =   serializers.CharField(allow_null=True,required=False)
     user_is_verified         =   serializers.BooleanField(default=0,allow_null=True)
     user_role                =   serializers.PrimaryKeyRelatedField(queryset = UserRole.objects.all())
     user_is_delete           =   serializers.BooleanField(default=0,allow_null=True)
@@ -51,7 +53,7 @@ class RegisterSerializer(serializers.ModelSerializer):
                   'user_phone_number','user_password',
                   'location_latitude','location_longitude',
                   'create_at','user_role','user_is_delete',
-                  'device_type','user_fcm_token','employee_status','user_is_verified')
+                  'device_type','user_fcm_token','employee_status','user_is_verified','user_stripe_id','user_payment_id')
 
 
 
@@ -175,6 +177,8 @@ class JobsSerializer(serializers.Serializer):
     vehicle_details          =   serializers.CharField()
     vehicle_modification     =   serializers.CharField()
     vehicle_license          =   serializers.FileField(required=False,allow_null=True)
+    job_payment_id           =   serializers.CharField(required=False,allow_null=True)
+    job_pay_status           =   serializers.BooleanField(default=0,required=False)
     created_at               =   serializers.DateTimeField()
     is_delete                =   serializers.BooleanField(default=0)
     job_status               =   serializers.PrimaryKeyRelatedField(queryset = JobsType.objects.all())
@@ -196,7 +200,7 @@ class JobsSerializer(serializers.Serializer):
         fields = ('job_id','job_type','user','location_latitude',
                   'location_longitude','vehicle_details',
                   'vehicle_modification','vehicle_license',
-                  'created_at','is_delete','job_status','job_accepted_by')
+                  'created_at','is_delete','job_status','job_accepted_by','job_payment_id','job_pay_status')
 
 
 

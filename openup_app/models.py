@@ -50,6 +50,8 @@ class Registration(models.Model):
     location_longitude       =   models.FloatField(null=True)
     device_type              =   models.IntegerField(null=True,default=1)   # 1 == > Anaroid  2==> IOS
     user_fcm_token           =   models.CharField(max_length=500,null=True,blank=True)
+    user_stripe_id           =    models.CharField(max_length=500,null=True,blank=True)
+    user_payment_id           =    models.CharField(max_length=500,null=True,blank=True)
     user_status              =   models.BooleanField(null=True,default=0)
     user_is_verified         =   models.BooleanField(default=1)
     employee_status          =   models.BooleanField(null=True,default=0)
@@ -227,6 +229,8 @@ class Jobs(models.Model):
     vehicle_modification     =   models.CharField(max_length=400)
     vehicle_license          =   models.FileField(upload_to=file_name, null=True)
     job_accepted_by          =   models.CharField(max_length=31,null=True)
+    job_payment_id           =   models.CharField(max_length=100,null=True)
+    job_pay_status           =   models.BooleanField(default=0)
     created_at               =   models.DateTimeField()
     update_at                =   models.DateTimeField(null=True)
     is_delete                =   models.BooleanField(default=0)

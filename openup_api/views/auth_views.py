@@ -45,6 +45,9 @@ from openup.send_email import SendEmail
 # IMPORT SHARED TASK
 from celery import shared_task
 
+import stripe
+
+from openup.create_cust import stripeCustomer
 
 
 
@@ -219,7 +222,8 @@ def user_register(request):
         # registration_data.save()
         time.sleep(5)
         if user_type == "employee":
-
+            
+            # send email to activate employee account
             data_dict = {
             "Subject"             :   "Request for Acount Activation",
             "text_template"       :   "email/confirm_user.txt",
@@ -227,24 +231,12 @@ def user_register(request):
             "to"                  :     "swapnilpathak@gmail.com"
             }
             send_email.delay(data_dict)
-
-            # Subject             =   "Request for Acount Activation"
-            # text_template       =   "email/confirm_user.txt"
-            # # EMAIL FORMAT
-            # email_data = {
-            #         "email"     :   email,
-            #         'domain'    :   '192.168.1.2:8000',
-	        # 		'site_name' :   'Website',     #Data which will send with E-mail id
-	        # 		'protocol'  :   'http',
-            #     }
-            # myemail     =       render_to_string(text_template,email_data)  # Converts text file to string 
-            # email       =       EmailMessage(Subject, myemail, to=["swapnilpathak@gmail.com"])  #Formats Email message 
-            # email.send()  #Sends Email to the user
-
             return JsonResponse({
                         "success"       :   1,
                         "message"       :   "Employee Registered Successfully !",
                     })
+        
+    # client registration code
     user_id             =       Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']    
     user                =       Registration.objects.get(user_id=user_id)
  
@@ -265,7 +257,8 @@ def user_register(request):
     user_session                    =         SessionSerializer(data=session_data) 
     if user_session.is_valid():
         user_session.save()
-        # email_verification(email)
+        # email_verification email to client
+
         data_dict = {
             "Subject"            :   "Please Verify Your email to start using Openup emergency service",
             "text_template"      :   "email/verify_user.txt",
@@ -273,7 +266,8 @@ def user_register(request):
             "to"                 :    email
             }
         send_email.delay(data_dict)
-        '''save user settings eav model in setting'''
+
+        '''save client settings eav model in setting'''
         setting_dict ={
                 "location"              :       0,
                 "while_using"           :       0,
@@ -281,6 +275,7 @@ def user_register(request):
                 "location_notification" :       0,
                 "service_feed_not"      :       0
                 }
+        
         for setting in setting_dict:
                 setting_data    = {
                             "setting_user"      :       user.user_id,
@@ -305,7 +300,7 @@ def user_register(request):
 
 
 
-'''send email in background'''
+'''send email in background to verify account and activate account'''
 @shared_task
 def send_email(data_dict):
     '''call send_email function'''
@@ -404,6 +399,11 @@ def login(request):
             "message"       :   "Please Enter Valid password",
             })
        
+    # if client logs in for first time then create stripe customer
+
+    if user_type == "client" and user_rec.user_stripe_id == None:
+        create_customer.delay(user_rec.user_id)
+
     # Create session token
     session_token       =       secrets.token_hex()
     exp_time            =       datetime.datetime.now()+ datetime.timedelta(days=30)
@@ -441,14 +441,13 @@ def login(request):
         
         if user_ser.is_valid():
             user_ser.save(**update_data)
-
             # check user setting already inserted or not
             try:
              user_set = Settings.objects.exclude(is_delete = 1).filter(setting_user=user_rec.user_id).exists()
             except:
                 user_set = False
 
-
+            # this will execute for first time employee login
             if user_type=="employee" and user_set == False:
 
                 '''user setting data '''
@@ -482,6 +481,13 @@ def login(request):
                 })
 
 
+
+
+'''create stripe customer in background'''
+
+@shared_task()
+def create_customer(user_id):
+        stripeCustomer.create_stripe_customer(user_id)
 
 '''
 Renders confirm_account html page. 
@@ -855,7 +861,7 @@ def forget_password(request):
     # EMAIL FORMAT
     data = {
             "email"     :   user.user_email,
-            'domain'    :   '192.168.1.6:8000',
+            'domain'    :   '192.168.1.3:8000',
 			'site_name' :   'Website',     #Data which will send with E-mail id
 			"user"      :   user.user_id,
 			'token'     :   token,
@@ -1123,8 +1129,14 @@ def get_user_details(request):
         if payment_id is None:
             get_user_details["payment_id"]      =    None
         else:
-            get_user_details["payment_id"]      =    payment_id.payment_id
+            get_user_details["payment_id"]          =    payment_id.payment_id
         
+        if payment_id != None and payment_id.card_method_id != None and payment_id.card_method_id != "":
+            get_user_details["payment_method_id"]   = 1
+        else:
+            get_user_details["payment_method_id"]   = 0
+
+
         # Add data to the dictionary
         get_user_details["setting_id"]      =    setting_id
         get_user_details["vehicle_id"]      =    vehicle_id
@@ -1242,11 +1254,12 @@ def employee_status(request):
 
  
 
-'''Verify client account'''
+'''Verify client account send html page'''
 def verify_account(request,email):
     return render(request,'Authentication/verify_client_email.html',{'email':email})
 
 
+'''Verify client account and change status'''
 
 def verify_client(request):
 

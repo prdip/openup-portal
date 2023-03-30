@@ -1,0 +1,15 @@
+1. Customer Create (Auto on registration if not on registration then do it on login)
+
+customer created when create_cust api
+
+2.  API 1 >> Send necessary data to client app for payment method add
+        Secret
+        customer id
+        ephemeral key 
+
+    API 2 >>  Link payment method to card  
+            Receive Payment Method iD in return from clien app
+            store it to card_method_id
+    
+
+3. Payment deduction (Auto background when job flow happens)

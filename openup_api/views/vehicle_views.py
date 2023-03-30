@@ -198,7 +198,6 @@ def removeElements(items,lists):
 
 
 @api_view(['POST'])
-
 def vehicle_details(request):
 
     #  Token Verification

@@ -69,7 +69,6 @@ def add_settings(request):
                 setting_id       =   Settings.objects.exclude(is_delete=1).filter(Q(setting_user_id=int(user_id)) & Q(setting_name=str(setting)) ).values('setting_id').first()['setting_id']  
             except:
                 pass
-          
             try:
                 setting_record   =   Settings.objects.exclude(is_delete=1).get(setting_id=setting_id)          
             except:
@@ -79,8 +78,6 @@ def add_settings(request):
                 "setting_name"  :   str(setting),
                 "setting_value" :   int(update_data[setting])
             }
-            
-          
             setting_ser     =   SettingsSerializer(instance=setting_record,data=data,partial=True)
             if setting_ser.is_valid():
                 setting_ser.save()
@@ -109,17 +106,14 @@ def setting_details(request):
                 "message"     :   "Unauthorized User",
         })
     else:
-        
         user    =  check_user['session_user']
-
         try:
                 setting_record   =   Settings.objects.exclude(is_delete=1).filter(setting_user=int(user)).values('setting_name','setting_value')        
         except:
                 pass
         
         setting_details = {}
-        for seting in setting_record:
-              
+        for seting in setting_record:      
             if seting['setting_value'] == True:
                 seting['setting_value'] = 1
        
@@ -127,8 +121,6 @@ def setting_details(request):
                 seting['setting_value'] = 0
 
             setting_details[seting['setting_name']] =  seting['setting_value']
-
-
         data = {
             "setting_details":setting_details
         }

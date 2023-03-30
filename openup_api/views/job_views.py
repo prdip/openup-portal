@@ -16,15 +16,17 @@ import socket,datetime,math
 # IMPORT TASK HERE
 from openup.fcm import FCM
 
+# import Payments class 
+from openup.payment import Payments
+
 # import Json Response
 from django.http.response import JsonResponse
 
 # Import token verifications
 from openup_api.views.auth_views import token_verification
 
-
 # Import Models here
-from openup_app.models import Registration,JobsType,Jobs,Alerts,VehicleDetails
+from openup_app.models import Registration,JobsType,Jobs,Alerts,VehicleDetails,Payment
 
 # Import Serializer
 from openup_app.serializers import JobsSerializer
@@ -35,17 +37,17 @@ from PIL import Image
 # Import Q
 from django.db.models import Q
 
+# IMPORT SHARED TASK
+from celery import shared_task
+
 
 '''
     ADD NEW JOB
 '''
  
-
 @api_view(['POST'])
 def add_job(request):
-
     #  Token Verification
-
     user_token      =       request.data.get('user_token',None)
     check_user      =       token_verification(user_token)
 
@@ -101,24 +103,21 @@ def add_job(request):
                     })
         
         user_id     =       check_user['session_user']
-
         if vehicle_id == None and license ==  None:
             # No id No image
             license = None
-        
-        elif license == None and vehicle_id != None:
 
+        elif license == None and vehicle_id != None:
             #  Old id and No image
             try:
-                    veh_rec             =   VehicleDetails.objects.get(vehicle_id=int(vehicle_id))
-                
+                    veh_rec  =   VehicleDetails.objects.get(vehicle_id=int(vehicle_id))     
             except:
-                   veh_rec = None
+                    veh_rec  =   None
 
             if veh_rec == None:
-                license=None
+                license     =    None
             else:
-                license = veh_rec.vehicle_license
+                license     =    veh_rec.vehicle_license
 
         elif license != None and vehicle_id == None:
                 # New image No id 
@@ -170,32 +169,59 @@ def add_job(request):
 
         # get serializer data
         if job_ser.is_valid():
-            
             id = job_ser.save()
-            # id=162
+            # id=221
             '''
                 JOB ALERT IS SHARED TASK FUNCTION RUN IN BACKGROUND @shardtask decorator required
             '''
             jobAlert.delay(id,current_location_lat,current_location_long)
 
-            data = {
+            '''Payment code '''
 
-                "job_id" : id
+            background_payment.delay(user_id,id)
+            data = {
+                "job_id" : id,
             }
-            
             return JsonResponse({
-                "success"    :   1,
+                "success"   :   1,
                 "message"   :   "Job added successfully",
-                "data"          :       data
+                "data"      :   data
                 })
         else:
             return JsonResponse({   
-                "success"    :   0,
+                "success"   :   0,
                 "message"   :   "error occured",
                 "error"     :   job_ser.errors
-              
                 })
+              
        
+
+'''
+code for background process
+if its first payment then payment will not occured
+'''
+@shared_task()
+def background_payment(user_id,job_id):
+    # payment_id = 29
+    payment_id  =   Payment.objects.filter(user=int(user_id)).values("payment_id").first()["payment_id"]
+    payment     =   Payment.objects.get(payment_id=payment_id)
+    
+    if payment.card_customer_id == None and payment.card_method_id == None:
+        return False
+         
+    data = {
+        "amount"            :     500*100,
+        "currency"          :    "inr",
+        "customer"          :     payment.card_customer_id,
+        "payment_method_id" :     payment.card_method_id,
+        "job_id"            :     job_id
+        }
+    Payments.background_payments(data)
+
+     
+
+
+
 
 '''
  JobAlert function calls whenever new job added by client
@@ -203,8 +229,6 @@ def add_job(request):
  latitude and longitude pass by client 
 
 '''
-
-
 @shared_task()
 def jobAlert(job_id,latitude,longitude):
     # Fetch Employee List
@@ -611,7 +635,6 @@ def accept_job(request):
 '''
 NOTIFY CLIENT THAT JOB ACCEPTED
 ''' 
-
 @shared_task()
 def accept_job_notification(job_id):
 
@@ -643,7 +666,6 @@ def accept_job_notification(job_id):
 
 
 '''API FOR REJECT JOB'''
-
 @api_view(['POST'])
 def reject_job(request):
 
@@ -673,7 +695,6 @@ def reject_job(request):
 
 
 '''API FOR COMPLETE JOB '''
-
 @api_view(['POST'])
 def complete_job(request):
     user_token      =       request.data.get('user_token',None)
@@ -752,7 +773,6 @@ def complete_job(request):
 
 
 ''' NOTIFY CLIENT THAT JOB IS COMPLETED '''
-
 @shared_task()
 def complete_job_notification(job_id):
 
@@ -792,8 +812,6 @@ def complete_job_notification(job_id):
 
 
 '''API FOR CANCEL JOB'''
-
-
 @api_view(['POST'])
 def cancel_job(request):
 
@@ -855,8 +873,6 @@ def cancel_job(request):
 
 
 '''API for GET client job list'''
-
-
 @api_view(['POST'])
 def client_joblist(request):
     user_token      =       request.data.get('user_token',None)
@@ -920,8 +936,6 @@ def client_joblist(request):
 
 
 '''API for GET Employee job list'''
-
-    
 @api_view(['POST'])
 def employee_joblist(request):
     
