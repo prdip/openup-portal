@@ -17,13 +17,9 @@ os.environ.setdefault(
     'openup.settings'
 )
 
+
 app = Celery('openup')
-
-
-
 app.config_from_object('django.conf:settings', namespace='CELERY')
-
-
 app.autodiscover_tasks()
 
 

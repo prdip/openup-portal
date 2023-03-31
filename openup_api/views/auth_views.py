@@ -401,9 +401,10 @@ def login(request):
        
     # if client logs in for first time then create stripe customer
 
-    if user_type == "client" and user_rec.user_stripe_id == None:
+    if user_type == "client" or user_rec.user_stripe_id == " ":
+        
         create_customer.delay(user_rec.user_id)
-
+    
     # Create session token
     session_token       =       secrets.token_hex()
     exp_time            =       datetime.datetime.now()+ datetime.timedelta(days=30)
@@ -1131,10 +1132,16 @@ def get_user_details(request):
         else:
             get_user_details["payment_id"]          =    payment_id.payment_id
         
-        if payment_id != None and payment_id.card_method_id != None and payment_id.card_method_id != "":
+        # if payment_id != None and payment_id.card_method_id != None and payment_id.card_method_id != "":
+        #     get_user_details["payment_method_id"]   = 1
+        # else:
+        #     get_user_details["payment_method_id"]   = 0
+
+        if user_record.user_payment_id != None and user_record.user_payment_id != " ":
             get_user_details["payment_method_id"]   = 1
         else:
             get_user_details["payment_method_id"]   = 0
+            
 
 
         # Add data to the dictionary
@@ -1169,13 +1176,15 @@ def get_user_details(request):
                 get_user_details['employee_status'] = "1"
             else:
                 get_user_details['employee_status'] = "0" 
-
-            if accepted_job.job_pay_status == 1 and accepted_job != None:
-
-                get_user_details['payment_status'] = 1
             
-            else:
-                get_user_details['payment_status'] = 0
+            if accepted_job != None:
+
+                if accepted_job.job_pay_status == 1 and accepted_job != None:
+
+                    get_user_details['payment_status'] = 1
+
+                else:
+                    get_user_details['payment_status'] = 0
         
         
         else:

@@ -22,6 +22,7 @@ class stripeCustomer:
                                        name  = user.user_first_name+' '+user.user_last_name)
             cust_id         = response_data['id']
             # code to create ephemeral key to stripe
+            print(cust_id)
             update_data = {
                         "user_stripe_id" : cust_id, 
                        }    

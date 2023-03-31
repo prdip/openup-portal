@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 #IMPORT MODELS FROM SGSP APPLICATION
 
-from .models import Registration,Session,ForgotPassword,UserRole,VehicleDetails,Payment,Jobs,JobsType,Settings,Feedback
+from .models import Registration,Session,ForgotPassword,UserRole,VehicleDetails,Payment,Jobs,JobsType,Settings,Feedback,PaymentFailedInfo
 
 
 
@@ -255,3 +255,28 @@ class FeedbackSerializer(serializers.Serializer):
         model = Feedback
         fields = ('feedback_job','feedback_user','feedback_stars',
                   'feedback_comment','created_at')
+        
+
+
+
+
+
+
+class PaymentFailedInfoSerializer(serializers.ModelSerializer):
+     
+    user_id                 =   serializers.CharField()
+    job_id                  =   serializers.CharField()
+    payment_fail_type       =   serializers.CharField()
+    payment_fail_code       =   serializers.CharField()
+    payment_fail_message    =   serializers.CharField()
+    created_at              =   serializers.DateTimeField()
+
+    def create(self,validated_data):     
+        return PaymentFailedInfo.objects.create(**validated_data)
+
+    class Meta:
+        model = Feedback
+        fields = ('user_id','job_id','payment_fail_type',
+                  'payment_fail_code','payment_fail_message','created_at')
+    
+    

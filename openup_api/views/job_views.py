@@ -1,8 +1,6 @@
 # IMPORT CELERY
 from openup import celery_app
-
-# IMPORT SHARED TASK
-from celery import shared_task
+ 
 
 # IMPORT GEODESIC FROM GEOPY
 from geopy.distance import geodesic as gd
@@ -39,6 +37,8 @@ from django.db.models import Q
 
 # IMPORT SHARED TASK
 from celery import shared_task
+
+from openup.celery import app
 
 
 '''
@@ -156,8 +156,10 @@ def add_job(request):
         job_id      =       JobsType.objects.first()
         job_details = {
                 "job_type"              :   job_type,
-                "location_latitude"     :   float(current_location_lat),
-                "location_longitude"    :   float(current_location_long),
+                # "location_latitude"     :   float(current_location_lat),
+                # "location_longitude"    :   float(current_location_long),
+                 "location_latitude"     :   22.264989,
+                "location_longitude"    :  70.784625,
                 "vehicle_details"       :   vehicle_details,
                 "vehicle_modification"  :   vehicle_modification,
                 "vehicle_license"       :   license,
@@ -169,15 +171,14 @@ def add_job(request):
 
         # get serializer data
         if job_ser.is_valid():
-            # id = job_ser.save()
-            id=233
+            id = job_ser.save()
+            # id=238
             '''
                 JOB ALERT IS SHARED TASK FUNCTION RUN IN BACKGROUND @shardtask decorator required
             '''
-            # jobAlert.delay(id,current_location_lat,current_location_long)
+            jobAlert.delay(id,current_location_lat,current_location_long)
 
             '''Payment code '''
-
             background_payment.delay(user_id,id)
             data = {
                 "job_id" : id,
@@ -202,25 +203,39 @@ if its first payment then payment will not occured
 '''
 @shared_task()
 def background_payment(user_id,job_id):
-    # payment_id = 29
-    payment_id  =   Payment.objects.filter(user=int(user_id)).values("payment_id").first()["payment_id"]
-    payment     =   Payment.objects.get(payment_id=payment_id)
-    
-    if payment.card_customer_id == None and payment.card_method_id == None:
-        print("false")         
-        return False
+    try:
+        payment_id  =   Payment.objects.filter(user=int(user_id)).values("payment_id").first()["payment_id"]  
+    except:
+        pass
 
+    try:
+        payment     =   Payment.objects.get(payment_id=payment_id)
+    
+    except:
+        pass
+   
+    try:
+        user = Registration.objects.exclude(user_is_delete=1).get(user_id=int(user_id))
+
+    except:
+        pass
+    
+     
+ 
     data = {
         "amount"            :     500*100,
         "currency"          :    "inr",
-        "customer"          :     payment.card_customer_id,
-        "payment_method_id" :     payment.card_method_id,
-        "job_id"            :     job_id
+        "customer"          :     user.user_stripe_id,
+        "payment_method_id" :     user.user_payment_id,
+        "job_id"            :     job_id,
+        "user_id"           :     user_id,
+         "metadata"         :      {   
+        "name"              :   user.user_first_name+' '+user.user_last_name
+          }
         }
-     
+ 
     Payments.background_payments(data)
-
-     
+    return True
 
 
 
@@ -251,9 +266,7 @@ def jobAlert(job_id,latitude,longitude):
     emp_fcm     =   []
 
     emplist     =   {}
-
    
-    
     for employee in employees:
         if employee.user_fcm_token != "" or employee.user_fcm_token != None: 
             # user location
@@ -396,11 +409,8 @@ def job_list(request):
 
 
 '''
-
 API to Get detail of job by job id 
 '''
-
-
 
 @api_view(['POST'])
 def job_details(request):
@@ -605,8 +615,8 @@ def accept_job(request):
             "last_name"             :       user_record.user_last_name,
             "email"                 :       user_record.user_email,
             "mobile_number"         :       user_record.user_phone_number,
-            "location_latitude"     :       user_record.location_latitude,
-            "location_longitude"    :       user_record.location_longitude
+            "location_latitude"     :       job_record.location_latitude,
+            "location_longitude"    :       job_record.location_longitude
 
         }
         data = {
@@ -844,8 +854,8 @@ def cancel_job(request):
                 "success"     :   0,
                 "message"     :   "no job found",
                 })
-        
-        if job_record.job_status==4:
+         
+        if job_record.job_status.status_id==4:
             return JsonResponse({
                 "success"     :   0,
                 "message"     :   "job is already canceled",

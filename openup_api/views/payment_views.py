@@ -364,13 +364,11 @@ def create_customer(request,*args,**kwargs):
         except:
             card_id     =       None
 
-        if card_id==None: return JsonResponse({
-                "success"     :   0,
-                "message"     :   "please enter card details",
-                })
         
-        card            =  Payment.objects.get(payment_id=card_id) 
-
+        try:
+            card            =  Payment.objects.get(payment_id=card_id) 
+        except:
+            card = None
         # # code to create customer to stripe     
         # response_data   =  stripe.Customer.create(description="client added to stripe",
         #                    email = user_details.user_email,
@@ -389,8 +387,6 @@ def create_customer(request,*args,**kwargs):
                 "message"   :   "stripe id not created",
              })
 
-
-
         # code to create ephemeral key to stripe 
         ephemeralKey    = stripe.EphemeralKey.create(
                             customer=cust_id,
@@ -399,38 +395,31 @@ def create_customer(request,*args,**kwargs):
         # setup intent
         setupIntent  = stripe.SetupIntent.create(customer=cust_id,payment_method_types=["card"])  
        
-        update_data = {
-            "card_customer_id" : cust_id, 
          
-            }
         # print(update_data)
-        payment_ser = PaymentSerializer(instance=card,data=update_data,partial=True)
+        # payment_ser = PaymentSerializer(instance=card,data=update_data,partial=True)
+        # user_ser = RegisterSerializer(instance=card,data=update_data,partial=True)
 
-        if payment_ser.is_valid():
+        # if payment_ser.is_valid():
             # card.update(**update_data)
-            payment_ser.save()
-            '''code for payment intent'''
+            # payment_ser.save()
 
-            data = {
-            "response_data" :   cust_id,
-            "customer_id"   :   cust_id,
-            "setup_intent"  :   setupIntent.client_secret,
-            "ephemeralKey"  :   ephemeralKey,
-            }
-    
-            return JsonResponse({
-                "status"    :   1,
-                "message"   :   "payment method added successfully",
-                "data"      :   data
-            })
+        '''code for payment intent'''
 
-        else:
+        data = {
+        "response_data" :   cust_id,
+        "customer_id"   :   cust_id,
+        "setup_intent"  :   setupIntent.client_secret,
+        "ephemeralKey"  :   ephemeralKey,
+        }
 
-             return JsonResponse({
-                "status"    :    0,
-                "message"   :   "some error occured",
-                "error"     :   payment_ser.error_messages
-             })
+        return JsonResponse({
+            "status"    :   1,
+            "message"   :   "payment method added successfully",
+            "data"      :   data
+        })
+
+         
         
 
 
@@ -453,10 +442,10 @@ def link_payment_method(request):
         cus_id          =       request.data.get('cust_id')
         user_id         =       check_user['session_user']
 
-        try:
-            card_id     =       Payment.objects.exclude(is_delete=1).filter(user_id=user_id).values('payment_id').first()['payment_id']
-        except:
-            card_id     =       None
+        # try:
+        #     card_id     =       Payment.objects.exclude(is_delete=1).filter(user_id=user_id).values('payment_id').first()['payment_id']
+        # except:
+        #     card_id     =       None
 
         try:
             user_rec     =       Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
@@ -471,16 +460,16 @@ def link_payment_method(request):
                 "user_payment_id" : response_data["data"][0]['id'], 
         }
 
-        card_data ={
-            "card_method_id"    :       response_data["data"][0]['id'],
-        }
+        # card_data ={
+        #     "card_method_id"    :       response_data["data"][0]['id'],
+        # }
 
-        if card_id != None:
-            payment_instance   =   Payment.objects.get(payment_id=card_id)    
-            payment_ser        =   PaymentSerializer(instance=payment_instance,data=card_data,partial=True)
+        # if card_id != None:
+        #     payment_instance   =   Payment.objects.get(payment_id=card_id)    
+        #     payment_ser        =   PaymentSerializer(instance=payment_instance,data=card_data,partial=True)
 
-            if payment_ser.is_valid(): 
-                payment_ser.save()
+        #     if payment_ser.is_valid(): 
+        #         payment_ser.save()
         
         user_ser        =   RegisterSerializer(instance=user_rec,data=update_data,partial=True)
         

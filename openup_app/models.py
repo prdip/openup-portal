@@ -310,3 +310,18 @@ class Feedback(models.Model):
 
     class Meta:
         db_table = 'feedback'
+
+
+
+
+class PaymentFailedInfo(models.Model):
+    payment_status_id       =   models.AutoField(primary_key=True)
+    user_id                 =   models.CharField(max_length=10)
+    job_id                  =   models.CharField(max_length=10)
+    payment_fail_type       =   models.CharField(max_length=100)
+    payment_fail_code       =   models.CharField(max_length=100)
+    payment_fail_message    =   models.CharField(max_length=100)
+    created_at              =   models.DateTimeField()
+
+    class Meta:
+        db_table = 'paymentfailedinfo'
