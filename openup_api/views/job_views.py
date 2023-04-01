@@ -37,12 +37,14 @@ from django.db.models import Q
 
 # IMPORT SHARED TASK
 from celery import shared_task
-
-from openup.celery import app
-
+ 
 
 '''
     ADD NEW JOB
+IF CLIENT NOT VERIFIED IT WILL NOT ABLE TO ADD JOB
+NOTIFY EMPLOYEE JOB IS ADDED 
+AND PAYMENT WILL GENERATED IN BACKGROUND
+
 '''
  
 @api_view(['POST'])
@@ -172,7 +174,6 @@ def add_job(request):
         # get serializer data
         if job_ser.is_valid():
             id = job_ser.save()
-            # id=238
             '''
                 JOB ALERT IS SHARED TASK FUNCTION RUN IN BACKGROUND @shardtask decorator required
             '''
@@ -203,6 +204,7 @@ if its first payment then payment will not occured
 '''
 @shared_task()
 def background_payment(user_id,job_id):
+    
     try:
         payment_id  =   Payment.objects.filter(user=int(user_id)).values("payment_id").first()["payment_id"]  
     except:
@@ -220,8 +222,6 @@ def background_payment(user_id,job_id):
     except:
         pass
     
-     
- 
     data = {
         "amount"            :     500*100,
         "currency"          :    "inr",
@@ -233,6 +233,8 @@ def background_payment(user_id,job_id):
         "name"              :   user.user_first_name+' '+user.user_last_name
           }
         }
+    
+    '''background payment method in payment.py'''
  
     Payments.background_payments(data)
     return True
@@ -244,6 +246,9 @@ def background_payment(user_id,job_id):
  JobAlert function calls whenever new job added by client
 
  latitude and longitude pass by client 
+
+ SERVICE_JOB == >  ALERT TO ACTIVE EMP
+ EMERGENCY_JOB ==> ALERT TO ACTIVE AND INACTIVE EMP
 
 '''
 @shared_task()
@@ -264,23 +269,19 @@ def jobAlert(job_id,latitude,longitude):
     # get employee list
     user_list   =   []
     emp_fcm     =   []
-
     emplist     =   {}
-   
+    '''IN EMPLOYEE DICT   KEY == > EMPLOYEE_ID  VALUE_LIST ==> [FCM,DEVICE TYPE]'''
     for employee in employees:
         if employee.user_fcm_token != "" or employee.user_fcm_token != None: 
             # user location
-            user_location=(latitude,longitude)
-
+            user_location = (latitude,longitude)
             # employee location
-            emp_location = (employee.location_latitude,employee.location_longitude)
-
+            emp_location =  (employee.location_latitude,employee.location_longitude)
             # calculate distance between two point 
-            dist = gd(user_location,emp_location).km
+            dist        =   gd(user_location,emp_location).km
 
             # if dist is less than 6 km append list
             # if dist <= 6:
-
             user_list.append(employee.user_id)
             emp_fcm.append(employee.user_fcm_token)
             emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
@@ -313,7 +314,6 @@ def jobAlert(job_id,latitude,longitude):
                              alert_messages=alert_messages,
                             created_at=created_at) 
     # data.save() 
-    
 
     # pass dictionary data to send notification
     data = { 
@@ -321,10 +321,8 @@ def jobAlert(job_id,latitude,longitude):
              'notificationScreenType'     :   'addjob',
              'message'                    :   'Please acccept this asap',
              'job_id'                     :   str(job_id),  
-             
             }
-    
-
+             
     # SEND NOTIFICATIONS 
     noti_data={ }  
     
@@ -355,7 +353,7 @@ def removeElements(items,lists):
 
 
 
-
+'''API TO FETCH JOB LIST'''
 
 @api_view(['POST'])  
 def job_list(request):
@@ -377,8 +375,8 @@ def job_list(request):
         job_ser     =   JobsSerializer(job_list,many=True).data
         # remove data from list
         removeElements(['created_at','is_delete'],job_ser) 
-
-
+        
+        # CODE TO GET HOST IP ADDRESS
         hostname = socket.gethostname()
         name = socket.gethostbyname(hostname)
         domain = name+":8000"
@@ -428,7 +426,6 @@ def job_details(request):
     else:
         # required data
         job_id      =       request.data.get('job_id',None)
-
         # check if jon id is blank
         if job_id is None or job_id == "":
             return JsonResponse({
@@ -448,24 +445,19 @@ def job_details(request):
                     "message"     :   "Please provide job id",
             })
         
-
-          
         # send instance to serializer 
-        job_serializer  =   JobsSerializer(job_data).data
-        
+        job_serializer  =   JobsSerializer(job_data).data 
         # remove field from dict
         job_serializer.pop('created_at')        
         job_serializer.pop('is_delete')
 
         # create image url 
-        # domain  = "192.168.1.5:8000"
-        
-        hostname = socket.gethostname()
-        name = socket.gethostbyname(hostname)
-        domain = name+":8000"
-
-        obj     = job_serializer['vehicle_license']
-        url     = 'http://{domain}{path}'.format(domain=domain, path=obj)
+   
+        hostname    =       socket.gethostname()
+        name        =       socket.gethostbyname(hostname)
+        domain      =       name+":8000"
+        obj         =       job_serializer['vehicle_license']
+        url         =       'http://{domain}{path}'.format(domain=domain, path=obj)
 
         job_serializer['vehicle_license_url'] = url
 
@@ -478,10 +470,7 @@ def job_details(request):
         if job_serializer['job_status'] == "3":
             job_serializer['job_status']="completed"
         
-
-        
         # if block execute when job_accepted_by in job record is null
-        
         if job_data.job_accepted_by != None:
 
             try:
@@ -490,10 +479,8 @@ def job_details(request):
                 user_record = None
             
             if user_record != None:
-
                 '''to get employee name '''            
                 job_serializer['employee_name'] = user_record.user_first_name+' '+user_record.user_last_name
-
 
         job_serializer.pop('vehicle_license')
 
@@ -523,7 +510,7 @@ def remove_job(request):
     
     # if token verified
     else:
-        # required data
+        # # required data
         job_id      =       request.data.get('job_id',None)
 
         # check if job id is blank
@@ -536,7 +523,7 @@ def remove_job(request):
         update_data     =   {
                  "is_delete"     :       1
                 }
-        
+        # JOB INSTANCE
         job_data        =   Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
         job_serializer  =   JobsSerializer(data=update_data,instance=job_data,partial=True)
        
@@ -599,17 +586,15 @@ def accept_job(request):
              return JsonResponse({
                             "success"     :   0,
                             "message"     :   "Job already canceled by client",
-                    })
-
-        
-        
+                    })     
         data = {
             "job_status"     :   2,
             "job_accepted_by":  user_record.user_id
         }   
-        job_serializer= JobsSerializer(instance=job_record,data=data,partial=True)
+        job_serializer   = JobsSerializer(instance=job_record,data=data,partial=True)
 
-        user_data = {
+        # DATA IN RESPONSE
+        user_data        = {
             "first_name"            :       user_record.user_first_name,
             "middle_name"           :       user_record.user_middle_name,
             "last_name"             :       user_record.user_last_name,
@@ -617,8 +602,8 @@ def accept_job(request):
             "mobile_number"         :       user_record.user_phone_number,
             "location_latitude"     :       job_record.location_latitude,
             "location_longitude"    :       job_record.location_longitude
+            }
 
-        }
         data = {
             "employee" :   user_data
         }
@@ -651,17 +636,14 @@ NOTIFY CLIENT THAT JOB ACCEPTED
 def accept_job_notification(job_id):
 
     user_id     = Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
-    user_record = Registration.objects.exclude(user_is_delete = 1).get(user_id=user_id.user_id)
+    user_record = Registration.objects.exclude(Q(user_is_delete = 1) and Q(user_role_id=1)).get(user_id=user_id.user_id)
     # User information dictionary
-
     data = { 
             'title'                             :   'job acepted',
             'notificationScreenType'            :   "acceptjob",
             'message'                           :   'Your job acepted',
             'job_id'                            :    job_id
-        
         }
-    
     # SEND NOTIFICATIONS 
 
     noti_data={ }  
@@ -670,7 +652,6 @@ def accept_job_notification(job_id):
     noti_data['device']     =   str(user_record.device_type)
     
     FCM.send_notification(noti_data)     
-
     return True
 
 
@@ -683,7 +664,6 @@ def reject_job(request):
 
     user_token      =       request.data.get('user_token',None)
     check_user      =       token_verification(user_token)
-
     if check_user is None:
         return JsonResponse({
                 "success"     :   0,
@@ -692,10 +672,7 @@ def reject_job(request):
     
     # if token verified
     else:
-
         # job_id      =       request.data.get(job_id,None)
-
-
         return JsonResponse({
             "success"   :    1,
             "message"   :   "job rejected"
@@ -706,7 +683,10 @@ def reject_job(request):
 
 
 
-'''API FOR COMPLETE JOB '''
+'''API FOR COMPLETE JOB 
+JOB_STATUS WILL CHANGE TO 3
+AND NOTIFY CLIENT THAT JOB IS COMEPLETED
+'''
 @api_view(['POST'])
 def complete_job(request):
     user_token      =       request.data.get('user_token',None)
@@ -717,12 +697,10 @@ def complete_job(request):
                 "success"     :   0,
                 "message"     :   "Unauthorized User",
             })
-    
     # if token verified
     else:
 
         job_id      =       request.data.get("job_id",None)
-
         user_id     =       check_user['session_user']
         try:
             job_record  =       Jobs.objects.exclude(Q(job_status=1) and Q(job_status=3) and Q(is_delete=1)).get(job_id=job_id)
@@ -746,29 +724,24 @@ def complete_job(request):
                 "success"   :   0,
                 "message"   :   "job is already canceled by client"
                 })
-
         job_accepted_by = job_record.job_accepted_by
 
-        
         if job_accepted_by == None or user_id != int(job_record.job_accepted_by):
             return JsonResponse({
                 "success"   :   0,
                 "message"   :   "invalid employee"
             })
         
-        job_status = JobsType.objects.get(status_id=3)
-        
-        update_record = {
+        job_status      = JobsType.objects.get(status_id=3)
+        update_record   = {
             "job_status" : job_status.status_id 
-        }
+            }
 
         job_serializer = JobsSerializer(instance=job_record,data=update_record,partial=True)
-
         if job_serializer.is_valid():
             job_serializer.save()
-
-            # complete job notification function
-           
+            
+            # complete job notification function 
             complete_job_notification.delay(job_id)
 
             return JsonResponse({

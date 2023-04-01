@@ -266,9 +266,9 @@ class PaymentFailedInfoSerializer(serializers.ModelSerializer):
      
     user_id                 =   serializers.CharField()
     job_id                  =   serializers.CharField()
-    payment_fail_type       =   serializers.CharField()
-    payment_fail_code       =   serializers.CharField()
-    payment_fail_message    =   serializers.CharField()
+    payment_fail_type       =   serializers.CharField(required=False,allow_null=True)
+    payment_fail_code       =   serializers.CharField(required=False,allow_null=True)
+    payment_fail_message    =   serializers.CharField(required=False,allow_null=True)
     created_at              =   serializers.DateTimeField()
 
     def create(self,validated_data):     

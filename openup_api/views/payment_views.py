@@ -11,7 +11,7 @@ from openup_api.views.auth_views import token_verification
 from datetime import datetime
 
 # Import Models here
-from openup_app.models import Payment,Registration,Jobs
+from openup_app.models import Payment,Registration,Jobs,PaymentFailedInfo
 
 # Import Serializer
 from openup_app.serializers import PaymentSerializer,RegisterSerializer,JobsSerializer
@@ -21,6 +21,9 @@ from .validation import check_text,verify_card
 
 # import stripe
 import stripe
+
+from openup_api.views.job_views import background_payment 
+
 
 from openup.fcm import FCM
 
@@ -364,28 +367,31 @@ def create_customer(request,*args,**kwargs):
         except:
             card_id     =       None
 
-        
         try:
             card            =  Payment.objects.get(payment_id=card_id) 
         except:
             card = None
-        # # code to create customer to stripe     
-        # response_data   =  stripe.Customer.create(description="client added to stripe",
-        #                    email = user_details.user_email,
-        #                    name  = card.card_name)
-
-        # cust_id         = response_data['id']
-        # get stripe id from user data
+        # CUSTOMER ID IS STORED IN USER LOGIN WHILE USER REGISTRATION
         try:
             cust_id         =   user_details.user_stripe_id
         except:
             cust_id         =   None
 
-        if cust_id == None:
-            return JsonResponse({
-                "status"    :    0,
-                "message"   :   "stripe id not created",
-             })
+        '''if customer id not created in stripe then it will create cust_id here'''
+        # if cust_id == None:
+        #     response_data   =  stripe.Customer.create(description="client added to stripe",
+        #                                email = user_details.user_email,
+        #                                name  = user_details.user_first_name+user_details.user_last_name)
+
+        #     cust_id         = response_data['id']
+
+        #     update_data = {
+        #         "user_stripe_id" : cust_id, 
+        #        }    
+    
+        #     user_serializer = RegisterSerializer(instance=user_details,data=update_data,partial=True)
+        #     if user_serializer.is_valid():
+        #         user_serializer.save()
 
         # code to create ephemeral key to stripe 
         ephemeralKey    = stripe.EphemeralKey.create(
@@ -395,8 +401,6 @@ def create_customer(request,*args,**kwargs):
         # setup intent
         setupIntent  = stripe.SetupIntent.create(customer=cust_id,payment_method_types=["card"])  
        
-         
-        # print(update_data)
         # payment_ser = PaymentSerializer(instance=card,data=update_data,partial=True)
         # user_ser = RegisterSerializer(instance=card,data=update_data,partial=True)
 
@@ -441,14 +445,10 @@ def link_payment_method(request):
     else:
         cus_id          =       request.data.get('cust_id')
         user_id         =       check_user['session_user']
-
-        # try:
-        #     card_id     =       Payment.objects.exclude(is_delete=1).filter(user_id=user_id).values('payment_id').first()['payment_id']
-        # except:
-        #     card_id     =       None
-
+         
+ 
         try:
-            user_rec     =       Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
+            user_rec     =       Registration.objects.exclude(user_is_delete=1).get(user_id=int(user_id))
         except:
             user_rec     =       None
 
@@ -459,31 +459,21 @@ def link_payment_method(request):
         update_data = {
                 "user_payment_id" : response_data["data"][0]['id'], 
         }
-
-        # card_data ={
-        #     "card_method_id"    :       response_data["data"][0]['id'],
-        # }
-
-        # if card_id != None:
-        #     payment_instance   =   Payment.objects.get(payment_id=card_id)    
-        #     payment_ser        =   PaymentSerializer(instance=payment_instance,data=card_data,partial=True)
-
-        #     if payment_ser.is_valid(): 
-        #         payment_ser.save()
-        
         user_ser        =   RegisterSerializer(instance=user_rec,data=update_data,partial=True)
         
         if user_ser.is_valid():
 
             user_ser.save()
             # code for payment intent
+             
             return JsonResponse({
-                        "status"    :    1,
+                        "success"    :    1,
                         "message"   :   "payment method added successfully",
                      })   
         else:
+          
             return JsonResponse({
-                        "status"    :    1,
+                        "success"    :    0,
                         "message"   :   "error occured",
                      })
 
@@ -499,7 +489,6 @@ def check_stripe(user_id):
         user_record     =       Registration.objects.exclude(user_is_delete=1).get(user_id=int(user_id))
     except:
         user_record     =   None
-
 
     if user_record.user_role == 1 or user_record.user_stripe_id != None:
         return False
@@ -573,14 +562,14 @@ def ask_for_payment(request):
             send_notification.delay(noti_data)
             return JsonResponse({
             "success"   :       1,
-            "message"   :   "payment notification done" 
+            "message"   :   "payment notification sent and payment is pending" 
             })
         
         else:
 
             return JsonResponse({
             "success"   :       0,
-            "message"   :   "job payment is pending" 
+            "message"   :   "job payment is done" 
             })
 
             
@@ -588,3 +577,6 @@ def ask_for_payment(request):
 @shared_task()        
 def send_notification(noti_data):  
     FCM.send_notification(noti_data)
+
+
+ 

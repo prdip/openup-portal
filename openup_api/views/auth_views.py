@@ -45,6 +45,7 @@ from openup.send_email import SendEmail
 # IMPORT SHARED TASK
 from celery import shared_task
  
+import stripe
 
 # import stripeCustomer to create cust in stripe run in background process
 from openup.create_cust import stripeCustomer
@@ -52,6 +53,16 @@ from openup.create_cust import stripeCustomer
 
 
 # USER REGISTRATION API 
+
+'''
+EMPLOYEE REGISTRATION ==> MAIL WILL SENT TO ADMIN 
+CLIENT REGISTRATION ==> MAIL WILL SENT TO VERIFY EMAIL ADDRESS AND SETTING WILL UPDATED 
+SESSTION WILL CREATED AND CLIENT WILL DIRECTLY LOGIN 
+
+'''
+
+
+
 @api_view(['POST'])
 def user_register(request):
     
@@ -215,11 +226,19 @@ def user_register(request):
         "user_fcm_token"         :   fcm_token,
         "device_type"            :   device_type
     }
+    if user_type == "client":
+        response_data   =  stripe.Customer.create(description="client added to stripe",
+                                       email = email,
+                                       name  = first_name+' '+last_name)
+        cust_id         = response_data['id']
+            # code to create ephemeral key to stripe
+        registration_data["user_stripe_id"] = cust_id
+              
     # SERIALIZER INSTANCE
     registration_data      =   RegisterSerializer(data=registration_data)
 
     if registration_data.is_valid():
-        # registration_data.save()
+        registration_data.save()
         time.sleep(5)
         if user_type == "employee":
             
@@ -309,6 +328,10 @@ def send_email(data_dict):
 
 '''
 Login API
+
+EMPLOYEE LOGIN == > IF EMPLOYEE NOT ACTIVATED BY ADMIN WILL NOT ABLE TO LOGIN
+EMPLOYEE SETTING WILL ADD AFTER FIRST TIME LOGIN 
+CLIENT LOGIN    ==> ON FIRST TIME LOGIN STRIPE CUSTOMER WILL CREATED
 '''
 @api_view(['POST'])
 def login(request):
@@ -400,15 +423,13 @@ def login(request):
             })
        
     # if client logs in for first time then create stripe customer
-
-    if user_type == "client" or user_rec.user_stripe_id == " ":
-        
+     
+    if user_type == "client" and (user_rec.user_stripe_id == "" or user_rec.user_stripe_id == None):         
         create_customer.delay(user_rec.user_id)
     
     # Create session token
     session_token       =       secrets.token_hex()
     exp_time            =       datetime.datetime.now()+ datetime.timedelta(days=30)
-
     # STORE TOKEN IN SESSION DATA 
     data= {
                 "session_user"              :         user_rec.user_id,
@@ -417,10 +438,8 @@ def login(request):
                 "session_exp"               :         exp_time,
                 "session_status"            :         True, #login
                 "session_created_at"        :         datetime.datetime.now(),
-                "session_is_delete"         :         False     
-                      
-            }
-    
+                "session_is_delete"         :         False                         
+            }   
     if fcm_token != None:
         data["session_user_fcm"] = fcm_token
     
@@ -435,11 +454,9 @@ def login(request):
         update_data = {
                 "device_type"        :   device_type,
                 "user_fcm_token"     :   fcm_token
-            }
-        
+            }  
         # provide user instance to serializer
-        user_ser = RegisterSerializer(instance=user_rec,data=update_data,partial=True)
-        
+        user_ser = RegisterSerializer(instance=user_rec,data=update_data,partial=True)  
         if user_ser.is_valid():
             user_ser.save(**update_data)
             # check user setting already inserted or not
@@ -447,7 +464,6 @@ def login(request):
              user_set = Settings.objects.exclude(is_delete = 1).filter(setting_user=user_rec.user_id).exists()
             except:
                 user_set = False
-
             # this will execute for first time employee login
             if user_type=="employee" and user_set == False:
 
@@ -458,9 +474,7 @@ def login(request):
                 "service_notification"  :   0,
                 "location_notification" :   0,
                 "service_feed_not"      :   0
-
                 }
-
                 '''save each setting in eav model'''
                 for setting in setting_dict:
                     setting_data    =       {
@@ -498,24 +512,24 @@ def confirm_account(request,email):
     # get user_id through email
     user_id       =  Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']
     user_record   =  Registration.objects.get(user_id=user_id)
-    
     return render(request,'Authentication/admin_conf.html',{"user":user_record})
 
 
 '''
  activate employee account 
+ IF EMPLOYEE ACTIVATE BY ADMIN
+ EMPLOYEE STATUS WILL CHANGE TO 1
+
 '''
 def activate_account(request):
 
     id = request.POST.get('id')
-
     # get user record
     user_record     =       Registration.objects.exclude(user_is_delete=1).get(user_id=id)
     
     # if account already activated
     if user_record.user_status == 1:
         return HttpResponse("Account Already activated")            
-
     update_data =   {
         "user_status"   :   1
     }
@@ -530,6 +544,7 @@ def activate_account(request):
 
 '''
 API for Logout user
+FCM WILL UPDATED TO BLANK
 '''
 @api_view(['POST'])
 def logout(request,*args,**kwargs):
@@ -541,16 +556,13 @@ def logout(request,*args,**kwargs):
         return JsonResponse({
                 "success"     :   0,
                 "message"     :   "Unauthorized User",
-        })
-        
+        })    
     else:
         # get user from token
         associated_user     =       Session.objects.filter(session_token=user_token).values('session_id').first()['session_id']       
-        session_record      =       get_object_or_404(Session,session_id=associated_user) 
-        
+        session_record      =       get_object_or_404(Session,session_id=associated_user)   
         # get user id of login user
         user_id             =       session_record.session_user
-        
         # get user Record
         user_record         =       Registration.objects.exclude(user_is_delete = 1).get(user_id=user_id.user_id)
 
@@ -558,8 +570,6 @@ def logout(request,*args,**kwargs):
         update_data = {
             "user_fcm_token" :   ""
             }
-
-
         user_data       =   RegisterSerializer(instance=user_record,data=update_data,partial=True)
 
         if user_data.is_valid():
@@ -597,18 +607,15 @@ def email_update(request,*args,**kwargs):
     # CHECK TOKEN VALUE
     user_token     =       request.data.get('user_token',None)
     check_user     =       token_verification(user_token)
-
     if check_user is None:
         return JsonResponse({
                 "success"     :   0,
                 "message"     :   "Unauthorized User",
-        
-        })        
+        })                
     #  IF TOKEN VERIFIED 
     else:
         # GET CURRENT EMAIL ADDRESS == REQUIRED DATA
         current_email   =       request.data.get('current_email',None)
-
         # GET NEW EMAIL ADDRESS
         new_email       =       request.data.get('new_email',None)
         password        =       request.data.get('user_password',None)
@@ -618,31 +625,25 @@ def email_update(request,*args,**kwargs):
             return JsonResponse({           
                     "success"       :   0,
                     "message"       :   "Please Current Email Address",
-                })
-        
+                })   
         # Check for new email
         if new_email == None or new_email=="":
             return JsonResponse({
                     "success"       :   0,
                     "message"       :   "Please provide Email Address",
-                })
-        
+                })    
         check_new_email = email_address(new_email)
         if check_new_email == False:
             return JsonResponse({
                     "success"       :   0,
                     "message"       :   "Please enter valid new Email Address",
-                })
-        
+                })   
         if new_email == current_email:
             return JsonResponse({
                     "success"       :   0,
                     "message"       :   "Email is same as old email address",
-                })
-
-           
+                })      
         # Check for password
-
         if password == None or password == "":
             return JsonResponse({
                     "success"       :   0,
@@ -653,49 +654,39 @@ def email_update(request,*args,**kwargs):
         try:
             user_id = Registration.objects.exclude(user_is_delete=1).filter(user_email=current_email).values('user_id').first()['user_id']
         except:
-            user_id = None
-        
+            user_id = None 
         if user_id is None:
             return JsonResponse({
                 "success"     :   0,
                 "message"     :   "Please enter valid current email address",
-            })
-        
+            }) 
         # Check email is already exist or not
         try:
             check_email = Registration.objects.exclude(user_is_delete=1).filter(user_email=new_email).exists()
         except:
             check_email = None
-
         if check_email:
             return JsonResponse({
                 "success"     :   0,
                 "message"     :   "Email address already exist",
-            })
-        
+            })    
         # GET USER INSTANCE
-        user        =   Registration.objects.exclude(user_is_delete=1).get(user_id = user_id)
-        
+        user        =   Registration.objects.exclude(user_is_delete=1).get(user_id = user_id) 
         # Validate email is valid to login user_email
         user_id     =   check_user['session_user']
         if user.user_id != user_id:
             return JsonResponse({
                 "success"     :   0,
                 "message"     :   "Please enter valid email address",
-            })
-        
+            }) 
         # CHECK HASH PASSWORD
         check_pass  =  check_password(password,user.user_password)
-
         if check_pass is False: 
-            return JsonResponse({
-           
+            return JsonResponse({   
             "success"       :   0,
             "message"       :   "Please provide valid password",
-            })
-        
+            })  
         # UPDATE DATA
-
         update_data = {
             "user_email" : new_email
         }
@@ -704,18 +695,13 @@ def email_update(request,*args,**kwargs):
         if user_serializer.is_valid():
             user_serializer.save()
 
-            
             associate_user      =       Session.objects.exclude(session_is_delete=1).filter(session_user=user_id).values('session_id').first()['session_id']
-
             session_record      =       get_object_or_404(Session,session_id=associate_user) 
             # get user id
-
             # Update session data    
-            u_data              =       {   
-                                        
+            u_data              =       {                                    
                                         "session_user_email"    :    new_email
                                         }        
-
             session_data        =       SessionSerializer(instance=session_record,data=u_data,partial=True)
 
             if session_data.is_valid():
@@ -723,8 +709,7 @@ def email_update(request,*args,**kwargs):
                 return JsonResponse({
                             "success"       :   1,
                             "message"       :   "Email address updated ",
-                            })
-                
+                            })        
             else:
                 return JsonResponse({
                             "success"       :   1,
@@ -743,7 +728,6 @@ def change_password(request,*args,**kwargs):
     # CHECK TOKEN VALUE
     user_token = request.data.get('user_token',None)
     check_user              =       token_verification(user_token)
-
     if check_user is None:
         return JsonResponse({
                 "success"     :   0,
@@ -862,7 +846,7 @@ def forget_password(request):
     # EMAIL FORMAT
     data = {
             "email"     :   user.user_email,
-            'domain'    :   '192.168.1.3:8000',
+            'domain'    :   '192.168.1.4:8000',
 			'site_name' :   'Website',     #Data which will send with E-mail id
 			"user"      :   user.user_id,
 			'token'     :   token,
@@ -906,12 +890,9 @@ def reset_password(request,token):
     temp_timestamp          =       datetime.datetime.now() # This is temp timestamp to verify diff of 5 min. 
     temp_time               =       datetime.datetime.timestamp(temp_timestamp)*1000 #temp timestamp converted to unix 
     convert_temp_timestamp  =       float(temp_time)# current time 
-    
     # GET DETAILS OF USER 
-    pass_reset_data         =       ForgotPassword.objects.filter(token=user_token).values() #unique token verifies user
-    
+    pass_reset_data         =       ForgotPassword.objects.filter(token=user_token).values() #unique token verifies user   
     if pass_reset_data.exists(): #True if user found
-
         email                   =       pass_reset_data.values('email').first()['email']
         # filters record using email addresss
         try:
@@ -926,7 +907,6 @@ def reset_password(request,token):
         status_code             =       pass_reset_data.values_list('status')[0][0] #status value for checking link been used or not        
         exp_time                =       pass_reset_data.values_list('timestamp')[0][0] # get timestamp from database
         convert_unix_timestamp  =       float(exp_time)
-
 
         if (convert_unix_timestamp>convert_temp_timestamp) and (status_code==1):
             if request.method == "POST":
@@ -956,14 +936,13 @@ def reset_password(request,token):
 
 '''
 API FOR DELETE ACCOUNT
+STATUS WILL CHANGE AND TOKEN WILL UPDATE TO BLANK
 ''' 
 @api_view(['POST'])
 def delete_account(request):
-
       # CHECK TOKEN VALUE
     user_token            =       request.data.get('user_token',None)
     check_user            =       token_verification(user_token)
-
     if check_user is None:
         return JsonResponse({
                 "success"     :   0,
@@ -974,28 +953,23 @@ def delete_account(request):
         # get user_id from token
         user_id         =   check_user['session_user']
         # get user record from user id
-        user_account    =   Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)     
-        
+        user_account    =   Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)        
         update_data = {
                     "user_is_delete" : 1,
                     "user_fcm_token" :   ""
             }
-
         associate_user      =       Session.objects.exclude(session_is_delete=1).filter(session_user=user_id).values('session_id').first()['session_id']
         session_record      =       get_object_or_404(Session,session_id=associate_user) 
-        # get user id
-       
+        # get user id  
         user_data           =       RegisterSerializer(instance=user_account,data=update_data,partial=True)
 
         if user_data.is_valid():
             user_data.save(**update_data)
-
         # Update session data    
             u_data                =       {   
                                         "session_is_delete" :    1,
                                         "session_status"    :    0
                                         }        
-
             session_data        =       SessionSerializer(instance=session_record,data=u_data,partial=True)
 
             if session_data.is_valid():
@@ -1034,8 +1008,7 @@ def token_verification(token):
 
     if verify is None:
         return None
-    else:
-        
+    else:       
         # Convert time to unix time to compare
         exp_time            =       session_record.session_exp 
         #CONVERT TIME TO UTC TIME
@@ -1055,10 +1028,8 @@ def token_verification(token):
             "session_email" :   session_record.session_user_email,
             "first_name"    :   session_record.session_user.user_first_name,
             "last_name"     :   session_record.session_user.user_last_name,
-
         } 
         if expiry_time > current:
-  
         #     verify = verify.values('session_token').first()['session_token']
             return data
         else:
@@ -1091,7 +1062,6 @@ def get_user_details(request):
         }) 
     
     else:
-
         # required data
         user_id                 =       check_user['session_user']   
         try:
@@ -1131,19 +1101,12 @@ def get_user_details(request):
             get_user_details["payment_id"]      =    None
         else:
             get_user_details["payment_id"]          =    payment_id.payment_id
-        
-        # if payment_id != None and payment_id.card_method_id != None and payment_id.card_method_id != "":
-        #     get_user_details["payment_method_id"]   = 1
-        # else:
-        #     get_user_details["payment_method_id"]   = 0
-
-        if user_record.user_payment_id != None and user_record.user_payment_id != " ":
+    
+        if user_record.user_payment_id != None and user_record.user_payment_id != "":
             get_user_details["payment_method_id"]   = 1
         else:
             get_user_details["payment_method_id"]   = 0
             
-
-
         # Add data to the dictionary
         get_user_details["setting_id"]      =    setting_id
         get_user_details["vehicle_id"]      =    vehicle_id
@@ -1211,7 +1174,13 @@ def get_user_details(request):
 
 
 
+'''
+EMPLOYEE STATUS == > ACTIVE OR INACTIVE SCREEN
 
+employee_status = 1 => active
+employee_status = 0 =>  inactive
+
+'''
 
 @api_view(['POST'])
 def employee_status(request):

@@ -24,7 +24,9 @@ from openup_app.serializers import FeedbackSerializer
 '''FEEDBACK  VIEWS'''
 
 
-
+'''ADD FEEDBACK API
+FOR ONE JOB ONE FEEDBACK WILL ADDED
+'''
 
 
 @api_view(['POST'])

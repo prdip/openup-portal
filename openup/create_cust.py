@@ -6,12 +6,13 @@ from openup_app.serializers import RegisterSerializer
 # Import Models here
 from openup_app.models import Registration 
 
+# import stripe
 import stripe
 
 # Import Queryset
 from django.db.models import Q
 
-
+'''CREATE CUSTOMER STRIPE ACCOUNT TO USING NAME '''
 
 class stripeCustomer:
         
@@ -22,7 +23,6 @@ class stripeCustomer:
                                        name  = user.user_first_name+' '+user.user_last_name)
             cust_id         = response_data['id']
             # code to create ephemeral key to stripe
-            print(cust_id)
             update_data = {
                         "user_stripe_id" : cust_id, 
                        }    

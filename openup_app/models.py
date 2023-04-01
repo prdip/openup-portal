@@ -50,14 +50,14 @@ class Registration(models.Model):
     location_longitude       =   models.FloatField(null=True)
     device_type              =   models.IntegerField(null=True,default=1)   # 1 == > Anaroid  2==> IOS
     user_fcm_token           =   models.CharField(max_length=500,null=True,blank=True)
-    user_stripe_id           =    models.CharField(max_length=500,null=True,blank=True)
-    user_payment_id           =    models.CharField(max_length=500,null=True,blank=True)
-    user_status              =   models.BooleanField(null=True,default=0)
+    user_stripe_id           =   models.CharField(max_length=500,null=True,blank=True)  #CLIENT STRIPE ID 
+    user_payment_id          =   models.CharField(max_length=500,null=True,blank=True)  #CLIENT PAYMENT METHOD ID
+    user_status              =   models.BooleanField(null=True,default=0)   #STATUS OF EMPLOYEE ACTIVE BY ADMIN
     user_is_verified         =   models.BooleanField(default=1)
-    employee_status          =   models.BooleanField(null=True,default=0)
+    employee_status          =   models.BooleanField(null=True,default=0)   #STATUS OF EMPLOYEE ACTIVE SCREEN OR INACTIVE SCREEN
     update_at                =   models.DateTimeField(null=True,blank=True)
     user_is_delete           =   models.BooleanField(default=0)
-    # emp_not                  =   models.CharField(max_length=10,null=True)
+
     class Meta:
 
         db_table = "users"
@@ -164,7 +164,7 @@ class VehicleDetails(models.Model):
         self.save()
 
 
-# PAYMENT MODEL
+# PAYMENT MODEL WILL STORE CARD INFORMATION
 
 class Payment(models.Model):
 
@@ -197,6 +197,12 @@ class Payment(models.Model):
 
 
 # Job status Model
+'''
+1==> ACTIVE
+2==> ACCEPTED
+3==> COMPLETED
+4==> CANCELED
+'''
 
 class JobsType(models.Model):
     status_id       =       models.AutoField(primary_key=True)
@@ -229,8 +235,8 @@ class Jobs(models.Model):
     vehicle_modification     =   models.CharField(max_length=400)
     vehicle_license          =   models.FileField(upload_to=file_name, null=True)
     job_accepted_by          =   models.CharField(max_length=31,null=True)
-    job_payment_id           =   models.CharField(max_length=100,null=True)
-    job_pay_status           =   models.BooleanField(default=0)
+    job_payment_id           =   models.CharField(max_length=100,null=True)  # GENERATED AND SAVED AFTER SUCCESSFUL PAYMENT 
+    job_pay_status           =   models.BooleanField(default=0)    #1==> SUCCESS 0==> NO PAYMENT
     created_at               =   models.DateTimeField()
     update_at                =   models.DateTimeField(null=True)
     is_delete                =   models.BooleanField(default=0)
@@ -314,13 +320,15 @@ class Feedback(models.Model):
 
 
 
+#  PAYMENT FAILED INFO MODEL
+
 class PaymentFailedInfo(models.Model):
     payment_status_id       =   models.AutoField(primary_key=True)
     user_id                 =   models.CharField(max_length=10)
     job_id                  =   models.CharField(max_length=10)
-    payment_fail_type       =   models.CharField(max_length=100)
-    payment_fail_code       =   models.CharField(max_length=100)
-    payment_fail_message    =   models.CharField(max_length=100)
+    payment_fail_type       =   models.CharField(max_length=500,null=True)
+    payment_fail_code       =   models.CharField(max_length=500,null=True)
+    payment_fail_message    =   models.CharField(max_length=500,null=True)
     created_at              =   models.DateTimeField()
 
     class Meta:
