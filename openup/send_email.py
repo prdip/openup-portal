@@ -16,7 +16,7 @@ class SendEmail:
         # EMAIL FORMAT
         email_data = {
                 "email"     :   data_dict['email'],
-                'domain'    :   '192.168.1.6:8000',
+                'domain'    :   '192.168.1.4:8000',
     			'site_name' :   'Website',     #Data which will send with E-mail id
     			'protocol'  :   'http',
             }

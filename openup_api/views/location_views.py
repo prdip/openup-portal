@@ -11,12 +11,15 @@ from openup_api.views.auth_views import token_verification
 from openup_app.serializers import RegisterSerializer
 
 # Import Models here
-from openup_app.models import Registration
+from openup_app.models import Registration,Jobs
 
 # Import Q
 from django.db.models import Q
 
 # import geopy
+
+
+import datetime
 
 from geopy.distance import geodesic as gd
 
@@ -37,11 +40,12 @@ def update_location(request):
         }) 
     
     else:
-            # required data
+        # required data
         latitude     =    request.data.get('latitude',None)
         longitude    =    request.data.get('longitude',None)
-
+        # 
         # check for blank value
+        # print(job_id)
         if latitude is None:
             return JsonResponse({
                             "success"        :       0,
@@ -52,8 +56,9 @@ def update_location(request):
             return JsonResponse({
                             "success"        :       0,
                             "message"        :      "Please provide lattitude"
-            })
+            })     
         
+    
         user_id = check_user['session_user']
         # update data
         location_details = {
@@ -61,7 +66,7 @@ def update_location(request):
                     "location_longitude"  :     longitude,
         }
 
-        #instance of  user recored
+        # #instance of  user recored
         user_rec    =       Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
         # user serializer
         user_ser    =       RegisterSerializer(instance=user_rec,data=location_details,partial=True)
@@ -72,11 +77,105 @@ def update_location(request):
             }
         if user_ser.is_valid():
             user_ser.save()
-            return JsonResponse({
+
+      
+        return JsonResponse({
                             "success"        :       1,
                             "message"        :      "User location updated succesfully",
-                            "data"          :       data
+                            # "data"           :      data
+                            
             })
+                            
+
+
+
+
+'''api for client '''
+
+@api_view(['POST'])
+def dist_calculation(request):
+
+    user_token            =       request.data.get('user_token',None)
+    check_user            =       token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+        }) 
+    
+    else:
+        job_id       =    request.data.get('job_id',None)    
+        if job_id==0:
+                return JsonResponse({
+                                "success"        :       1,
+                                "message"        :      "User location updated succesfully"
+                        })
+        try:
+            job_record          =   Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
+        except:
+            job_record = None
+
+        if job_record == None:
+            return JsonResponse({
+                                "success"        :       0,
+                                "message"        :      "provide job id"
+                        })
+        try: 
+            emp_id              =    job_record.job_accepted_by
+        except:
+            emp_id = None
+
+        if emp_id == None:
+            return JsonResponse({
+                                "success"        :       0,
+                                "message"        :      "job is not accepted yet"
+                        })
+            
+        emp_record          =   Registration.objects.exclude(user_is_delete=1).get(user_id=emp_id)
+        client_location_lon =   job_record.location_latitude
+        client_location_lat =   job_record.location_longitude
+        client_location     =   (client_location_lon,client_location_lat)
+            # employee location
+        emp_location        =   (emp_record.location_latitude,emp_record.location_longitude)
+            # calculate distance between two point 
+        dist                =   gd(client_location,emp_location).kilometers
+        time                =   (dist/40)*60
+        # if dist < 1:
+        #     time = time*60
+
+
+        # minutes =  datetime.timedelta(minutes=time)
+
+        # time = datetime.timedelta(minutes = time)
+        min = datetime.datetime.now()+datetime.timedelta(minutes = time)
+       
+        print(min)
+        # time = min.strftime('%M:%S')
+        # print(time)
+        # times = datetime.datetime.timestamp(min)
+        current_time   =  datetime.datetime.now()
+
+        # current_time   =  datetime.datetime.timestamp(datetime.datetime.now())
+        print(current_time)
+ 
+        time = min-current_time
+        t1 = datetime.datetime.strptime(str(time),'%H:%M:%S.%f')
+
+        time_req = t1.strftime('%M:%S')         
+        
+        data =  {
+                "distance"       :       dist,
+                "time"           :       str(time_req),      
+            }       
+        return JsonResponse({
+                            "success"        :       1,
+                            "message"        :      "User location updated succesfully",
+                            "data"           :      data
+                            
+            })
+        
+
 
 
 
