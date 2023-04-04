@@ -8,7 +8,7 @@ from django.http.response import JsonResponse
 from openup_api.views.auth_views import token_verification
 
 #  Import Serializer
-from openup_app.serializers import RegisterSerializer
+from openup_app.serializers import RegisterSerializer,JobsSerializer
 
 # Import Models here
 from openup_app.models import Registration,Jobs
@@ -43,9 +43,29 @@ def update_location(request):
         # required data
         latitude     =    request.data.get('latitude',None)
         longitude    =    request.data.get('longitude',None)
+        job_time     =    request.data.get('job_time',None)
+        job_id       =    request.data.get('job_id',None)
+        job_distance =    request.data.get('job_distance',None)
         # 
         # check for blank value
         # print(job_id)
+        if job_distance ==  None:
+            return JsonResponse({
+                            "success"        :       0,
+                            "message"        :      "Please provide distance"
+            })
+        if job_id == None:
+            return JsonResponse({
+                            "success"        :       0,
+                            "message"        :      "Please provide job_id"
+            })
+
+        if job_time == None:
+            return JsonResponse({
+                            "success"        :       0,
+                            "message"        :      "Please provide time"
+            })
+
         if latitude is None:
             return JsonResponse({
                             "success"        :       0,
@@ -60,6 +80,7 @@ def update_location(request):
         
     
         user_id = check_user['session_user']
+        
         # update data
         location_details = {
                     "location_latitude"   :     latitude,
@@ -75,6 +96,26 @@ def update_location(request):
 
                 "location_details":location_details
             }
+        
+        try: 
+            job     = Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
+        except:
+            job     = None
+
+        print("job id is",job)
+
+        update_data = {
+            "job_time"      :       job_time,
+            "job_distance"  :       job_distance
+        }
+
+        job_ser     =       JobsSerializer(instance=job, data=update_data, partial=True)
+
+        if job_ser.is_valid():
+
+            job_ser.save()
+        
+
         if user_ser.is_valid():
             user_ser.save()
 
@@ -121,51 +162,53 @@ def dist_calculation(request):
                                 "success"        :       0,
                                 "message"        :      "provide job id"
                         })
-        try: 
-            emp_id              =    job_record.job_accepted_by
-        except:
-            emp_id = None
+        # try: 
+        #     emp_id              =    job_record.job_accepted_by
+        # except:
+        #     emp_id = None
 
-        if emp_id == None:
-            return JsonResponse({
-                                "success"        :       0,
-                                "message"        :      "job is not accepted yet"
-                        })
+        # if emp_id == None:
+        #     return JsonResponse({
+        #                         "success"        :       0,
+        #                         "message"        :      "job is not accepted yet"
+        #                 })
             
-        emp_record          =   Registration.objects.exclude(user_is_delete=1).get(user_id=emp_id)
-        client_location_lon =   job_record.location_latitude
-        client_location_lat =   job_record.location_longitude
-        client_location     =   (client_location_lon,client_location_lat)
-            # employee location
-        emp_location        =   (emp_record.location_latitude,emp_record.location_longitude)
+        # emp_record          =   Registration.objects.exclude(user_is_delete=1).get(user_id=emp_id)
+        # client_location_lon =   job_record.location_latitude
+        # client_location_lat =   job_record.location_longitude
+        # client_location     =   (client_location_lon,client_location_lat)
+        #     # employee location
+        # emp_location        =   (emp_record.location_latitude,emp_record.location_longitude)
             # calculate distance between two point 
-        dist                =   gd(client_location,emp_location).kilometers
-        time                =   (dist/40)*60
+        # dist                =   gd(client_location,emp_location).kilometers
+        # time                =   (dist/40)*60
         # if dist < 1:
         #     time = time*60
 
-
-        # minutes =  datetime.timedelta(minutes=time)
-
-        # time = datetime.timedelta(minutes = time)
-        min = datetime.datetime.now()+datetime.timedelta(minutes = time)
-       
-        print(min)
-        # time = min.strftime('%M:%S')
-        # print(time)
-        # times = datetime.datetime.timestamp(min)
-        current_time   =  datetime.datetime.now()
-
-        # current_time   =  datetime.datetime.timestamp(datetime.datetime.now())
-        print(current_time)
- 
-        time = min-current_time
-        t1 = datetime.datetime.strptime(str(time),'%H:%M:%S.%f')
-
-        time_req = t1.strftime('%M:%S')         
+         
+        # min = datetime.datetime.now()+datetime.timedelta(minutes = time)
         
+        # current_time   =  datetime.datetime.now()
+
+
+        # time = min-current_time
+
+       
+        # try:
+        #     t1 = datetime.datetime.strptime(str(time),'%H:%M:%S.%f')
+        # except:
+        #     pass
+
+        # try:
+        #     time_req = t1.strftime('%M:%S')         
+        # except:
+        #     time_req = 0
+
+
+
+        time_req = job_record.job_time
         data =  {
-                "distance"       :       dist,
+               
                 "time"           :       str(time_req),      
             }       
         return JsonResponse({

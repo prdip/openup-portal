@@ -178,6 +178,9 @@ class JobsSerializer(serializers.Serializer):
     vehicle_modification     =   serializers.CharField()
     vehicle_license          =   serializers.FileField(required=False,allow_null=True)
     job_payment_id           =   serializers.CharField(required=False,allow_null=True)
+    job_time                 =   serializers.CharField(required=False,allow_null=True)    #1==> SUCCESS 0==> NO PAYMENT
+    job_distance             =   serializers.CharField(required=False,allow_null=True) 
+
     job_pay_status           =   serializers.BooleanField(default=0,required=False)
     created_at               =   serializers.DateTimeField()
     is_delete                =   serializers.BooleanField(default=0)
@@ -200,7 +203,7 @@ class JobsSerializer(serializers.Serializer):
         fields = ('job_id','job_type','user','location_latitude',
                   'location_longitude','vehicle_details',
                   'vehicle_modification','vehicle_license',
-                  'created_at','is_delete','job_status','job_accepted_by','job_payment_id','job_pay_status')
+                  'created_at','is_delete','job_status','job_accepted_by','job_distance','job_payment_id','job_time','job_pay_status')
 
 
 

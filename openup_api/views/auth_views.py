@@ -1120,7 +1120,7 @@ def get_user_details(request):
 
         if user_record.user_role.role_name == "employee":
             try:
-                accepted_job  =  Jobs.objects.exclude(Q(is_delete=1) and Q(job_status=3)).filter(job_accepted_by=user_record.user_id).order_by('job_id').reverse().first()
+                accepted_job  =  Jobs.objects.exclude(Q(is_delete=1) and Q(job_status=3) and Q(job_status=4)).filter(job_accepted_by=user_record.user_id).order_by('job_id').reverse().first()
                 get_user_details['accepted_job'] = accepted_job.job_id
 
             except:
@@ -1152,7 +1152,7 @@ def get_user_details(request):
         
         else:
             try:
-                job_posted  =   Jobs.objects.exclude(Q(is_delete=1) and Q(job_status=3)).filter(user_id=user_record.user_id).order_by('job_id').reverse().first()        
+                job_posted  =   Jobs.objects.exclude(Q(is_delete=1) and Q(job_status=3) and Q(job_status=4)).filter(user_id=user_record.user_id).order_by('job_id').reverse().first()        
                 get_user_details['posted_job'] = job_posted.job_id
 
             except:
