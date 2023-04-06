@@ -14,7 +14,8 @@ urlpatterns = [
   path('logout', auth_views.logout,name='logout'),
   path('delete_account', auth_views.delete_account,name='delete_account'),
   path('user_details', auth_views.get_user_details,name='user-details'),
-  
+    path('demo', auth_views.demo,name='demo'),
+ 
   # Account confirm or verify user 
   path('confirm_account/<str:email>', auth_views.confirm_account,name='confirm_account'),
   path('activate', auth_views.activate_account,name='activate'),
@@ -60,12 +61,13 @@ urlpatterns = [
   path('create-customer', payment_views.create_customer,name='create_customer'),
   path('link-payment', payment_views.link_payment_method,name='link_payment'),
   path('ask-for-payment', payment_views.ask_for_payment,name='ask_for_payment'),
- 
+  path('manual-payment', payment_views.manual_payment,name='manual_payment'),
+  path('manual-payment-success', payment_views.manual_payment_success,name='manual_payment_success'),
 
 # Update location
   path('update_location', location_views.update_location,name='update_location'),
   path('service_available', location_views.service_available,name='service_available'),
-path('distance-calculation', location_views.dist_calculation,name='distance_calculation'),
+  path('distance-calculation', location_views.dist_calculation,name='distance_calculation'),
   
 
 

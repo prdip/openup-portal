@@ -1273,3 +1273,26 @@ def verify_client(request):
 
     return HttpResponse("Thank you ! Your account is verified")
      
+
+import requests
+
+@api_view(['GET'])
+def demo(request):
+    print(request)
+    print(request.headers['User-Token'])
+    print(request.data.get('first_name'))
+    return JsonResponse({
+                "success"     :   1,
+                "message"     :   "status changed",
+                })
+    
+    
+# @api_view(['POST'])
+# def demo(request):
+#     print(request)
+#     print(request.data.get('first_name'))
+#     print(request.headers['User-Token'])
+#     return JsonResponse({
+#                 "success"     :   1,
+#                 "message"     :   "status changed",
+#                 })

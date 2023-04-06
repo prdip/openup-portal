@@ -317,10 +317,11 @@ def jobAlert(job_id,latitude,longitude):
 
     # pass dictionary data to send notification
     data = { 
-             'title'                      :   'New job request',             
-             'notificationScreenType'     :   'addjob',
-             'message'                    :   'Please acccept this asap',
-             'job_id'                     :   str(job_id),  
+             'title'                      :     'New job request',             
+             'notificationScreenType'     :     'addjob',
+             'message'                    :     'Please acccept this asap',
+             'job_id'                     :     str(job_id),  
+             'job_type'                   :     job_instance.job_type
             }
              
     # SEND NOTIFICATIONS 
@@ -460,6 +461,11 @@ def job_details(request):
         url         =       'http://{domain}{path}'.format(domain=domain, path=obj)
 
         job_serializer['vehicle_license_url'] = url
+
+        if job_serializer['job_pay_status'] == True:
+            job_serializer['job_pay_status'] = "1"
+        else:
+             job_serializer['job_pay_status'] = "0"
 
         if job_serializer['job_status'] == 1:
             job_serializer['job_status'] = "active"
@@ -707,6 +713,7 @@ def complete_job(request):
         except:
             job_record  =   None
 
+
         if job_record == None:
             return JsonResponse({
                 "success"   :   0,
@@ -731,7 +738,12 @@ def complete_job(request):
                 "success"   :   0,
                 "message"   :   "invalid employee"
             })
-        
+        # if job_record.job_pay_status == 0:
+        #      return JsonResponse({
+        #         "success"   :   0,
+        #         "message"   :   "payment not done yet"
+        #     })
+
         job_status      = JobsType.objects.get(status_id=3)
         update_record   = {
             "job_status" : job_status.status_id 
@@ -744,9 +756,20 @@ def complete_job(request):
             # complete job notification function 
             complete_job_notification.delay(job_id)
 
+            if job_record.job_pay_status == True:
+                job_pay_status = 1 
+            else:
+                 job_pay_status = 0
+
+            data = {
+                "job_payment_status"    :       job_pay_status
+            }
+
             return JsonResponse({
                 "success"   :   1,
-                "message"   :   "job completed"
+                "message"   :   "job completed",
+                "data"      :    data
+
                 })
         else:
             return JsonResponse({
@@ -883,11 +906,27 @@ def client_joblist(request):
         total_pages     =   math.ceil(total_records / limit)
 
         jobs_list       =   Jobs.objects.exclude(is_delete=1).filter(user=user_id)[offset:limit+offset]
+
+        less_rec        =    jobs_list.count()
+
+        if less_rec < 10:
+
+            limit           =   10
+            total_pages     =   math.ceil(total_records / limit)
+            rec_count       =   10-less_rec
+            offset          =   (page_no-1)*limit - rec_count            
+            jobs_list       =   Jobs.objects.exclude(is_delete=1).filter(user=user_id)[offset:limit+offset]
+
         job_serializer  =   JobsSerializer(jobs_list,many=True).data
 
         removeElements(['is_delete','vehicle_license','location_latitude','location_longitude','user'],job_serializer) 
 
         for job in job_serializer:
+
+            if job['job_pay_status'] == True:
+                job['job_pay_status'] = "1"
+            else:
+                job['job_pay_status'] = "0"
 
             if job['job_status'] == 1:
                 job['job_status'] = "active"
@@ -954,6 +993,12 @@ def employee_joblist(request):
         removeElements(['is_delete','vehicle_license','location_latitude','location_longitude','job_accepted_by'],job_serializer) 
 
         for job in job_serializer:
+
+            if job['job_pay_status'] == True:
+                job['job_pay_status'] = "1"
+            else:
+                job['job_pay_status'] = "0"
+
            
             if job['job_status'] == 1:
                 job['job_status'] = "active"

@@ -580,3 +580,106 @@ def send_notification(noti_data):
 
 
  
+
+
+
+ 
+@api_view(['POST'])
+def manual_payment(request,*args,**kwargs):
+
+    user_token      =       request.data.get('user_token',None)
+    check_user      =       token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+            })
+    else:
+        user_id         =       check_user['session_user']
+ 
+        user_details    =       Registration.objects.exclude(user_is_delete = 1).get(user_id=user_id)
+   
+        # CUSTOMER ID IS STORED IN USER LOGIN WHILE USER REGISTRATION
+        try:
+            cust_id         =   user_details.user_stripe_id
+        except:
+            cust_id         =   None
+
+        # code to create ephemeral key to stripe 
+        ephemeralKey    = stripe.EphemeralKey.create(
+                            customer=cust_id,
+                            stripe_version='2022-11-15',)
+
+        # setup intent
+        setupIntent  = stripe.PaymentIntent.create(
+            customer            =   cust_id,
+            amount              =   1099,
+            currency            =   'inr',
+            payment_method_types=   ["card"])  
+
+
+      
+        '''code for payment intent'''
+
+        data = {
+        "response_data" :   cust_id,
+        "customer_id"   :   cust_id,
+        "setup_intent"  :   setupIntent.client_secret,
+        "ephemeralKey"  :   ephemeralKey,
+        "payment_id"    :   setupIntent.id
+        }
+      
+        return JsonResponse({
+            "status"    :   1,
+            "message"   :   "payment added successfully",
+            "data"      :   data
+        })
+
+
+
+ 
+@api_view(['POST'])
+def manual_payment_success(request):
+
+    user_token      =       request.data.get('user_token',None)
+    check_user      =       token_verification(user_token)
+    job_id          =       request.data.get('job_id')
+    payment_id      =       request.data.get('payment_id')
+
+    
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+            })
+    else:
+        user_id         =       check_user['session_user']
+ 
+        job_record = Jobs.objects.get(job_id=int(job_id))
+       
+        if user_id != job_record.user.user_id:
+            return JsonResponse({
+            "success"    :   0,
+            "message"   :   "something went wrong",
+        })
+             
+        update_date = {
+            "job_pay_status"     :      1,
+            "job_payment_id"     :      payment_id
+        }  
+          
+        '''code for payment intent'''
+        job_serializer  =   JobsSerializer(instance=job_record,data=update_date,partial=True)
+
+        if job_serializer.is_valid():
+            job_serializer.save()
+            
+            return JsonResponse({
+                "status"    :   1,
+                "message"   :   "payment added successfully",
+
+            })
+
+        else:
+            print("else ",job_serializer.error_messages)
