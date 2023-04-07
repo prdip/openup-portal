@@ -15,11 +15,7 @@ from openup_app.models import Registration,Jobs
 
 # Import Q
 from django.db.models import Q
-
-# import geopy
-
-
-import datetime
+ 
 
 from geopy.distance import geodesic as gd
 
@@ -30,7 +26,9 @@ from geopy.distance import geodesic as gd
 
 def update_location(request):
        # CHECK TOKEN VALUE
-    user_token            =       request.data.get('user_token',None)
+   
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')  
     check_user            =       token_verification(user_token)
 
     if check_user is None:
@@ -102,7 +100,7 @@ def update_location(request):
         except:
             job     = None
 
-        print("job id is",job)
+      
 
         update_data = {
             "job_time"      :       job_time,
@@ -136,7 +134,8 @@ def update_location(request):
 @api_view(['POST'])
 def dist_calculation(request):
 
-    user_token            =       request.data.get('user_token',None)
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')  
     check_user            =       token_verification(user_token)
 
     if check_user is None:
@@ -227,7 +226,9 @@ def dist_calculation(request):
 @api_view(['POST'])
 def service_available(request):
         # CHECK TOKEN VALUE
-    user_token            =       request.data.get('user_token',None)
+     
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')  
     check_user            =       token_verification(user_token)
 
     if check_user is None:

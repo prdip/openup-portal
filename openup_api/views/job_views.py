@@ -50,7 +50,8 @@ AND PAYMENT WILL GENERATED IN BACKGROUND
 @api_view(['POST'])
 def add_job(request):
     #  Token Verification
-    user_token      =       request.data.get('user_token',None)
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')  
     check_user      =       token_verification(user_token)
 
     if check_user is None:
@@ -105,6 +106,8 @@ def add_job(request):
                     })
         
         user_id     =       check_user['session_user']
+
+       
         if vehicle_id == None and license ==  None:
             # No id No image
             license = None
@@ -233,7 +236,7 @@ def background_payment(user_id,job_id):
         "name"              :   user.user_first_name+' '+user.user_last_name
           }
         }
-    
+   
     '''background payment method in payment.py'''
  
     Payments.background_payments(data)
@@ -352,61 +355,7 @@ def removeElements(items,lists):
     return lists
     
 
-
-
-'''API TO FETCH JOB LIST'''
-
-@api_view(['POST'])  
-def job_list(request):
-    #  Token Verification
-
-    user_token      =       request.data.get('user_token',None)
-    check_user      =       token_verification(user_token)
-
-    if check_user is None:
-        return JsonResponse({
-                "success"     :   0,
-                "message"     :   "Unauthorized User",
-        })
-    
-    # if token verified
-    else:
-        # required data
-        job_list    =   Jobs.objects.exclude(Q(is_delete=1)and (Q(job_status=2)or Q(job_status=3))).all()
-        job_ser     =   JobsSerializer(job_list,many=True).data
-        # remove data from list
-        removeElements(['created_at','is_delete'],job_ser) 
-        
-        # CODE TO GET HOST IP ADDRESS
-        hostname = socket.gethostname()
-        name = socket.gethostbyname(hostname)
-        domain = name+":8000"
-        
-        for data in job_ser:
-            # get url of image
-            obj = data['vehicle_license']
-            url = 'http://{domain}{path}'.format(domain=domain, path=obj)
-            data['vehicle_license'] = url
-
-            if data['job_status'] == 1:
-                data['job_status'] = "active"
-
-            if data['job_status'] == 2:
-                data['job_status'] = "accepted"
-
-            if data['job_status'] == 3:
-                data['job_status']="completed"
-            
-        data    =   {
-            "job_list"  :   job_ser
-            }
-        return JsonResponse({
-                "status"    :   1,
-                "message"   :   "job list fetched successfully",
-                "data"      :   data
-                })
-
-
+ 
 '''
 API to Get detail of job by job id 
 '''
@@ -414,7 +363,8 @@ API to Get detail of job by job id
 @api_view(['POST'])
 def job_details(request):
     #  Token Verification
-    user_token      =       request.data.get('user_token',None)
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')  
     check_user      =       token_verification(user_token)
 
     if check_user is None:
@@ -505,7 +455,9 @@ def job_details(request):
 
 @api_view(['POST'])
 def remove_job(request):
-    user_token      =       request.data.get('user_token',None)
+
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')  
     check_user      =       token_verification(user_token)
 
     if check_user is None:
@@ -555,7 +507,9 @@ def remove_job(request):
 
 @api_view(['POST'])
 def accept_job(request):
-    user_token      =       request.data.get('user_token',None)
+
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')  
     check_user      =       token_verification(user_token)
 
     if check_user is None:
@@ -668,7 +622,8 @@ def accept_job_notification(job_id):
 @api_view(['POST'])
 def reject_job(request):
 
-    user_token      =       request.data.get('user_token',None)
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')  
     check_user      =       token_verification(user_token)
     if check_user is None:
         return JsonResponse({
@@ -695,7 +650,8 @@ AND NOTIFY CLIENT THAT JOB IS COMEPLETED
 '''
 @api_view(['POST'])
 def complete_job(request):
-    user_token      =       request.data.get('user_token',None)
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')  
     check_user      =       token_verification(user_token)
 
     if check_user is None:
@@ -738,11 +694,7 @@ def complete_job(request):
                 "success"   :   0,
                 "message"   :   "invalid employee"
             })
-        # if job_record.job_pay_status == 0:
-        #      return JsonResponse({
-        #         "success"   :   0,
-        #         "message"   :   "payment not done yet"
-        #     })
+       
 
         job_status      = JobsType.objects.get(status_id=3)
         update_record   = {
@@ -823,7 +775,8 @@ def complete_job_notification(job_id):
 @api_view(['POST'])
 def cancel_job(request):
 
-    user_token      =       request.data.get('user_token',None)
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')  
     check_user      =       token_verification(user_token)
 
     if check_user is None:
@@ -883,7 +836,9 @@ def cancel_job(request):
 '''API for GET client job list'''
 @api_view(['POST'])
 def client_joblist(request):
-    user_token      =       request.data.get('user_token',None)
+    
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')  
     check_user      =       token_verification(user_token)
 
     if check_user is None:
@@ -942,13 +897,14 @@ def client_joblist(request):
             if job['job_accepted_by'] != None:
                 employee_record         =   Registration.objects.exclude(user_is_delete=1).get(user_id=int(job['job_accepted_by']))            
                 job['job_accepted_by']  =   employee_record.user_first_name+ ' ' +employee_record.user_last_name
-                
+        
+
         # response data
         data = {
             "client_joblist"    :   job_serializer,
             "total_pages"       :   total_pages,
             "per_page_record"   :   10,
-            "current_page"      :   page_no,
+            "current_page"      :   page_no,            
             "total_records"     :   total_records
         }
         return JsonResponse({
@@ -962,9 +918,9 @@ def client_joblist(request):
 '''API for GET Employee job list'''
 @api_view(['POST'])
 def employee_joblist(request):
-    
 
-    user_token      =       request.data.get('user_token',None)
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')  
     check_user      =       token_verification(user_token)
 
     if check_user is None:
@@ -986,7 +942,19 @@ def employee_joblist(request):
         total_pages     =   math.ceil(total_records / limit) #TOTAL NO OF PAGES
       
         jobs_list       =   Jobs.objects.exclude(is_delete=1).filter(job_accepted_by=user_id)[offset:limit+offset]
-    
+
+        less_rec        =    jobs_list.count()
+        if less_rec < 10:
+
+            limit           =   10
+            total_pages     =   math.ceil(total_records / limit)
+            rec_count       =   10-less_rec
+            offset          =   (page_no-1)*limit - rec_count            
+            jobs_list       =   Jobs.objects.exclude(is_delete=1).filter(user=user_id)[offset:limit+offset]
+
+
+
+
         job_serializer  = JobsSerializer(jobs_list,many=True).data
 
         '''Remove element from serlialized dict'''

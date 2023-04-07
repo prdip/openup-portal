@@ -22,7 +22,8 @@ from django.db.models import Q
 @api_view(['POST'])
 def add_settings(request):
     #  Token Verification
-    user_token      =       request.data.get('user_token',None)
+    token           =       request.headers['Authorization']
+    user_token      =       token.replace("Bearer",'')  
     check_user      =       token_verification(user_token)
 
     if check_user is None:
@@ -31,11 +32,7 @@ def add_settings(request):
                 "message"     :   "Unauthorized User",
         })
     else:
-
-        # setting_name  =   request.data.get('setting_name',None)
-        
-
-        # user_screen             =       request.data.get('user_screen')
+ 
         location                =       request.data.get('location',None)
         while_using             =       request.data.get('while_using',None)
         service_not             =       request.data.get('service_notification',None)
@@ -44,11 +41,7 @@ def add_settings(request):
         # creates empty dictionary 
         user_id = check_user["session_user"]
         update_data = {}
-
-        
-        # if user_screen != None:
-        #     update_data['user_screen'] = user_screen
-
+ 
         if location != None:
             update_data['location'] = location
         
@@ -81,8 +74,7 @@ def add_settings(request):
             setting_ser     =   SettingsSerializer(instance=setting_record,data=data,partial=True)
             if setting_ser.is_valid():
                 setting_ser.save()
-            #     # pass
-
+         
         return JsonResponse({
         
             "success"     :   1,
@@ -97,7 +89,8 @@ def add_settings(request):
 @api_view(['POST'])
 def setting_details(request):
 
-    user_token      =       request.data.get('user_token',None)
+    token           =       request.headers['Authorization']
+    user_token      =       token.replace("Bearer",'')
     check_user      =       token_verification(user_token)
 
     if check_user is None:

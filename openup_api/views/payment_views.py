@@ -45,7 +45,8 @@ environ.Env.read_env()
 def add_card(request):
      #  Token Verification
 
-    user_token      =       request.data.get('user_token',None)
+    token           =       request.headers['Authorization']
+    user_token      =       token.replace("Bearer",'')
     check_user      =       token_verification(user_token)
 
     if check_user is None:
@@ -244,7 +245,8 @@ def add_card(request):
 def card_details(request):
 
     # token verification
-    user_token      =       request.data.get('user_token',None)
+    token           =       request.headers['Authorization']
+    user_token      =       token.replace("Bearer",'')
     check_user      =       token_verification(user_token)
 
     if check_user is None:
@@ -299,50 +301,7 @@ def card_details(request):
             })
 
 
-
-       
-# Api for card details
-
-@api_view(['POST'])
-def card_delete(request):
-
-     # token verification
-    user_token      =       request.data.get('user_token',None)
-    check_user      =       token_verification(user_token)
-
-    if check_user is None:
-        return JsonResponse({
-                "success"     :   0,
-                "message"     :   "Unauthorized User",
-        })
-    else:
-        # required data
-        payment_id  =   request.data.get('payment_id',None)
-
-         # check if payment_id provided or not
-        if payment_id == None or payment_id =="":
-
-            return JsonResponse({
-                "success"     :   0,
-                "message"     :   "Please provide payment id",
-        })
-
-         # Get payment details
-        payment_record  =   Payment.objects.exclude(is_delete=1).get(payment_id=payment_id)
-
-
-        update_data = { 
-            "is_delete" :   1
-        }
-
-        payment_ser     =   PaymentSerializer(instance=payment_record,data=update_data,partial=True)
-
-        if payment_ser.is_valid():
-            payment_ser.save()
-            return JsonResponse({
-                "success"     :   1,
-                "message"     :   "record deleted",
-            })
+ 
        
 
 stripe.api_key = env('STRIPE_API')
@@ -350,7 +309,8 @@ stripe.api_key = env('STRIPE_API')
 @api_view(['POST'])
 def create_customer(request,*args,**kwargs):
 
-    user_token      =       request.data.get('user_token',None)
+    token           =       request.headers['Authorization']
+    user_token      =       token.replace("Bearer",'')
     check_user      =       token_verification(user_token)
 
     if check_user is None:
@@ -377,21 +337,7 @@ def create_customer(request,*args,**kwargs):
         except:
             cust_id         =   None
 
-        '''if customer id not created in stripe then it will create cust_id here'''
-        # if cust_id == None:
-        #     response_data   =  stripe.Customer.create(description="client added to stripe",
-        #                                email = user_details.user_email,
-        #                                name  = user_details.user_first_name+user_details.user_last_name)
-
-        #     cust_id         = response_data['id']
-
-        #     update_data = {
-        #         "user_stripe_id" : cust_id, 
-        #        }    
-    
-        #     user_serializer = RegisterSerializer(instance=user_details,data=update_data,partial=True)
-        #     if user_serializer.is_valid():
-        #         user_serializer.save()
+        
 
         # code to create ephemeral key to stripe 
         ephemeralKey    = stripe.EphemeralKey.create(
@@ -400,14 +346,7 @@ def create_customer(request,*args,**kwargs):
 
         # setup intent
         setupIntent  = stripe.SetupIntent.create(customer=cust_id,payment_method_types=["card"])  
-       
-        # payment_ser = PaymentSerializer(instance=card,data=update_data,partial=True)
-        # user_ser = RegisterSerializer(instance=card,data=update_data,partial=True)
-
-        # if payment_ser.is_valid():
-            # card.update(**update_data)
-            # payment_ser.save()
-
+        
         '''code for payment intent'''
 
         data = {
@@ -418,7 +357,7 @@ def create_customer(request,*args,**kwargs):
         }
 
         return JsonResponse({
-            "status"    :   1,
+            "success"    :   1,
             "message"   :   "payment method added successfully",
             "data"      :   data
         })
@@ -434,7 +373,8 @@ def create_customer(request,*args,**kwargs):
 
 @api_view(['POST'])
 def link_payment_method(request):
-    user_token      =       request.data.get('user_token',None)
+    token           =       request.headers['Authorization']
+    user_token      =       token.replace("Bearer",'')
     check_user      =       token_verification(user_token)
 
     if check_user is None:
@@ -503,6 +443,8 @@ def check_stripe(user_id):
                 "user_stripe_id" : cust_id, 
                }    
     
+    
+    
     user_serializer = RegisterSerializer(instance=user_record,data=update_data,partial=True)
     if user_serializer.is_valid():
         user_serializer.save()
@@ -519,7 +461,8 @@ def check_stripe(user_id):
 
 @api_view(['POST'])
 def ask_for_payment(request):
-    user_token      =       request.data.get('user_token',None)
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')
     check_user      =       token_verification(user_token)
 
     if check_user is None:
@@ -587,7 +530,8 @@ def send_notification(noti_data):
 @api_view(['POST'])
 def manual_payment(request,*args,**kwargs):
 
-    user_token      =       request.data.get('user_token',None)
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')
     check_user      =       token_verification(user_token)
 
     if check_user is None:
@@ -631,7 +575,7 @@ def manual_payment(request,*args,**kwargs):
         }
       
         return JsonResponse({
-            "status"    :   1,
+            "success"    :   1,
             "message"   :   "payment added successfully",
             "data"      :   data
         })
@@ -642,7 +586,8 @@ def manual_payment(request,*args,**kwargs):
 @api_view(['POST'])
 def manual_payment_success(request):
 
-    user_token      =       request.data.get('user_token',None)
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')
     check_user      =       token_verification(user_token)
     job_id          =       request.data.get('job_id')
     payment_id      =       request.data.get('payment_id')
@@ -657,6 +602,9 @@ def manual_payment_success(request):
         user_id         =       check_user['session_user']
  
         job_record = Jobs.objects.get(job_id=int(job_id))
+
+
+        user_record = Registration.objects.exclude(user_is_delete=1).get(user_id=job_record.user.user_id)
        
         if user_id != job_record.user.user_id:
             return JsonResponse({
@@ -668,18 +616,30 @@ def manual_payment_success(request):
             "job_pay_status"     :      1,
             "job_payment_id"     :      payment_id
         }  
-          
+
+        response_data = stripe.PaymentMethod.list(
+            customer=user_record.user_stripe_id,
+            type="card",
+        ) 
+        data = {
+                "user_payment_id" : response_data["data"][0]['id'], 
+        }
+
         '''code for payment intent'''
         job_serializer  =   JobsSerializer(instance=job_record,data=update_date,partial=True)
-
+        user_ser        =   RegisterSerializer(instance=user_record,data=data,partial=True)
         if job_serializer.is_valid():
             job_serializer.save()
-            
+
+        if user_ser.is_valid():
+            user_ser.save()  
             return JsonResponse({
-                "status"    :   1,
+                "success"    :   1,
                 "message"   :   "payment added successfully",
+            })
+        else:
+             return JsonResponse({
+                "success"    :   0,
+                "message"   :   "something went wrong",
 
             })
-
-        else:
-            print("else ",job_serializer.error_messages)

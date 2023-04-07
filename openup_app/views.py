@@ -11,17 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-from openup.stripe import InStripe  
-
-# def hello_reader(request):
-#     # logger.error('ERRROR HAPPENED '+str(datetime.datetime.now())+' hours!')
-#     logger.info('Infor HAPPENED '+str(datetime.datetime.now())+' hours!',exc_info=True)
-#     # return HttpResponse("<h1>Hello FreeCodeCamp.org Reader :)</h1>")
-#     return HttpResponse(undefied)
-
-
-
- 
+from openup.stripe import InStripe   
 def openup_master(request):
 	InStripe.create_invoice()
 	return render(request,'Homepage/openup_homepage.html')

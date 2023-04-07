@@ -31,7 +31,9 @@ FOR ONE JOB ONE FEEDBACK WILL ADDED
 
 @api_view(['POST'])
 def add_feedback(request):
-    user_token      =       request.data.get('user_token',None)
+  
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')  
     check_user      =       token_verification(user_token)
 
     if check_user is None:

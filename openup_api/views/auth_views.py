@@ -549,7 +549,9 @@ FCM WILL UPDATED TO BLANK
 @api_view(['POST'])
 def logout(request,*args,**kwargs):
     # required data
-    user_token      =       request.data.get('user_token',None)
+     
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')  
     check_user      =       token_verification(user_token)
 
     if check_user is None:
@@ -605,7 +607,8 @@ API FOR UPDATE  EMAIL ADDRESS
 def email_update(request,*args,**kwargs):
 
     # CHECK TOKEN VALUE
-    user_token     =       request.data.get('user_token',None)
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')  
     check_user     =       token_verification(user_token)
     if check_user is None:
         return JsonResponse({
@@ -726,7 +729,8 @@ API FOR CHANGE PASSWORD
 def change_password(request,*args,**kwargs):
     
     # CHECK TOKEN VALUE
-    user_token = request.data.get('user_token',None)
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')  
     check_user              =       token_verification(user_token)
     if check_user is None:
         return JsonResponse({
@@ -941,7 +945,8 @@ STATUS WILL CHANGE AND TOKEN WILL UPDATE TO BLANK
 @api_view(['POST'])
 def delete_account(request):
       # CHECK TOKEN VALUE
-    user_token            =       request.data.get('user_token',None)
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')  
     check_user            =       token_verification(user_token)
     if check_user is None:
         return JsonResponse({
@@ -1052,7 +1057,9 @@ API call for get user details
 '''
 @api_view(['POST'])
 def get_user_details(request):
-    user_token            =       request.data.get('user_token',None)
+
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')   
     check_user            =       token_verification(user_token)
 
     if check_user is None:
@@ -1184,8 +1191,8 @@ employee_status = 0 =>  inactive
 
 @api_view(['POST'])
 def employee_status(request):
-
-    user_token            =       request.data.get('user_token',None)
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')  
     check_user            =       token_verification(user_token)
 
     if check_user is None:
@@ -1272,27 +1279,4 @@ def verify_client(request):
             client_rec.update(**update_data)
 
     return HttpResponse("Thank you ! Your account is verified")
-     
-
-import requests
-
-@api_view(['GET'])
-def demo(request):
-    print(request)
-    print(request.headers['User-Token'])
-    print(request.data.get('first_name'))
-    return JsonResponse({
-                "success"     :   1,
-                "message"     :   "status changed",
-                })
-    
-    
-# @api_view(['POST'])
-# def demo(request):
-#     print(request)
-#     print(request.data.get('first_name'))
-#     print(request.headers['User-Token'])
-#     return JsonResponse({
-#                 "success"     :   1,
-#                 "message"     :   "status changed",
-#                 })
+  

@@ -14,8 +14,7 @@ urlpatterns = [
   path('logout', auth_views.logout,name='logout'),
   path('delete_account', auth_views.delete_account,name='delete_account'),
   path('user_details', auth_views.get_user_details,name='user-details'),
-    path('demo', auth_views.demo,name='demo'),
- 
+    
   # Account confirm or verify user 
   path('confirm_account/<str:email>', auth_views.confirm_account,name='confirm_account'),
   path('activate', auth_views.activate_account,name='activate'),
@@ -54,9 +53,7 @@ urlpatterns = [
 # Add Payment
   path('add_card', payment_views.add_card,name='add_card'),
   path('card_details', payment_views.card_details,name='card_details'),
-  path('card_delete', payment_views.card_delete,name='card_delete'),
-
-
+   
 # Create customer using stripe
   path('create-customer', payment_views.create_customer,name='create_customer'),
   path('link-payment', payment_views.link_payment_method,name='link_payment'),
@@ -73,7 +70,6 @@ urlpatterns = [
 
 # Jobs 
   path('add_job', job_views.add_job,name='add_job'),
-  path('job_list', job_views.job_list,name='job_list'),
   path('job_details', job_views.job_details,name='job_details'),
   path('remove_job', job_views.remove_job,name='remove_job'),
   path('job_accept', job_views.accept_job,name='job_accept'),

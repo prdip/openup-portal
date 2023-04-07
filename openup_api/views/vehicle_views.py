@@ -130,8 +130,9 @@ def add_vehicle(request):
 def vehicle_edit(request):
 
     #  Token Verification
-    user_token      =       request.data.get('user_token',None)
-    check_user      =       token_verification(user_token)
+    token       =   request.headers['Authorization']
+    user_token  =   token.replace("Bearer",'')
+    check_user  =   token_verification(user_token)
 
     if check_user is None:
         return JsonResponse({
@@ -201,7 +202,8 @@ def removeElements(items,lists):
 def vehicle_details(request):
 
     #  Token Verification
-    user_token      =       request.data.get('user_token',None)
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')
     check_user      =       token_verification(user_token)
 
     if check_user is None:
@@ -231,21 +233,19 @@ def vehicle_details(request):
 
         vehicle_ser.pop('created_at')
         vehicle_ser.pop('vehicle_license')
+ 
+        hostname    =   socket.gethostname()
+        name        =   socket.gethostbyname(hostname)
+        domain      =   name+":8000"
 
-        # import socket
-        # domain = "192.168.1.2:8000"
-        # ipaddress = socket.gethostbyname(domain)
-        # dom = socket.gethostbyaddr(ipaddress)
-
-        hostname = socket.gethostname()
-        name = socket.gethostbyname(hostname)
-        domain = name+":8000"
-
-        obj = vehicle_details.vehicle_license.url
-        url = 'http://{domain}{path}'.format(domain=domain, path=obj)
+        obj         =   vehicle_details.vehicle_license.url
+        url         =   'http://{domain}{path}'.format(domain=domain, path=obj)
+        
         vehicle_ser['vehicle_license_url'] = url
-        img_name = str(vehicle_details.vehicle_license)
-        img_name=img_name.replace("licenses/"," ")
+        
+        img_name    =   str(vehicle_details.vehicle_license)
+        img_name    =   img_name.replace("licenses/"," ")
+        
         vehicle_ser['vehicle_image_name'] =    img_name
         data = {
              "vehicle_details" : vehicle_ser
