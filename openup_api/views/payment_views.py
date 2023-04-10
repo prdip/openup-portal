@@ -11,7 +11,7 @@ from openup_api.views.auth_views import token_verification
 from datetime import datetime
 
 # Import Models here
-from openup_app.models import Payment,Registration,Jobs,PaymentFailedInfo
+from openup_app.models import Payment,Registration,Jobs
 
 # Import Serializer
 from openup_app.serializers import PaymentSerializer,RegisterSerializer,JobsSerializer
@@ -21,9 +21,6 @@ from .validation import check_text,verify_card
 
 # import stripe
 import stripe
-
-from openup_api.views.job_views import background_payment 
-
 
 from openup.fcm import FCM
 
@@ -327,17 +324,13 @@ def create_customer(request,*args,**kwargs):
         except:
             card_id     =       None
 
-        try:
-            card            =  Payment.objects.get(payment_id=card_id) 
-        except:
-            card = None
+
         # CUSTOMER ID IS STORED IN USER LOGIN WHILE USER REGISTRATION
         try:
             cust_id         =   user_details.user_stripe_id
         except:
             cust_id         =   None
 
-        
 
         # code to create ephemeral key to stripe 
         ephemeralKey    = stripe.EphemeralKey.create(
@@ -442,8 +435,7 @@ def check_stripe(user_id):
     update_data = {
                 "user_stripe_id" : cust_id, 
                }    
-    
-    
+
     
     user_serializer = RegisterSerializer(instance=user_record,data=update_data,partial=True)
     if user_serializer.is_valid():
