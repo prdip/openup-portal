@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 from openup.stripe import InStripe   
-def openup_master(request):
-	InStripe.create_invoice()
+def openup_master(request): 
 	return render(request,'Homepage/openup_homepage.html')
 
