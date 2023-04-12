@@ -239,7 +239,7 @@ def user_register(request):
 
     if registration_data.is_valid():
         registration_data.save()
-        time.sleep(5)
+        
         if user_type == "employee":
             
             # send email to activate employee account
