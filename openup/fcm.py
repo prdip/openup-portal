@@ -74,7 +74,7 @@ class FCM:
         } 
         response    =   requests.post(url, data=json.dumps(body), headers=headers)
         result      =   response.content 
-        print(result)
+    
         return result
     
 

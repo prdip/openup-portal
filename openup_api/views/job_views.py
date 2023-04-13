@@ -38,7 +38,9 @@ from django.db.models import Q
 # IMPORT SHARED TASK
 from celery import shared_task
  
-
+import environ 
+env = environ.Env()
+environ.Env.read_env()
 '''
     ADD NEW JOB
 IF CLIENT NOT VERIFIED IT WILL NOT ABLE TO ADD JOB
@@ -161,10 +163,9 @@ def add_job(request):
         job_id      =       JobsType.objects.first()
         job_details = {
                 "job_type"              :   job_type,
-                # "location_latitude"     :   float(current_location_lat),
-                # "location_longitude"    :   float(current_location_long),
-                 "location_latitude"     :   22.264989,
-                "location_longitude"    :  70.784625,
+                "location_latitude"     :   float(current_location_lat),
+                "location_longitude"    :   float(current_location_long),
+              
                 "vehicle_details"       :   vehicle_details,
                 "vehicle_modification"  :   vehicle_modification,
                 "vehicle_license"       :   license,
@@ -404,11 +405,10 @@ def job_details(request):
 
         # create image url 
    
-        hostname    =       socket.gethostname()
-        name        =       socket.gethostbyname(hostname)
-        domain      =       name+":8000"
+        
+        domain      =      env('BASE_URL')
         obj         =       job_serializer['vehicle_license']
-        url         =       'http://{domain}{path}'.format(domain=domain, path=obj)
+        url         =       '{domain}{path}'.format(domain=domain, path=obj)
 
         job_serializer['vehicle_license_url'] = url
 

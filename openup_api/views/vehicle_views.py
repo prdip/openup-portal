@@ -21,7 +21,9 @@ from openup_app.serializers import VehicleSerializer
 import datetime
 
 # Import socket to get ip address
-import socket
+import environ 
+env = environ.Env()
+environ.Env.read_env()
 
 # API to add new vehicle 
 
@@ -29,13 +31,17 @@ import socket
 
 def add_vehicle(request):
     #  Token Verification
-    user_token      =       request.data.get('user_token',None)
+    
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')  
     check_user      =       token_verification(user_token)
+
     if check_user is None:
         return JsonResponse({
                 "success"     :   0,
                 "message"     :   "Unauthorized User",
-        }) 
+                })
+     
     else:
         # Required 
         vehicle_id              =       request.data.get('vehicle_id',None)
@@ -234,12 +240,12 @@ def vehicle_details(request):
         vehicle_ser.pop('created_at')
         vehicle_ser.pop('vehicle_license')
  
-        hostname    =   socket.gethostname()
-        name        =   socket.gethostbyname(hostname)
-        domain      =   name+":8000"
+       
+        domain      =   env('BASE_URL')
+  
 
         obj         =   vehicle_details.vehicle_license.url
-        url         =   'http://{domain}{path}'.format(domain=domain, path=obj)
+        url         =   '{domain}{path}'.format(domain=domain, path=obj)
         
         vehicle_ser['vehicle_license_url'] = url
         

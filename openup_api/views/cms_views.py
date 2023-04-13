@@ -5,7 +5,9 @@ from rest_framework.decorators import api_view
 
 # Import json response
 from django.http import JsonResponse
-import socket
+import environ 
+env = environ.Env()
+environ.Env.read_env()
 
 
 # Generate links for cms 
@@ -13,19 +15,16 @@ import socket
 @api_view(['POST'])
 def cms_details(request,*args,**kwargs):
         
-        hostname = socket.gethostname()
-        name = socket.gethostbyname(hostname)
-        domain = name+":8000"
-
+       
+        domain      = env('BASE_URL')
         # return cms links as a response
-        cms_links  =  {
+        cms_links   =  {
 
-            "copyright"             :       domain+"/api/copyright_page",
-            "terms_and_condition"   :       domain+"/api/terms_and_condition",
-            "privacy_policy"        :       domain+"/api/privacy_policy",
-            "software_license"      :       domain+"/api/software_license",
-            "location_information"  :       domain+"/api/location_information"
-
+            "copyright"             :       domain+"/copyright_page",
+            "terms_and_condition"   :       domain+"/terms_and_condition",
+            "privacy_policy"        :       domain+"/privacy_policy",
+            "software_license"      :       domain+"/software_license",
+            "location_information"  :       domain+"/location_information"
         }
 
 
