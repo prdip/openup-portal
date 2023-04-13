@@ -240,8 +240,9 @@ LOGGING = {
             'django':{
                 
                 'handlers': ['file'],
-                'level': 'DEBUG'  
+                'level': 'DEBUG' ,
                 # 'level': 'WARNING'  
+                'propagate' : True
     
             }
     
@@ -253,8 +254,8 @@ LOGGING = {
         'file':{
             
             'level': 'DEBUG',
-            'class':'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR,'debug_logs')
+            'class':'logging.handlers.TimedRotatingFileHandler',
+            'filename': os.path.join(BASE_DIR,'error_log.log')
 
             
             # 'level': 'WARNING',

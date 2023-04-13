@@ -22,5 +22,5 @@ class AsyncMiddleware(object):
         return response
     
     def process_exception(self,request,exception):
-        logger.warning('WARNING HAPPENED '+str(exception)+' datetime is'+str(datetime.datetime.now())+' hours!')    
+        logger.error('WARNING HAPPENED '+str(exception)+' datetime is'+str(datetime.datetime.now())+' hours!')    
         return exception
