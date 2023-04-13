@@ -1190,7 +1190,7 @@ def get_user_details(request):
                 job_posted = None
 
             if job_posted is None:
-                get_user_details['posted_job'] = None
+                get_user_details['posted_job'] = 0
 
         data={
             "user_details"  :   get_user_details,
