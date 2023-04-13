@@ -4,7 +4,7 @@ Hello,
 
 Please verify your email address so we know it's really you and so you can use our emergency services. To initiate the verification process for your account, click the link below.
 
-{{ protocol }}://{{ domain }}{% url 'verify_account' email=email%}
+{{ protocol }}://{{ domain }}{% url 'verify_account' token=token%}
 
 This link can only be used once. If it's not you, you can simply ignore this email.
 

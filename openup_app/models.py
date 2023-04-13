@@ -310,8 +310,8 @@ class Feedback(models.Model):
     feedback_user          =      models.ForeignKey(Registration,on_delete=models.CASCADE)
     feedback_stars         =      models.FloatField()
     feedback_comment       =      models.CharField(max_length=500)
-    created_at             =      models.DateTimeField()
     feedback_status        =      models.BooleanField(default=0)
+    created_at             =      models.DateTimeField()
     update_at              =      models.DateTimeField(null=True)
     is_delete              =      models.BooleanField(default=0)
 
@@ -335,3 +335,32 @@ class PaymentFailedInfo(models.Model):
 
     class Meta:
         db_table = 'paymentfailedinfo'
+
+
+
+
+    
+
+
+class AccountVerification(models.Model):
+
+    link_id     =       models.AutoField(primary_key=True)
+    user_id     =       models.CharField(max_length=10)
+    link_user_email =   models.CharField(max_length=50)
+    link_token  =       models.CharField(max_length=500)
+    link_status =        models.BooleanField(default=0)
+    created_at  =       models.DateTimeField()
+    update_at   =       models.DateTimeField(null=True)
+    is_delete   =       models.BooleanField(default=0)
+
+    class Meta:
+        db_table = 'accountverification'
+
+
+    def update(self,*args, **kwargs):
+        for name,values in kwargs.items():
+            try:
+                setattr(self,name,values)
+            except KeyError:
+                pass
+        self.save()

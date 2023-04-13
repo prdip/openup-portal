@@ -172,8 +172,7 @@ def add_card(request):
             card_holder_name    =   request.data.get('cust_name',None)
             card_validity       =   request.data.get('card_validity',None)
             card_type           =   request.data.get('card_type',None)
-
-            validity    =   (datetime.strptime(card_validity,"%m/%y")).strftime("%Y-%m-%d")
+            validity            =   (datetime.strptime(card_validity,"%m/%y")).strftime("%Y-%m-%d")
 
             # change current date to unix date
             date_today  =           datetime.now()

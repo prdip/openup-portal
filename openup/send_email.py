@@ -6,17 +6,27 @@ from django.contrib import messages
 
 #import mail library
 from django.core.mail import EmailMessage
+import environ 
+env = environ.Env()
+environ.Env.read_env()
+
+
+
+
+
 
 
 class SendEmail:
     
     def send_email(data_dict): 
+
+        domain              =   env('MAIL_URL')
         Subject             =   data_dict['Subject']
         text_template       =   data_dict['text_template'] #"email/verify_user.txt"
         # EMAIL FORMAT
         email_data = {
-                "email"     :   data_dict['email'],
-                'domain'    :   '192.168.1.4:8000',
+                "token"     :   data_dict['token'],
+                'domain'    :   domain,
     			'site_name' :   'Website',     #Data which will send with E-mail id
     			'protocol'  :   'http',
             }

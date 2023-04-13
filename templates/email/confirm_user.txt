@@ -4,7 +4,7 @@ Hello,
 
 We received a request to activate employee account for this email address. To activate account, click the link below.
 
-{{ protocol }}://{{ domain }}{% url 'confirm_account' email=email %}
+{{ protocol }}://{{ domain }}{% url 'confirm_account' token=token %}
 
 This link can only be used once. If you do not want to activate this account, you can simply ignore this email.
 

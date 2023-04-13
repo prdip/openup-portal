@@ -5,7 +5,7 @@ from openup_app.serializers import RegisterSerializer,SessionSerializer,ForgotPa
 
 
 # Import Models here
-from openup_app.models import Registration,Session,ForgotPassword,UserRole,Settings,Payment,VehicleDetails,Jobs
+from openup_app.models import Registration,Session,ForgotPassword,UserRole,Settings,Payment,VehicleDetails,Jobs,AccountVerification
 
 # Create your views here.
 from rest_framework.decorators import api_view
@@ -45,7 +45,6 @@ from openup.send_email import SendEmail
 # IMPORT SHARED TASK
 from celery import shared_task
  
-import stripe
 
 # import stripeCustomer to create cust in stripe run in background process
 from openup.create_cust import stripeCustomer
@@ -226,26 +225,19 @@ def user_register(request):
         "user_fcm_token"         :   fcm_token,
         "device_type"            :   device_type
     }
-    if user_type == "client":
-        response_data   =  stripe.Customer.create(description="client added to stripe",
-                                       email = email,
-                                       name  = first_name+' '+last_name)
-        cust_id         = response_data['id']
-            # code to create ephemeral key to stripe
-        registration_data["user_stripe_id"] = cust_id
-              
+    
     # SERIALIZER INSTANCE
     registration_data      =   RegisterSerializer(data=registration_data)
 
     if registration_data.is_valid():
-        registration_data.save()
+        user_id = registration_data.save()
         
         if user_type == "employee":
             
-            # send email to activate employee account
+            # send email to activate employee account   to==> admin email
             data_dict = {
-            "Subject"             :   "Request for Acount Activation",
-            "text_template"       :   "email/confirm_user.txt",
+            "Subject"             :     "Request for Acount Activation",
+            "text_template"       :     "email/confirm_user.txt",
             "email"               :     email,
             "to"                  :     "swapnilpathak@gmail.com"
             }
@@ -256,9 +248,10 @@ def user_register(request):
                     })
         
     # client registration code
-    user_id             =       Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']    
-    user                =       Registration.objects.get(user_id=user_id)
- 
+         
+    user                =       Registration.objects.get(user_id=user_id.user_id)
+    # CREATE STRIPE CUSTOMER IN BACKGROUND
+    create_customer.delay(user.user_id)
     # STORE SESSION DATA AFTER REGISTRATION   
     session_token       =       secrets.token_hex() # SESSION TOKEN
     # SESSION EXPIRY
@@ -285,6 +278,7 @@ def user_register(request):
             "to"                 :    email
             }
         send_email.delay(data_dict)
+       
 
         '''save client settings eav model in setting'''
         setting_dict ={
@@ -323,6 +317,17 @@ def user_register(request):
 @shared_task
 def send_email(data_dict):
     '''call send_email function'''
+
+    email       =   data_dict['email']
+    user_id     =   Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']   
+    link_tokan  =   secrets.token_hex() 
+    created_at  =   datetime.datetime.now()
+    link        =   AccountVerification(user_id=user_id,
+                                        link_token=link_tokan,
+                                        created_at=created_at,
+                                        link_user_email=email)
+    link.save()
+    data_dict['token']  =   link_tokan
     SendEmail.send_email(data_dict)
 
 
@@ -508,10 +513,13 @@ def create_customer(user_id):
 Renders confirm_account html page. 
 confirm employee account 
 '''
-def confirm_account(request,email):
+
+def confirm_account(request,token):
     # get user_id through email
-    user_id       =  Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']
+
+    user_id       =  AccountVerification.objects.filter(link_token=token).values('user_id').first()['user_id']     
     user_record   =  Registration.objects.get(user_id=user_id)
+
     return render(request,'Authentication/admin_conf.html',{"user":user_record})
 
 
@@ -526,8 +534,15 @@ def activate_account(request):
     id = request.POST.get('id')
     # get user record
     user_record     =       Registration.objects.exclude(user_is_delete=1).get(user_id=id)
-    
+    link_id         =       AccountVerification.objects.filter(user_id=user_record.user_id).values('link_id').first()['link_id']
     # if account already activated
+    link_record     =   AccountVerification.objects.get(link_id=link_id)
+    update_link_status = {
+    "link_status"   :   1
+    }
+
+    link_record.update(**update_link_status)
+
     if user_record.user_status == 1:
         return HttpResponse("Account Already activated")            
     update_data =   {
@@ -1232,29 +1247,12 @@ def employee_status(request):
 
 
 
-
-
-
-# def email_verification(email_id):
-#     Subject             =   "Please Verify Your email to start using Openup emergency service"
-#     text_template       =   "email/verify_user.txt"
-#     # EMAIL FORMAT
-#     email_data = {
-#             "email"     :   email_id,
-#             'domain'    :   '192.168.1.6:8000',
-# 			'site_name' :   'Website',     #Data which will send with E-mail id
-# 			'protocol'  :   'http',
-#         }
-#     myemail     =       render_to_string(text_template,email_data)  # Converts text file to string 
-#     email       =       EmailMessage(Subject, myemail, to=[email_id])  #Formats Email message 
-#     email.send()
-
-
+ 
  
 
 '''Verify client account send html page'''
-def verify_account(request,email):
-    return render(request,'Authentication/verify_client_email.html',{'email':email})
+def verify_account(request,token):
+    return render(request,'Authentication/verify_client_email.html',{'token':token})
 
 
 '''Verify client account and change status'''
@@ -1262,14 +1260,18 @@ def verify_account(request,email):
 def verify_client(request):
 
     if request.method == "POST":
-        email  = request.POST.get('email')
-        try:
-            client_id = Registration.objects.exclude(user_is_delete=1).filter(Q (user_email=email) & Q(user_is_verified =0)).values('user_id').first()['user_id']
-        except:
-            client_id = None
+        token  = request.POST.get('token')
 
-        client_rec = Registration.objects.get(user_id=client_id)
+        user_id       =  AccountVerification.objects.filter(link_token=token).values('user_id','link_id')[0]
+        client_rec    =  Registration.objects.get(user_id=user_id['user_id'])
+        link_record   =   AccountVerification.objects.get(link_id=user_id['link_id'])
 
+        update_link_status = {
+        "link_status"   :   1
+        }
+
+        link_record.update(**update_link_status)
+        
         if client_rec.user_is_verified == 1:
             return HttpResponse("Your account is already verified")
         else:
@@ -1277,6 +1279,5 @@ def verify_client(request):
             "user_is_verified"  :   1
             }
             client_rec.update(**update_data)
-
     return HttpResponse("Thank you ! Your account is verified")
   
