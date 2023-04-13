@@ -860,42 +860,51 @@ def forget_password(request):
     # GENERATE TOKEN
     token               =   secrets.token_hex()
     user_id             =   user.user_id
-    Subject             =   "Request for Password Reset"
-    text_template       =   "email/pass_reset.txt"
+     
+
+    data_dict = {
+                "Subject"             :     "Request for Password Reset",
+                "text_template"       :     "email/pass_reset.txt",
+                "token"               :     token,
+                "user_id"             :     user.user_id,
+                "email"               :     user_email,
+                "to"                  :     "swapnilpathak@gmail.com"
+            }
+
     # EMAIL FORMAT
-    data = {
-            "email"     :   user.user_email,
-            'domain'    :   '192.168.1.4:8000', #ENV Based Variable 
-			'site_name' :   'Website',     #Data which will send with E-mail id
-			"user"      :   user.user_id,
-			'token'     :   token, 
-        }
-    myemail = render_to_string(text_template,data)  #Converts text file to string 
-    email = EmailMessage(Subject, myemail, to=[user_email])  #Formats Email message 
-    email.send()  #Sends Email to the user
+     
+    send_forget_pass_email.delay(data_dict)
+
+     #Sends Email to the user
     # GENERATED EXPIRY TIME 
     time                =       datetime.datetime.now()+datetime.timedelta(days=30)
     send_time           =       datetime.datetime.timestamp(time)*1000
     # DATA FOR FORGOT PASSWORD TO STORE
-    forgot_pass_data    =      {
-                                    "email"       :   user_email,
-                                    "status"      :   1,
-                                    "token"       :  token,
-                                    "timestamp"   :   send_time,
-                                    "user"        :   user_id
-                                   }
+    forgot_pass_data    =  {
+                "email"       :   user_email,
+                "status"      :   1,
+                "token"       :   token,
+                "timestamp"   :   send_time,
+                "user"        :   user_id
+                }
     # save forget password data to serializer
     user_pass_ser       =       ForgotPasswordSerializer(data=forgot_pass_data)
     
     if user_pass_ser.is_valid():
         user_pass_ser.save()
         return JsonResponse({
-                        "success"        :       1,
-                        "message"        :      "Mail Sent to Your email address"
+                        "success"  :    1,
+                        "message"  :   "Mail Sent to Your email address"
         })
 
 
 
+@shared_task
+def send_forget_pass_email(data_dict):
+   
+    SendEmail.send_email(data_dict)
+     
+    # SendEmail.send_email
 
 '''
 Renders forget password template 
@@ -948,6 +957,7 @@ def reset_password(request,token):
         else:
             messages.error(request,message="Link Expired")    
     return render(request,'Authentication/forget_password.html',{"token":user_token})
+
 
 
 

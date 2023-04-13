@@ -23,8 +23,7 @@ def openup_master(request):
 def error_404(request,*args, **argv):
         data = {}
         return render(request,'error/404.html', data)
-
-
+ 
 
 def error_500(request, *args, **argv):
         data = {}

@@ -242,9 +242,9 @@ def vehicle_details(request):
  
        
         domain      =   env('BASE_URL')
-  
-
+   
         obj         =   vehicle_details.vehicle_license.url
+         
         url         =   '{domain}{path}'.format(domain=domain, path=obj)
         
         vehicle_ser['vehicle_license_url'] = url
