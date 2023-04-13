@@ -185,7 +185,7 @@ def user_register(request):
            return JsonResponse({           
                 "success"       :   0,
                 "message"       :   "client already exist",
-                })
+            })
            
     # Validate email address
     check_email     = email_address(email)
@@ -236,10 +236,10 @@ def user_register(request):
             
             # send email to activate employee account   to==> admin email
             data_dict = {
-            "Subject"             :     "Request for Acount Activation",
-            "text_template"       :     "email/confirm_user.txt",
-            "email"               :     email,
-            "to"                  :     "swapnilpathak@gmail.com"
+                "Subject"             :     "Request for Acount Activation",
+                "text_template"       :     "email/confirm_user.txt",
+                "email"               :     email,
+                "to"                  :     "swapnilpathak@gmail.com"
             }
             send_email.delay(data_dict)
             return JsonResponse({
@@ -282,20 +282,20 @@ def user_register(request):
 
         '''save client settings eav model in setting'''
         setting_dict ={
-                "location"              :       0,
-                "while_using"           :       0,
-                "service_notification"  :       0,
-                "location_notification" :       0,
-                "service_feed_not"      :       0
-                }
+            "location"              :       0,
+            "while_using"           :       0,
+            "service_notification"  :       0,
+            "location_notification" :       0,
+            "service_feed_not"      :       0
+        }
         
         for setting in setting_dict:
                 setting_data    = {
-                            "setting_user"      :       user.user_id,
-                            "setting_name"      :       setting,
-                            "setting_value"     :       setting_dict[setting],
-                            "created_at"        :       datetime.datetime.now()
-                        }               
+                    "setting_user"      :       user.user_id,
+                    "setting_name"      :       setting,
+                    "setting_value"     :       setting_dict[setting],
+                    "created_at"        :       datetime.datetime.now()
+                }               
                 setting_ser     =       SettingsSerializer(data=setting_data)
                 if setting_ser.is_valid():
                     setting_ser.save()
@@ -865,11 +865,10 @@ def forget_password(request):
     # EMAIL FORMAT
     data = {
             "email"     :   user.user_email,
-            'domain'    :   '192.168.1.4:8000',
+            'domain'    :   '192.168.1.4:8000', #ENV Based Variable 
 			'site_name' :   'Website',     #Data which will send with E-mail id
 			"user"      :   user.user_id,
-			'token'     :   token,
-			'protocol'  :   'http',
+			'token'     :   token, 
         }
     myemail = render_to_string(text_template,data)  #Converts text file to string 
     email = EmailMessage(Subject, myemail, to=[user_email])  #Formats Email message 
