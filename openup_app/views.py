@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 from openup.stripe import InStripe   
 def openup_master(request): 
-	return render('Homepage/openup_homepage.html')
+	return render(request,'Homepage/openup_homepage.html')
 
 
 
