@@ -1,22 +1,22 @@
-# from django.http import HttpResponse
+from django.http import HttpResponse
 
 
-# class AsyncMiddleware(object):
-#     def __init__(self, get_response):
-#         self.get_response = get_response
-#         # One-time configuration and initialization.
+class AsyncMiddleware(object):
+    def __init__(self, get_response):
+        self.get_response = get_response
+        # One-time configuration and initialization.
 
-#     def __call__(self, request):
-#         # Code to be executed for each request before
-#         # the view (and later middleware) are called.
+    def __call__(self, request):
+        # Code to be executed for each request before
+        # the view (and later middleware) are called.
 
-#         response = self.get_response(request)
+        response = self.get_response(request)
 
-#         # Code to be executed for each request/response after
-#         # the view is called.
+        # Code to be executed for each request/response after
+        # the view is called.
 
-#         return response
+        return response
     
-#     def process_exception(self,request,exception):
+    def process_exception(self,request,exception):
 
-#         return HttpResponse(exception)
+        return HttpResponse(exception)

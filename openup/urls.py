@@ -21,6 +21,8 @@ from django.conf.urls.static import static
 
 from openup_app import views
 
+handler404 = 'openup_app.views.error_404'
+handler500 = 'openup_app.views.error_500'
 
 urlpatterns = [
     path('admin/', admin.site.urls),

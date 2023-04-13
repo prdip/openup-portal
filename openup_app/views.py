@@ -15,3 +15,17 @@ from openup.stripe import InStripe
 def openup_master(request): 
 	return render(request,'Homepage/openup_homepage.html')
 
+
+
+
+
+
+def error_404(request,*args, **argv):
+        data = {}
+        return render(request,'error/404.html', data)
+
+
+
+def error_500(request, *args, **argv):
+        data = {}
+        return render(request,'error/500.html', data)
