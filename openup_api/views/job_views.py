@@ -404,13 +404,13 @@ def job_details(request):
         job_serializer.pop('is_delete')
 
         # create image url 
-   
-        
-        domain      =      env('BASE_URL')
-        obj         =       job_serializer['vehicle_license']
-        url         =       '{domain}{path}'.format(domain=domain, path=obj)
+       
+        if job_serializer['vehicle_license'] != None:     
+                domain      =      env('BASE_URL')
+                obj         =       job_serializer['vehicle_license']
+                url         =       '{domain}{path}'.format(domain=domain, path=obj)
 
-        job_serializer['vehicle_license_url'] = url
+                job_serializer['vehicle_license_url'] = url
 
         if job_serializer['job_pay_status'] == True:
             job_serializer['job_pay_status'] = "1"
