@@ -1,10 +1,10 @@
-from django.urls import path
+from django.urls import path,re_path
 from django.conf import settings
 from django.conf.urls.static import static
 from openup_api.views import auth_views, cms_views, force_update,vehicle_views,payment_views,job_views,feedback_views,location_views
 from openup_api.views import usersetting
 from django.urls import reverse
- 
+from django.views.static import serve
 
 urlpatterns = [
 
@@ -93,6 +93,6 @@ urlpatterns = [
   
 # Employee active inactive
   path('employee-status', auth_views.employee_status,name='employee_status'),
-
+ re_path(r'^media/(?P<path>.*)$', serve,{'document_root': settings.MEDIA_ROOT}),
 ]
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
