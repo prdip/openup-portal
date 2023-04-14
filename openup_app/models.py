@@ -90,6 +90,13 @@ class Session(models.Model):
     class Meta:
         db_table = 'user_sessions'
 
+    def update(self,*args, **kwargs):
+        for name,values in kwargs.items():
+            try:
+                setattr(self,name,values)
+            except KeyError:
+                pass
+        self.save()
 
     
     #  Forget Password
