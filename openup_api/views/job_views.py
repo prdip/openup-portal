@@ -850,6 +850,7 @@ def client_joblist(request):
     # if token verified
     else:
         user_id         =   check_user['session_user']
+       
         '''REQUIRED DATA FOR PAGE NUMBER'''
         page_no         =   int(request.data.get('page_no'))
 
@@ -858,20 +859,13 @@ def client_joblist(request):
         '''PAGE NUMBER STARTS WITH 0 AND ENDS WITH TOTAL PAGES-1'''
         limit           =   10
         offset          =   (page_no-1)*limit
-        total_pages     =   math.ceil(total_records / limit)
-
+        try:
+            total_pages     =   math.ceil(total_records / limit)
+        except:
+            total_pages    =    0
         jobs_list       =   Jobs.objects.exclude(is_delete=1).filter(user=user_id)[offset:limit+offset]
 
-        less_rec        =    jobs_list.count()
-
-        if less_rec < 10:
-
-            limit           =   10
-            total_pages     =   math.ceil(total_records / limit)
-            rec_count       =   10-less_rec
-            offset          =   (page_no-1)*limit - rec_count            
-            jobs_list       =   Jobs.objects.exclude(is_delete=1).filter(user=user_id)[offset:limit+offset]
-
+        
         job_serializer  =   JobsSerializer(jobs_list,many=True).data
 
         removeElements(['is_delete','vehicle_license','location_latitude','location_longitude','user'],job_serializer) 
@@ -942,18 +936,6 @@ def employee_joblist(request):
         total_pages     =   math.ceil(total_records / limit) #TOTAL NO OF PAGES
       
         jobs_list       =   Jobs.objects.exclude(is_delete=1).filter(job_accepted_by=user_id)[offset:limit+offset]
-
-        less_rec        =    jobs_list.count()
-        if less_rec < 10:
-
-            limit           =   10
-            total_pages     =   math.ceil(total_records / limit)
-            rec_count       =   10-less_rec
-            offset          =   (page_no-1)*limit - rec_count            
-            jobs_list       =   Jobs.objects.exclude(is_delete=1).filter(user=user_id)[offset:limit+offset]
-
-
-
 
         job_serializer  = JobsSerializer(jobs_list,many=True).data
 
