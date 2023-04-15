@@ -70,41 +70,40 @@
 
 
     <script>
+        $(document).ready(function (e) {
+        	$(document).on("submit", "#login-form", function (e) {
+         
+        		e.preventDefault();
+        		
+        		$.ajax({
+        			type: "POST",  
+        			url: "do-login",
+        			dataType: 'json',
+        			data: new FormData(this),
+        			processData: false,
+        			contentType: false,
+        			csrfmiddlewaretoken: '{{ csrf_token }}',
 
-$(document).ready(function (e) {
-				$(document).on("submit", "#login-form", function (e) {
-			 
-					e.preventDefault();
-					
-					$.ajax({
-						type: "POST",  
-						url: "do-login",
-						dataType: 'json',
-						data: new FormData(this),
-						processData: false,
-						contentType: false,
-						csrfmiddlewaretoken: '{{ csrf_token }}',
+        			
+        			success: function (data) {
+        			 
+        				// JSON.parse(data)
+        				if (data.status == 200) {
 
-						
-						success: function (data) {
-						 
-							// JSON.parse(data)
-							if (data.status == 200) {
+        					window.open("{% url 'logs' %}",'_self');
 
-								window.open("{% url 'logs' %}",'_self');
+        					
+        				}
+        				if (data.status == 400) {
+        					$('#msg').text(data.message);
+        					alert(data.message)
+        				}
+        			},
+        		});
 
-								
-							}
-							if (data.status == 400) {
-								$('#msg').text(data.message);
-								alert(data.message)
-							}
-						},
-					});
-
-					return false;
-				});
-			});
+        		return false;
+        	});
+        });
     </script>
 </body>
 </html>

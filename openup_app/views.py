@@ -110,7 +110,7 @@ def error_log(request):
 
         
 def admin_login(request):
-        return render(request,'Authentication/login.html')
+        return render(request,'Authentication/admin_login.html')
 
 
 def do_login(request):
