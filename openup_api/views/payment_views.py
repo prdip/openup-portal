@@ -549,7 +549,7 @@ def manual_payment(request,*args,**kwargs):
         # setup intent
         setupIntent  = stripe.PaymentIntent.create(
             customer            =   cust_id,
-            amount              =   1099,
+            amount              =   500*100,
             currency            =   'inr',
             payment_method_types=   ["card"])  
 

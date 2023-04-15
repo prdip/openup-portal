@@ -226,50 +226,64 @@ USE_TZ = True
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-
-# ERROR LOG FOR WARNING
-
-
+import logging
+# ERROR LOG FOR WARNIN 
+ 
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
-
-
-    'loggers': {
-    
-            'django':{
-                
-                'handlers': ['file'],
-                'level': 'DEBUG'  
-                # 'level': 'WARNING'  
-    
-            }
-    
-
-    },
-
-
+  
     'handlers': {
         'file':{
             
-            'level': 'DEBUG',
-            'class':'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR,'debug_logs')
-
-            
-            # 'level': 'WARNING',
-            # 'class':'logging.FileHandler',
-            # 'filename': os.path.join(BASE_DIR,'debug_logs'),
-            # 'formatter':'simpleRe',
-
-            
+            'level': 'INFO',
+            'class':'logging.handlers.TimedRotatingFileHandler',
+            'filename': os.path.join(BASE_DIR,'debug_logs'),
+            'formatter':'custom_format',
+           
+        },
+              
         
-        }
+         # working for logs and errors
+        # 'file':{
+		# 	'level':'INFO',
+		#        'class':'logging.FileHandler',
+			 
+		# 	'filename':os.path.join(BASE_DIR,'error_log'),
+            
+		# },
+
+
+        # 'warning_log':{
+		# 	'level':'WARNING',
+		#        'class':'logging.FileHandler',
+			 
+		# 	'filename':os.path.join(BASE_DIR,'warning_log'),
+            
+		# },
+
+
+
     },
 
+     
+    'loggers': {
+    
+            'django.request':{
+                
+                'handlers': ['file'],
+                'level': 'DEBUG',  
+                'propagate' : False
+    
+            },
+ 
+    },
+
+
+
      'formatters':{
-        'simpleRe':{
-            'format': '{levelname} {message} ',
+        'custom_format':{
+            'format': '{levelname} {asctime} {message} ',
             'style' :'{',
         }
 

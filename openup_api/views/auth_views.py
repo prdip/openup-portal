@@ -19,7 +19,7 @@ import datetime,time,secrets
 from datetime import timezone
 
 # Import Validation
-from .validation import check_text,email_address,mobile_number
+from .validation import check_text,email_address,mobile_number, password_validation
 
 #  Make hash password 
 from django.contrib.auth.hashers import make_password, check_password
@@ -204,6 +204,16 @@ def user_register(request):
             "message"       :   "Please Provide Valid Moile Number",
        })
     
+    check_pass = password_validation(password)
+    if check_pass is False:
+        return JsonResponse({    
+            "success"       :   0,
+            "message"       :   '''Password should have at least one of the symbols 
+            Password should be mininmum 8 character
+            password should contain atleast one digit
+            Password should contain atleast one upper case letter''',
+       })
+        
     role        =   UserRole.objects.filter(role_name= user_type).values('role_id').first()['role_id']              
     role_id     =   UserRole.objects.get(role_id=role)
     # To make hash password
@@ -1190,7 +1200,7 @@ def get_user_details(request):
                 job_posted = None
 
             if job_posted is None:
-                get_user_details['posted_job'] = None
+                get_user_details['posted_job'] = 0
 
         data={
             "user_details"  :   get_user_details,

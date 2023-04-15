@@ -29,7 +29,12 @@ urlpatterns = [
     path('api/',include('openup_api.urls')),
 
     path('',views.openup_master),
-
+    path('logs',views.error_log,name='logs'),
+    path('error_list',views.error_list,name='error_list'),
+     
+    path('admin-login',views.admin_login,name='admin_login'),
+    path('do-login',views.do_login),
+    path('admin-logout',views.admin_logout,name='admin_logout'), 
     re_path(r'^media/(?P<path>.*)$', serve,{'document_root': settings.MEDIA_ROOT}),
 
 

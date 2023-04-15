@@ -140,6 +140,14 @@ GitHub.sublime-settings
 !.vscode/launch.json 
 !.vscode/extensions.json 
 .history
+<<<<<<< HEAD
 
 
 debug_logs
+=======
+debug_logs
+*.jpg
+*.jpeg
+*.png
+*.pdf
+>>>>>>> a35719c280664521b7b47ee05acb67d6ec5cd888

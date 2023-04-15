@@ -57,6 +57,53 @@ def check_number(check_no):
         return True
     
 
+
+
+
+# PASSWORD VALIDATION 
+
+def password_validation(password):
+    specialsymbols = ['!','@','#','&']
+    flag = True
+
+    if not any(char in specialsymbols for char in password):
+       
+        flag = False
+
+    if len(password)<8:
+      
+        flag = False
+
+    if len(password)>10:
+     
+        flag=False
+    
+    if not any(char.isdigit() for char in password):
+      
+        flag = False
+    
+    if not any(char.isupper() for char in password):
+        
+        flag = False
+
+    if flag:
+        return flag
+    else:
+        flag = False
+        return flag
+    
+
+# passw = "Swap1234"
+
+# check = password_validation(passw)
+# print(check)
+
+
+
+
+
+
+
 '''
 LAUH ALGORITHM TO CHECK VALID CARD NUMBER
 
