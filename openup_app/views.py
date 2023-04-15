@@ -43,6 +43,8 @@ def error_500(request, *args, **argv):
 
 
 def error_log(request):
+
+
         try:
                 session_token = request.session['session_key']
         except:
@@ -57,19 +59,21 @@ def error_log(request):
 
         user = Registration.objects.get(user_id = check_user)
         
-        if user.user_email != "admin@gmail.com":
+        if user.user_role.role_id != 3:
                  return redirect('admin_login')
         
-
-     
-        return render(request,'error/error_log.html')
-
-def error_list(request):
         try:    
-                mylines = []   
+                  
                 with open("debug_logs", "rt") as myfile:
-                        lines = myfile.read().split('INFO')
-                        
+
+
+                     
+                        # lines = myfile.read().split('INFO')
+
+                        lines = myfile.read()
+                        count = lines.count('INFO')
+                         
+                        data = lines.split('INFO')
                        
                         # for myline in myfile:                # For each line, stored as myline,
                         #         mylines.append(myline) 
@@ -77,32 +81,34 @@ def error_list(request):
                 pass
    
          
-        # page = request.GET.get('page',1)
+        page = request.GET.get('page',3)
         
-        # # if page == 1:   
-        # #         paginator  = Paginator(lines,3)
-        # # else:       
-        # #         paginator  = Paginator(lines, 2)  #
-        # paginator  = Paginator(lines,3)
-        # try:
-        #         line = paginator.get_page(page)  # returns the desired page object
-        # except PageNotAnInteger:   # if page_number is not an integer then assign the first page
-        #         line = paginator.page(1)
-        # except EmptyPage:
         
-        #         line = paginator.page(paginator.num_pages)
+        if page == '1':
+                
+                paginator  = Paginator(data,4)
         
-        # context = {'page_obj': line}
-        count = 10
-        all_records      = {
-                        "recordsTotal"      :   count,      #Total no of records in the database
-                        "recordsFiltered"   :   count,      #Mandatory data for the datatable
-                        "data"              :   lines,    
-                                }
+        else:
+                paginator  = Paginator(data,3)
 
-        return JsonResponse(all_records,safe=False,content_type = "application/json")
+      
+        try:
+                line = paginator.get_page(page)  # returns the desired page object
+        except PageNotAnInteger:   # if page_number is not an integer then assign the first page
+                line = paginator.page(1)
+        except EmptyPage:
+        
+                line = paginator.page(paginator.num_pages)
+        
+        context = {'page_obj': line}
+             
+        return render(request,'error/error_log.html',context)
+ 
 
 
+
+
+        
 def admin_login(request):
         return render(request,'Authentication/login.html')
 
@@ -115,8 +121,6 @@ def do_login(request):
                         check = Registration.objects.filter(user_email=email).values('user_password','user_id').first()
                 except:
                         check = None
-                
-               
                 
                 check_pass = check_password(password,check['user_password'])
                 if check is None:
@@ -146,6 +150,7 @@ def do_login(request):
                 session_is_delete         =        False                  
                 )
                 request.session['session_key'] = session_token
+                request.session['role_id']     = user.user_role.role_id
                 session.save()
                 return JsonResponse({
                                 "status":200,

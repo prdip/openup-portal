@@ -33,35 +33,10 @@
     <div class="container">
         <div class="row">
             <div class="col-md-12">
-
-
-              <table id="datatable" class="table table-striped DataTables table-bordered"
-                style="margin-top: 25px; padding-top: 50px;">
-
-                <h2 id="msg"></h2>
-
-                <thead>
-                    <tr>
-                        <th>Role Name</th>
-                        
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-
-                    </tr>
-                </tbody>
-            </table>
-
-
-
-
-
-
-
+ 
 
               
-                <!-- <nav class="navbar navbar-expand-lg navbar navbar navbar-light">
+                <nav class="navbar navbar-expand-lg navbar navbar navbar-light">
                     <a class="navbar-brand" href="#">Openup Emergency Services</a>
                      
                     <div class="collapse navbar-collapse" id="navbarSupportedContent">
@@ -74,19 +49,24 @@
                     
                     </div>
                   </nav>
+
+                {% if request.session.role_id == 3 %}  
                 <div class="container">
-                {% for post in page_obj.object_list %}
+
+                    
+
+                {% for log in page_obj %}
                   
-                <div class="col-md-12" id="error">
-                    <p> {{post|cut:'^'}}</p>
-               </div>
+                    <div class="col-md-12" id="error">
+                        <p> {{log|cut:'^'}}</p>
+                    </div>
                   
 
-                 {% endfor %} -->
+                 {% endfor %}
              
-            <center>
-                <!-- <nav aria-label="Page navigation example">
-                    <ul class="pagination">
+                <center>
+                    <nav aria-label="Page navigation example">
+                        <ul class="pagination">
                         {%if page_obj.has_previous %}  
                         <a href="?page={{page_obj.previous_page_number}}">Previous</a>  
                         {% endif %}
@@ -97,10 +77,12 @@
                         <a href="?page={{page_obj.next_page_number}}">Next</a> 
                     {% endif %}
                     </ul>
-                  </nav> -->
+                  </nav>
                 
  
-            </center>
+                </center>
+                </div>
+                {% endif %}
         </div>
 
         </div>
@@ -109,53 +91,7 @@
     
 <script>
 
-
-    
-$(document).ready(function (data) {
-        $('#datatable').DataTable({
-
-
-            "ajax": "error_list",
-
-            processing: true,
-            serverSide: false,
-            lengthChange: true,
-            orderable: true,
-            statesave: true,
-            pageLength: 10,
-            lengthMenu: [5, 10],
-            pagingType: "full_numbers",
-
-            columnDefs: [
-                {
-                    targets: "_all",
-                    defaultContent: {
-
-                    },
-                }
-
-            ],
-
-            columns: [
-                
-
-                {
-                    data: "lines",
-
-                },
-
-                 
-
-                
-
-
-            ],
-
-
-        });
-    });
-
-
+ 
 
 
 
