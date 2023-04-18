@@ -25,7 +25,7 @@ handler404 = 'openup_app.views.error_404'
 handler500 = 'openup_app.views.error_500'
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+     
     path('api/',include('openup_api.urls')),
 
     path('',views.openup_master),

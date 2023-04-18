@@ -882,9 +882,12 @@ def client_joblist(request):
 
             elif job['job_status'] == 2:
                 job['job_status'] = "accepted"
+
+            elif job['job_status'] == 3:
+                job['job_status'] = "completed"
             
             else:
-                job['job_status'] = "completed"
+                job['job_status'] = "canceled"
 
             ''' print employee name==> job accepted by '''   
 
@@ -955,10 +958,14 @@ def employee_joblist(request):
 
             elif job['job_status'] == 2:
                 job['job_status'] = "accepted"
-             
-            else:
-                job['job_status'] = "completed"
 
+            elif job['job_status'] == 3:
+                job['job_status'] = "completed"
+            
+            else:
+                job['job_status'] = "canceled"
+             
+           
             '''if job accepted print client name'''  
 
             if job['user'] != None:
