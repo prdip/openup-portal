@@ -201,7 +201,7 @@ def user_register(request):
     if check_mobile_no !=True:     
         return JsonResponse({    
             "success"       :   0,
-            "message"       :   "Please Provide Valid Moile Number",
+            "message"       :   "Please provide valid mobile number",
        })
     
     check_pass = password_validation(password)
@@ -391,29 +391,29 @@ def login(request):
             "success"       :   0,
             "message"       :   "please Provide Valid Email",
             })
-    
+    # get role_id  to verify user role type
+
+    role_id     =   UserRole.objects.exclude(role_is_delete=1).filter(role_name = user_type).values('role_id').first()['role_id']
     # Get user id through email
     try:
-        check_user_id = Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']
+        check_user_id = Registration.objects.exclude(user_is_delete=1).filter(Q(user_email=email) and Q(user_role=role_id)).values('user_id').first()['user_id']
     except:       
         check_user_id = None
+
+ 
 
     if check_user_id == None:       
         return JsonResponse({
             "success"       :   0,
             "message"       :   "user does not exist",
-            })
-
-    # get role_id  to verify user role type
-
-    role_id     =   UserRole.objects.exclude(role_is_delete=1).filter(role_name = user_type).values('role_id').first()['role_id']
-
+            }) 
     if user_type == "employee":
     # get user record
+      
         user_rec    =   Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).get(user_id=check_user_id)
     else:
         user_rec    =   Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=1)).get(user_id=check_user_id)
-
+       
     # Verify user type 
     if user_rec.user_role.role_id != role_id:
         return JsonResponse({                           #if usertype not match generates error 

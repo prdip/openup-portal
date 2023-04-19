@@ -59,7 +59,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'openup.settings')
 
 # Application definition
 INSTALLED_APPS = [
-    'django.contrib.admin',
+   
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -71,6 +71,9 @@ INSTALLED_APPS = [
     'django_celery_results' 
     
 ]
+
+
+ADMIN_ENABLED = True
 
 BACKGROUND_TASK_RUN_ASYNC = True
 
@@ -243,26 +246,6 @@ LOGGING = {
            
         },
               
-        
-         # working for logs and errors
-        # 'file':{
-		# 	'level':'INFO',
-		#        'class':'logging.FileHandler',
-			 
-		# 	'filename':os.path.join(BASE_DIR,'error_log'),
-            
-		# },
-
-
-        # 'warning_log':{
-		# 	'level':'WARNING',
-		#        'class':'logging.FileHandler',
-			 
-		# 	'filename':os.path.join(BASE_DIR,'warning_log'),
-            
-		# },
-
-
 
     },
 
