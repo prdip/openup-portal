@@ -34,7 +34,7 @@ def cms_details(request,*args,**kwargs):
 
         return JsonResponse({
         "success"    :       1,
-        "message"   :       "Cms_Links provided",
+        "message"   :       "Cms links provided",
         "data"      :       data
         })
     

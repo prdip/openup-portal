@@ -67,7 +67,7 @@ def add_feedback(request):
         if feedback_star is None or feedback_comment is None:
             return JsonResponse({
                 "success"    :   0,
-                "message"   :   "Please provide data"
+                "message"   :   "please provide data"
             })
 
         # try to found job id found 
@@ -80,7 +80,7 @@ def add_feedback(request):
         if job_record is None:
             return JsonResponse({
                 "success"    :       0,
-                "message"   :   "Please provide job id"
+                "message"   :   "please provide job id"
             })
         
         # if job is not user job 
@@ -88,7 +88,7 @@ def add_feedback(request):
         if job_record.user_id != user_id:
             return JsonResponse({
                 "success"    :   0,
-                "message"   :   "Please provide valid job id"
+                "message"   :   "please provide valid job id"
             })
         
         # FEEDBACK DATA

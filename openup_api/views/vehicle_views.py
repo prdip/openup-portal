@@ -56,14 +56,14 @@ def add_vehicle(request):
             if vehicle_details is None or vehicle_details == "":
                 return JsonResponse({
                     "success"     :   0,
-                    "message"     :   "Please Provide Vehicle details",
+                    "message"     :   "please provide vehicle details",
                 }) 
 
             # check vehicle_modification data
             if vehicle_modification is None or vehicle_modification == "":
                 return JsonResponse({
                     "success"     :   0,
-                    "message"     :   "Please Provide Vehicle mod",
+                    "message"     :   "please provide vehicle mod",
                 })
             # Check file upload is image or not
             if vehicle_license_img != None:
@@ -76,7 +76,7 @@ def add_vehicle(request):
                 if im is None: 
                     return JsonResponse({
                         "success"     :   0,
-                        "message"     :   "Please provide valid image",
+                        "message"     :   "please provide valid image",
                     })
 
             # get user id from token 
@@ -100,10 +100,15 @@ def add_vehicle(request):
             vehicle_record  =  VehicleSerializer(data=vehicle_data)
 
             if vehicle_record.is_valid():
-                vehicle_record.save()
+                id = vehicle_record.save()
+
+                data = {
+                    "vehicle_id" :  id
+                }
                 return JsonResponse({
                         "success"      :   1,
-                        "message"      :   "Vehicle Information Stored Successfully",
+                        "message"      :   "Vehicle information stored successfully",
+                        "data"         :    data
                     })                        
         else:
             update_data = {
@@ -126,7 +131,7 @@ def add_vehicle(request):
                 vehicle_ser.save()
                 return JsonResponse({
                     "success"     :   1,
-                    "message"     :   "Vehicle Information updated Successfully",
+                    "message"     :   "Vehicle information updated successfully",
                 })
                     
 
@@ -154,13 +159,13 @@ def vehicle_edit(request):
         if vehicle_id == None or vehicle_id == "":
             return JsonResponse({
                 "success"     :   0,
-                "message"     :   "Please provide valid vehicle id",
+                "message"     :   "please provide valid vehicle id",
             }) 
         # Check for image 
         if vehicle_license_img is None:
             return JsonResponse({
                 "success"     :   0,
-                "message"     :   "Please provide valid image",
+                "message"     :   "please provide valid image",
             })        
         try:
             im = Image.open(vehicle_license_img)
@@ -172,7 +177,7 @@ def vehicle_edit(request):
         if im is None: 
                 return JsonResponse({
                     "success"     :   0,
-                    "message"     :   "Please provide valid image",
+                    "message"     :   "please provide valid image",
                 })
 
         # update image data
@@ -188,7 +193,7 @@ def vehicle_edit(request):
             vehicle_data.save()
             return JsonResponse({
                 "success"     :   1,
-                "message"     :   "Vehicle information updated",
+                "message"     :   "vehicle information updated",
             })
 
 
@@ -208,8 +213,8 @@ def removeElements(items,lists):
 def vehicle_details(request):
 
     #  Token Verification
-    token = request.headers['Authorization']
-    user_token = token.replace("Bearer",'')
+    token           =       request.headers['Authorization']
+    user_token      =       token.replace("Bearer",'')
     check_user      =       token_verification(user_token)
 
     if check_user is None:
@@ -231,7 +236,7 @@ def vehicle_details(request):
         if vehicle_details is None or vehicle_id   ==  None:
              return JsonResponse({
                 "success"     :   0,
-                "message"     :   "Please provide Vehicle id",
+                "message"     :   "please provide Vehicle id",
             })
         
         vehicle_ser             =       VehicleSerializer(vehicle_details).data

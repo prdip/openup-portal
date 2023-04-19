@@ -80,7 +80,7 @@ def user_register(request):
     if first_name ==None or first_name == "":
        return JsonResponse({
             "success"       :   0,
-            "message"       :   "Please Provide First Name",
+            "message"       :   "please provide first Name",
        })
     
     # Check first name == > allowed only text data returns True or False 
@@ -89,12 +89,12 @@ def user_register(request):
     if check_first_name == False:
        return JsonResponse({
             "success"       :   0,
-            "message"       :   "Please Provide Valid First Name",
+            "message"       :   "please provide valid first name",
        }) 
     if middle_name == "" or middle_name == None:
        return JsonResponse({
             "success"       :   0,
-            "message"       :   "Please Provide Middle Name",
+            "message"       :   "please provide middle name",
             })
     
      # Check Middle name== > allowed only text data
@@ -103,51 +103,51 @@ def user_register(request):
     if check_middle_name == False:
        return JsonResponse({
             "success"       :   0,
-            "message"       :   "Please Provide Valid Middle Name",
+            "message"       :   "please provide valid middle name",
        })
     
     if last_name == "" or last_name==None:
        return JsonResponse({
             "success"       :   0,
-            "message"       :   "Please Provide Last Name",
+            "message"       :   "please provide last name",
        })
      # Check last name == > allowed only text data
     check_last_name = check_text(last_name)
     if check_last_name == False:
        return JsonResponse({
             "success"       :   0,
-            "message"       :   "Please Provide Valid Last Name",
+            "message"       :   "please provide valid last name",
        })
     if email == "" or email==None:
        return JsonResponse({
             "success"       :   0,
-            "message"       :   "Please Provide Email Address",
+            "message"       :   "please provide email address",
        })
     if phone_number == "" or phone_number==None:
        return JsonResponse({
             "success"       :   0,
-            "message"       :   "Please Provide phone_number",
+            "message"       :   "please provide phone number",
        })
     
     if user_type is None or user_type == "":
          return JsonResponse({
             "success"       :   0,
-            "message"       :   "Please Provide User Type",
+            "message"       :   "please provide user type",
        })
     if password == None or password=="":
        return JsonResponse({
             "success"       :   0,
-            "message"       :   "Please Provide Password",
+            "message"       :   "please provide password",
        })
     if confirm_pass == None or confirm_pass=="":
        return JsonResponse({
             "success"       :   0,
-            "message"       :   "Please Provide Confirm Password",
+            "message"       :   "please provide confirm password",
        })
     if password != confirm_pass:
        return JsonResponse({
             "success"       :   0,
-            "message"       :   "Password Mismatch",
+            "message"       :   "password mismatch",
        })
     # Validate data   
     #   CHECK Mobile Number ALREADY EXIST 
@@ -193,7 +193,7 @@ def user_register(request):
        return JsonResponse({
            
             "success"       :   0,
-            "message"       :   "Please Provide Valid Email",
+            "message"       :   "please provide valid email",
        })
 
     # Validate mobile numbers => allowed 12 digits only
@@ -201,17 +201,17 @@ def user_register(request):
     if check_mobile_no !=True:     
         return JsonResponse({    
             "success"       :   0,
-            "message"       :   "Please provide valid mobile number",
+            "message"       :   "please provide valid mobile number",
        })
     
     check_pass = password_validation(password)
     if check_pass is False:
         return JsonResponse({    
             "success"       :   0,
-            "message"       :   '''Password should have at least one of the symbols 
-            Password should be mininmum 8 character
+            "message"       :   '''password should have at least one of the symbols 
+            password should be mininmum 8 character
             password should contain atleast one digit
-            Password should contain atleast one upper case letter''',
+            password should contain atleast one upper case letter''',
        })
         
     role        =   UserRole.objects.filter(role_name= user_type).values('role_id').first()['role_id']              
@@ -249,12 +249,15 @@ def user_register(request):
                 "Subject"             :     "Request for Acount Activation",
                 "text_template"       :     "email/confirm_user.txt",
                 "email"               :     email,
-                "to"                  :     "swapnilpathak@gmail.com"
+                "to"                  :     "swapnilpathak@gmail.com",
+                "user_type"          :      user_type
             }
+
             send_email.delay(data_dict)
+            # send_email(data_dict)
             return JsonResponse({
                         "success"       :   1,
-                        "message"       :   "Employee Registered Successfully !",
+                        "message"       :   "Employee registered successfully !",
                     })
         
     # client registration code
@@ -285,10 +288,11 @@ def user_register(request):
             "Subject"            :   "Please Verify Your email to start using Openup emergency service",
             "text_template"      :   "email/verify_user.txt",
             "email"              :    email,
-            "to"                 :    email
+            "to"                 :    email,
+            "user_type"          :    user_type
             }
         send_email.delay(data_dict)
-       
+
 
         '''save client settings eav model in setting'''
         setting_dict ={
@@ -329,7 +333,11 @@ def send_email(data_dict):
     '''call send_email function'''
 
     email       =   data_dict['email']
-    user_id     =   Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values('user_id').first()['user_id']   
+    
+    role        =   UserRole.objects.filter(role_name=data_dict['user_type']).values('role_id').first()['role_id']
+    
+    user_id     =   Registration.objects.exclude(user_is_delete=1).filter(Q(user_email=email) and Q(user_role = role)).values('user_id').first()['user_id']   
+    
     link_tokan  =   secrets.token_hex() 
     created_at  =   datetime.datetime.now()
     link        =   AccountVerification(user_id=user_id,
@@ -361,13 +369,13 @@ def login(request):
     if fcm_token == "" or fcm_token ==None:
        return JsonResponse({
             "success"       :   0,
-            "message"       :   "Please Provide FCM Token",
+            "message"       :   "please provide FCM token",
             })
     
     if device_type == "" or device_type ==None:
        return JsonResponse({
             "success"       :   0,
-            "message"       :   "Please Provide Device type",
+            "message"       :   "please Provide Device type",
         })
 
     # check email provided or not
@@ -381,7 +389,7 @@ def login(request):
     if password == None or password == "":
        return JsonResponse({           
             "success"       :   0,
-            "message"       :   "please Provide Password",
+            "message"       :   "please provide password",
             })
     
     # Validates email address
@@ -389,7 +397,7 @@ def login(request):
     if check_email == False:
        return JsonResponse({
             "success"       :   0,
-            "message"       :   "please Provide Valid Email",
+            "message"       :   "please provide valid email",
             })
     # get role_id  to verify user role type
 
@@ -400,8 +408,6 @@ def login(request):
     except:       
         check_user_id = None
 
- 
-
     if check_user_id == None:       
         return JsonResponse({
             "success"       :   0,
@@ -409,7 +415,6 @@ def login(request):
             }) 
     if user_type == "employee":
     # get user record
-      
         user_rec    =   Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).get(user_id=check_user_id)
     else:
         user_rec    =   Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=1)).get(user_id=check_user_id)
@@ -434,7 +439,7 @@ def login(request):
     if check_pass is False:
         return JsonResponse({           
             "success"       :   0,
-            "message"       :   "Please Enter Valid password",
+            "message"       :   "please enter valid password",
             })
        
     # if client logs in for first time then create stripe customer
@@ -605,7 +610,7 @@ def logout(request,*args,**kwargs):
         else:
             return JsonResponse({
                 "success"   :   1,
-                "message"   :   "Logout User",
+                "message"   :   "Logout user",
                 "error"     :   user_data.errors
             })
 
@@ -652,30 +657,30 @@ def email_update(request,*args,**kwargs):
         if current_email == None or current_email == "":
             return JsonResponse({           
                     "success"       :   0,
-                    "message"       :   "Please Current Email Address",
+                    "message"       :   "please current email address",
                 })   
         # Check for new email
         if new_email == None or new_email=="":
             return JsonResponse({
                     "success"       :   0,
-                    "message"       :   "Please provide Email Address",
+                    "message"       :   "please provide email address",
                 })    
         check_new_email = email_address(new_email)
         if check_new_email == False:
             return JsonResponse({
                     "success"       :   0,
-                    "message"       :   "Please enter valid new Email Address",
+                    "message"       :   "please enter valid new email address",
                 })   
         if new_email == current_email:
             return JsonResponse({
                     "success"       :   0,
-                    "message"       :   "Email is same as old email address",
+                    "message"       :   "email is same as old email address",
                 })      
         # Check for password
         if password == None or password == "":
             return JsonResponse({
                     "success"       :   0,
-                    "message"       :   "Please provide password",
+                    "message"       :   "please provide password",
             })
         
         # CHECK IF EMAIL EXISTS OR NOT
@@ -686,7 +691,7 @@ def email_update(request,*args,**kwargs):
         if user_id is None:
             return JsonResponse({
                 "success"     :   0,
-                "message"     :   "Please enter valid current email address",
+                "message"     :   "please enter valid current email address",
             }) 
         # Check email is already exist or not
         try:
@@ -696,7 +701,7 @@ def email_update(request,*args,**kwargs):
         if check_email:
             return JsonResponse({
                 "success"     :   0,
-                "message"     :   "Email address already exist",
+                "message"     :   "email address already exist",
             })    
         # GET USER INSTANCE
         user        =   Registration.objects.exclude(user_is_delete=1).get(user_id = user_id) 
@@ -705,14 +710,14 @@ def email_update(request,*args,**kwargs):
         if user.user_id != user_id:
             return JsonResponse({
                 "success"     :   0,
-                "message"     :   "Please enter valid email address",
+                "message"     :   "please enter valid email address",
             }) 
         # CHECK HASH PASSWORD
         check_pass  =  check_password(password,user.user_password)
         if check_pass is False: 
             return JsonResponse({   
             "success"       :   0,
-            "message"       :   "Please provide valid password",
+            "message"       :   "please provide valid password",
             })  
         # UPDATE DATA
         update_data = {
@@ -740,7 +745,7 @@ def email_update(request,*args,**kwargs):
                             })        
             else:
                 return JsonResponse({
-                            "success"       :   1,
+                            "success"       :   0,
                             "message"       :   "Error occured ",
                             })
 
@@ -772,7 +777,7 @@ def change_password(request,*args,**kwargs):
         if current_password is None or current_password == "":
             return JsonResponse({          
             "success"       :   0,
-            "message"       :   "Please provide Your current Password",
+            "message"       :   "please provide Your current Password",
             })
         
         # Check new password
@@ -780,7 +785,7 @@ def change_password(request,*args,**kwargs):
         if new_password is None or new_password == "":
              return JsonResponse({
                 "success"     :   0,
-                "message"     :   "Please provide new passowrd",        
+                "message"     :   "please provide new passowrd",        
         })
         
         # Confirm password
@@ -788,7 +793,7 @@ def change_password(request,*args,**kwargs):
         if confirm_password is None or confirm_password == "":
              return JsonResponse({
                 "success"     :   0,
-                "message"     :   "Please confirm new passowrd",        
+                "message"     :   "please confirm new passowrd",        
         })
         
         user_id = check_user['session_user']
@@ -805,7 +810,7 @@ def change_password(request,*args,**kwargs):
         if  pass_check is False:
             return JsonResponse({
                 "success"     :   0,
-                "message"     :   "Current password is Not Valid",
+                "message"     :   "current password is Not Valid",
             })
 
         # check old password with new password 
@@ -813,13 +818,13 @@ def change_password(request,*args,**kwargs):
         if pass_check :           
             return JsonResponse({
                 "success"     :   0,
-                "message"     :   "Password is same as old password",
+                "message"     :   "password is same as old password",
             })
                 
         if new_password != confirm_password:
             return JsonResponse({
                 "success"     :   0,
-                "message"     :   "Password does not match",
+                "message"     :   "password does not match",
             })
     
         else:   
@@ -834,7 +839,7 @@ def change_password(request,*args,**kwargs):
                 user_serializer.save()
                 return JsonResponse({
                 "success"     :   1,
-                "message"     :   "Password changed suceessfully ",
+                "message"     :   "Password changed suceessfully",
                 })
     
 
@@ -1285,6 +1290,7 @@ def verify_client(request):
         client_rec    =  Registration.objects.get(user_id=user_id['user_id'])
         link_record   =   AccountVerification.objects.get(link_id=user_id['link_id'])
 
+    
         update_link_status = {
         "link_status"   :   1
         }

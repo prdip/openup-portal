@@ -821,7 +821,7 @@ def cancel_job(request):
             job_ser.save()
             return JsonResponse({
                     "success"     :   1,
-                    "message"     :   "your job is canceled",
+                    "message"     :   "Your job is cancelled",
                     })
         else:
             return JsonResponse({
