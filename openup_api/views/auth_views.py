@@ -365,7 +365,7 @@ def login(request):
     user_type       =   request.data.get('user_type', None)
     fcm_token       =   request.data.get('fcm_token', None)
     device_type     =   request.data.get('device_type', None)
-    
+ 
     if fcm_token == "" or fcm_token ==None:
        return JsonResponse({
             "success"       :   0,
@@ -403,11 +403,12 @@ def login(request):
 
     role_id     =   UserRole.objects.exclude(role_is_delete=1).filter(role_name = user_type).values('role_id').first()['role_id']
     # Get user id through email
+ 
     try:
         check_user_id = Registration.objects.exclude(user_is_delete=1).filter(Q(user_email=email) and Q(user_role=role_id)).values('user_id').first()['user_id']
     except:       
         check_user_id = None
-
+ 
     if check_user_id == None:       
         return JsonResponse({
             "success"       :   0,
@@ -415,10 +416,10 @@ def login(request):
             }) 
     if user_type == "employee":
     # get user record
-        user_rec    =   Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).get(user_id=check_user_id)
+        user_rec    =   Registration.objects.exclude(Q(user_is_delete=1) and Q(user_role_id=2)).get(user_id=check_user_id)
     else:
-        user_rec    =   Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=1)).get(user_id=check_user_id)
-       
+        user_rec    =   Registration.objects.exclude(Q(user_is_delete=1) and Q(user_role_id=1)).get(user_id=check_user_id)
+        
     # Verify user type 
     if user_rec.user_role.role_id != role_id:
         return JsonResponse({                           #if usertype not match generates error 
@@ -428,7 +429,7 @@ def login(request):
     
     # check user account is activate or not
 
-    if user_type == "employee" and user_rec.user_status == 0:
+    if user_type == "employee" and user_rec.user_status == False:
         return JsonResponse({           
             "success"       :   0,                      # if account_status is 0 == > user is inactive
             "message"       :   "account is inactive",
