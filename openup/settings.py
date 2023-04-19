@@ -119,8 +119,10 @@ WSGI_APPLICATION = 'openup.wsgi.application'
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_USE_TLS = True
 EMAIL_HOST = 'sandbox.smtp.mailtrap.io'
-EMAIL_HOST_USER = '57e9943f5f2fed'
-EMAIL_HOST_PASSWORD = '80ecacaa53a317'
+
+EMAIL_HOST_USER = '195fb85483caee'
+EMAIL_HOST_PASSWORD = '778e93b8bfe2f3'
+ 
 EMAIL_PORT = '2525'
 
 

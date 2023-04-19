@@ -853,15 +853,18 @@ FORGOT PASSWORD  GENERATES EMAIL FOR USER
 def forget_password(request):
 
     user_email  = request.data.get('user_email',None)
+    user_type  = request.data.get('user_type',None)
     # EMAIL REQUIRED
     if user_email == None or user_email == "":
         return JsonResponse({
             "success"     :   0,
             "message"     :   "Email is not Valid",
     })  
+
+    role        =   UserRole.objects.filter(role_name=user_type).values('role_id').first()['role_id']
     # Get user id from token data  
     try:
-        check_email = Registration.objects.exclude(user_is_delete=1).filter(user_email=user_email).values('user_id').first()['user_id']
+        check_email = Registration.objects.exclude(user_is_delete=1).filter(Q(user_email=user_email) and Q(user_role=role)).values('user_id').first()['user_id']
     except:
         check_email = None
 
@@ -936,17 +939,17 @@ def reset_password(request,token):
     # GET DETAILS OF USER 
     pass_reset_data         =       ForgotPassword.objects.filter(token=user_token).values() #unique token verifies user   
     if pass_reset_data.exists(): #True if user found
-        email                   =       pass_reset_data.values('email').first()['email']
+        user_id                   =       pass_reset_data.values('user_id').first()['user_id']
         # filters record using email addresss
         try:
-            myuser_id               =       Registration.objects.exclude(user_is_delete=1).filter(user_email=email).values_list('user_id')[0][0]    
+            user               =       Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)    
         #  get single user instance
         except:
-            myuser_id = None
+            user = None
 
-        if myuser_id == None:
+        if user == None:
            return HttpResponse("user not found")
-        user                    =       Registration.objects.exclude(user_is_delete=1).get(user_id=myuser_id)
+ 
         status_code             =       pass_reset_data.values_list('status')[0][0] #status value for checking link been used or not        
         exp_time                =       pass_reset_data.values_list('timestamp')[0][0] # get timestamp from database
         convert_unix_timestamp  =       float(exp_time)
