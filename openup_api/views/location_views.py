@@ -46,7 +46,7 @@ def update_location(request):
         job_distance =    request.data.get('job_distance',None)
         # 
         # check for blank value
-        # print(job_id)
+     
         if job_distance ==  None:
             return JsonResponse({
                             "success"        :       0,
@@ -90,10 +90,7 @@ def update_location(request):
         # user serializer
         user_ser    =       RegisterSerializer(instance=user_rec,data=location_details,partial=True)
 
-        data = {
-
-                "location_details":location_details
-            }
+         
         
         try: 
             job     = Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
@@ -134,8 +131,8 @@ def update_location(request):
 @api_view(['POST'])
 def dist_calculation(request):
 
-    token = request.headers['Authorization']
-    user_token = token.replace("Bearer",'')  
+    token       = request.headers['Authorization']
+    user_token  = token.replace("Bearer",'')  
     check_user            =       token_verification(user_token)
 
     if check_user is None:
@@ -161,51 +158,12 @@ def dist_calculation(request):
                                 "success"        :       0,
                                 "message"        :      "provide job id"
                         })
-        # try: 
-        #     emp_id              =    job_record.job_accepted_by
-        # except:
-        #     emp_id = None
-
-        # if emp_id == None:
-        #     return JsonResponse({
-        #                         "success"        :       0,
-        #                         "message"        :      "job is not accepted yet"
-        #                 })
-            
-        # emp_record          =   Registration.objects.exclude(user_is_delete=1).get(user_id=emp_id)
-        # client_location_lon =   job_record.location_latitude
-        # client_location_lat =   job_record.location_longitude
-        # client_location     =   (client_location_lon,client_location_lat)
-        #     # employee location
-        # emp_location        =   (emp_record.location_latitude,emp_record.location_longitude)
-            # calculate distance between two point 
-        # dist                =   gd(client_location,emp_location).kilometers
-        # time                =   (dist/40)*60
-        # if dist < 1:
-        #     time = time*60
-
-         
-        # min = datetime.datetime.now()+datetime.timedelta(minutes = time)
-        
-        # current_time   =  datetime.datetime.now()
-
-
-        # time = min-current_time
-
        
-        # try:
-        #     t1 = datetime.datetime.strptime(str(time),'%H:%M:%S.%f')
-        # except:
-        #     pass
-
-        # try:
-        #     time_req = t1.strftime('%M:%S')         
-        # except:
-        #     time_req = 0
-
 
 
         time_req = job_record.job_time
+        
+       
         data =  {
                
                 "time"           :       str(time_req),      

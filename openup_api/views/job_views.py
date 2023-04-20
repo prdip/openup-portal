@@ -887,7 +887,7 @@ def client_joblist(request):
                 job['job_status'] = "completed"
             
             else:
-                job['job_status'] = "canceled"
+                job['job_status'] = "cancelled"
 
             ''' print employee name==> job accepted by '''   
 
@@ -963,7 +963,7 @@ def employee_joblist(request):
                 job['job_status'] = "completed"
             
             else:
-                job['job_status'] = "canceled"
+                job['job_status'] = "cancelled"
              
            
             '''if job accepted print client name'''  

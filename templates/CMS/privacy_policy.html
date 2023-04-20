@@ -1,16 +1,77 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en"> 
+    {% load static %}
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy Policy</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
-		
-	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.3/jquery.min.js"></script>
+ 
+    <!-- <script type="text/javascript" src=" https://cdnjs.cloudflare.com/ajax/libs/pdf.js/1.9.604/pdf.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/1.9.604/pdf.worker.min.js"></script>
+      -->
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@2.7.570/build/pdf.min.js"></script>
+     
+    
+     <script src=" https://www.jsdelivr.com/package/npm/pdfjs-dist"></script>
 
-</head>
-<body>
+     <script src="https://cdnjs.com/libraries/pdf.js"></script>
+     <script src=" https://unpkg.com/pdfjs-dist/"></script>
+     
+<script>
+    
+    // var data =     pdfjsLib.getDocument('pdf/sample.pdf')
+
+    // console.log(data);
+    var loadingTask = pdfjsLib.getDocument('{% static "pdf/sample.pdf" %}');
+    loadingTask.promise.then(function(pdf) {
+    pdf.getPage(1).then(function (page) {
+
+        var scale = 1;
+        var viewport = page.getViewport(scale);
+
+        // Apply page dimensions to the `<canvas>` element.
+        var canvas = document.getElementById('pdf');
+        var context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        // Render the page into the `<canvas>` element.
+        var renderContext = {
+            canvasContext: context,
+            viewport: viewport,
+        };
+        
+        
+        page.render(renderContext);
+ 
+        console.log('Page rendered!');
+    // 	page.render(renderContext).then(function () {
+    // 		console.log('Page rendered!');
+    // 	});
+    // });
+},
+function (reason) {
+    console.error(reason);
+});
+
+});
+</script>
+    </head>
+    <body>
+   
     <h1>Privacy Policy</h1>
+    <div>
+         
+        <canvas id="pdf"  ></canvas>
+  
+    </div> 
+     
+
+      <!-- <object width="400" height="400" data="{% url 'privacy_policy' %}" type="application/pdf"></object> -->
+ 
+ 
+
+
 </body>
 </html>

@@ -36,9 +36,11 @@ urlpatterns = [
 #  CMS PAGES
   path('copyright_page', cms_views.copyright_page,name='copyright_page'),
   path('terms_and_condition', cms_views.terms_and_condition,name='terms_and_condition'),  
-  path('privacy_policy', cms_views.privacy_policy,name='privacy_policy'),
   path('software_license', cms_views.software_license,name='software_license'),
   path('location_information', cms_views.copyright_page,name='location_information'),
+
+  path('privacy_policy', cms_views.privacy_policy,name='privacy_policy'),
+  # path('pdf_read', cms_views.pdf_read, name='pdf_read'),
 
 # Force Update
   path('force_update', force_update.force_update,name='force_update'),
@@ -94,5 +96,15 @@ urlpatterns = [
 # Employee active inactive
   path('employee-status', auth_views.employee_status,name='employee_status'),
   re_path(r'^media/(?P<path>.*)$', serve,{'document_root': settings.MEDIA_ROOT}),
+
+ re_path(r'^static/(?P<path>.*)$', serve,{'document_root': settings.STATIC_ROOT}),
+
+  # path('privacy_policy', cms_views.privacy_policy,name='privacy_policy'),
+  # path('pdf_read', cms_views.pdf_read, name='pdf_read'),
+
 ]
-# urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+
+
+ 

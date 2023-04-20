@@ -197,12 +197,7 @@ def user_register(request):
        })
 
     # Validate mobile numbers => allowed 12 digits only
-    check_mobile_no = mobile_number(phone_number)
-    if check_mobile_no !=True:     
-        return JsonResponse({    
-            "success"       :   0,
-            "message"       :   "please provide valid mobile number",
-       })
+  
     
     check_pass = password_validation(password)
     if check_pass is False:
@@ -1170,11 +1165,12 @@ def get_user_details(request):
 
         if user_record.user_role.role_name == "employee":
             try:
-                accepted_job  =  Jobs.objects.exclude(Q(is_delete=1) and Q(job_status=3) and Q(job_status=4)).filter(job_accepted_by=user_record.user_id).order_by('job_id').reverse().first()
-                get_user_details['accepted_job'] = accepted_job.job_id
+                accepted_job  =  Jobs.objects.exclude(Q(is_delete=1)).filter(Q(job_accepted_by=user_record.user_id) and Q(job_status=2) ).values('job_id').first()['job_id']
+                get_user_details['accepted_job'] = accepted_job
 
             except:
                 accepted_job = None
+             
 
             get_user_details.pop("payment_method_id")
             get_user_details.pop("payment_id")
@@ -1183,7 +1179,7 @@ def get_user_details(request):
 
             if accepted_job is None:
 
-                get_user_details['accepted_job']    = None
+                get_user_details['accepted_job']    = 0
 
             if user_record.employee_status == 1:
                 get_user_details['employee_status'] = "1"
@@ -1191,8 +1187,9 @@ def get_user_details(request):
                 get_user_details['employee_status'] = "0" 
             
             if accepted_job != None:
-
-                if accepted_job.job_pay_status == 1 and accepted_job != None:
+                
+                job = Jobs.objects.get(job_id=accepted_job)
+                if  job.job_pay_status == 1 and  job != None:
 
                     get_user_details['payment_status'] = 1
 
@@ -1202,12 +1199,13 @@ def get_user_details(request):
         
         else:
             try:
-                job_posted  =   Jobs.objects.exclude(Q(is_delete=1) and Q(job_status=3) and Q(job_status=4)).filter(user_id=user_record.user_id).order_by('job_id').reverse().first()        
-                get_user_details['posted_job'] = job_posted.job_id
+                job_posted  =   Jobs.objects.exclude(Q(is_delete=1)).filter(Q(user_id=user_record.user_id) and (Q(job_status_id=1)and Q(job_status_id=2))).values('job_id').first()['job_id']      
+                get_user_details['posted_job'] = job_posted 
 
             except:
                 job_posted = None
-
+            
+ 
             if job_posted is None:
                 get_user_details['posted_job'] = 0
 

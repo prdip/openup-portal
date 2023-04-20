@@ -101,9 +101,9 @@ def add_vehicle(request):
 
             if vehicle_record.is_valid():
                 id = vehicle_record.save()
-
+              
                 data = {
-                    "vehicle_id" :  id
+                    "vehicle_id" :  id.vehicle_id
                 }
                 return JsonResponse({
                         "success"      :   1,
@@ -128,10 +128,15 @@ def add_vehicle(request):
             vehicle_ser     =   VehicleSerializer(instance=vehicle_rec,data=update_data,partial=True)
 
             if vehicle_ser.is_valid():
-                vehicle_ser.save()
+                id = vehicle_ser.save()
+             
+                data = {
+                    "vehicle_id"    :   id
+                }
                 return JsonResponse({
                     "success"     :   1,
                     "message"     :   "Vehicle information updated successfully",
+                    "data"         :    data
                 })
                     
 

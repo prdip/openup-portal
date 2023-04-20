@@ -2,6 +2,7 @@ from django.shortcuts import render
 
 # Create your views here.
 from rest_framework.decorators import api_view
+from django.http import FileResponse, Http404
 
 # Import json response
 from django.http import JsonResponse
@@ -15,7 +16,7 @@ environ.Env.read_env()
 @api_view(['POST'])
 def cms_details(request,*args,**kwargs):
         
-       
+        
         domain      = env('BASE_URL')
         # return cms links as a response
         cms_links   =  {
@@ -58,8 +59,23 @@ def terms_and_condition(request):
 
 # Privacy Policy Page 
 
+
+    
 def privacy_policy(request):
+     
     return render(request,'CMS/privacy_policy.html')
+  
+
+# To render pdf 
+# link in temp <embed src={% url 'privacy_policy' %}'#toolbar=0&navpanes=0&scrollbar=0'style="width:718px; height:700px;" frameborder="0">
+    
+def pdf_read(request):
+  
+    try:
+        return FileResponse(open('pdf/sample.pdf', 'rb'), content_type='application/pdf')
+    except FileNotFoundError:
+        raise Http404('not found')
+   
 
 
 # Software License Page 
