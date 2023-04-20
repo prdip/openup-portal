@@ -19,43 +19,53 @@
      <script src=" https://unpkg.com/pdfjs-dist/"></script>
      
 <script>
-    
-    // var data =     pdfjsLib.getDocument('pdf/sample.pdf')
+   
+var pdf_url = '{% static "pdf/sample1.pdf" %}';
+var currPage = 1; //Pages are 1-based not 0-based
+var numPages = 0;
+var thePDF = null;
 
-    // console.log(data);
-    var loadingTask = pdfjsLib.getDocument('{% static "pdf/sample.pdf" %}');
-    loadingTask.promise.then(function(pdf) {
-    pdf.getPage(1).then(function (page) {
+//This is where you start
+PDFJS.getDocument(pdf_url).then(function(pdf) {
 
-        var scale = 1;
-        var viewport = page.getViewport(scale);
+        //Set PDFJS global object (so we can easily access in our page functions
+        thePDF = pdf;
 
-        // Apply page dimensions to the `<canvas>` element.
-        var canvas = document.getElementById('pdf');
-        var context = canvas.getContext('2d');
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
+        //How many pages it has
+        numPages = pdf.numPages;
 
-        // Render the page into the `<canvas>` element.
-        var renderContext = {
-            canvasContext: context,
-            viewport: viewport,
-        };
-        
-        
-        page.render(renderContext);
+        //Start with first page
+        pdf.getPage( 1 ).then( handlePages );
+});
+
+
+
+function handlePages(page)
+{
+    //This gives us the page's dimensions at full scale
+    var viewport = page.getViewport( 1 );
+
+    //We'll create a canvas for each page to draw it on
+    var canvas = document.createElement( "canvas" );
+    canvas.style.display = "block";
+    var context = canvas.getContext('2d');
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+
+    //Draw it on the canvas
+    page.render({canvasContext: context, viewport: viewport});
+
+    //Add it to the web page
+    document.body.appendChild( canvas );
+
+    //Move to next page
+    currPage++;
+    if ( thePDF !== null && currPage <= numPages )
+    {
+        thePDF.getPage( currPage ).then( handlePages );
+    }
+}
  
-        console.log('Page rendered!');
-    // 	page.render(renderContext).then(function () {
-    // 		console.log('Page rendered!');
-    // 	});
-    // });
-},
-function (reason) {
-    console.error(reason);
-});
-
-});
 </script>
     </head>
     <body>

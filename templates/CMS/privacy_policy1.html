@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en"> 
+    {% load static %}
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy</title>
+ 
+    <!-- <script type="text/javascript" src=" https://cdnjs.cloudflare.com/ajax/libs/pdf.js/1.9.604/pdf.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/1.9.604/pdf.worker.min.js"></script>
+      -->
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@2.7.570/build/pdf.min.js"></script>
+     
+    
+     <script src=" https://www.jsdelivr.com/package/npm/pdfjs-dist"></script>
+
+     <script src="https://cdnjs.com/libraries/pdf.js"></script>
+     <script src=" https://unpkg.com/pdfjs-dist/"></script>
+     
+<script>
+
+var loadingTask = pdfjsLib.getDocument('{% static "pdf/sample1.pdf" %}');
+var current_page=1
+  
+ loadingTask.promise.then(function(pdf) {
+ pdf.getPage(current_page).then(function (page) {
+
+     var scale = 1;
+     var viewport = page.getViewport({ scale: scale, });
+
+     // Apply page dimensions to the `<canvas>` element.
+     var canvas = document.getElementById('pdf');
+     var context = canvas.getContext('2d');
+     canvas.height = viewport.height;
+     canvas.width = viewport.width;
+
+     // Render the page into the `<canvas>` element.
+     var renderContext = {
+         canvasContext: context,
+         viewport: viewport,
+     };
+     
+     page.render(renderContext);
+
+     current_page++;
+    
+     document.body.appendChild( canvas );
+
+        
+
+},
+function (reason) {
+ console.error(reason);
+});
+
+});
+
+
+
+
+</script>
+    </head>
+    <body>
+   
+    <h1>Privacy Policy</h1>
+    <div>
+         
+        <canvas id="pdf"  ></canvas>
+  
+    </div> 
+     
+
+      <!-- <object width="400" height="400" data="{% url 'privacy_policy' %}" type="application/pdf"></object> -->
+ 
+ 
+
+
+</body>
+</html>
