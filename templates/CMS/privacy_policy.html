@@ -1,87 +1,68 @@
-<!DOCTYPE html>
 <html lang="en"> 
     {% load static %}
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy</title>
- 
-    <!-- <script type="text/javascript" src=" https://cdnjs.cloudflare.com/ajax/libs/pdf.js/1.9.604/pdf.min.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/1.9.604/pdf.worker.min.js"></script>
-      -->
-    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@2.7.570/build/pdf.min.js"></script>
-     
-    
-     <script src=" https://www.jsdelivr.com/package/npm/pdfjs-dist"></script>
-
-     <script src="https://cdnjs.com/libraries/pdf.js"></script>
-     <script src=" https://unpkg.com/pdfjs-dist/"></script>
-     
-<script>
    
-var pdf_url = '{% static "pdf/sample1.pdf" %}';
-var currPage = 1; //Pages are 1-based not 0-based
-var numPages = 0;
-var thePDF = null;
+    
+    <title>Privacy Policy</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.2.228/pdf.min.js"></script>
+    <script>
+      
 
-//This is where you start
-PDFJS.getDocument(pdf_url).then(function(pdf) {
+     
 
-        //Set PDFJS global object (so we can easily access in our page functions
-        thePDF = pdf;
+    </script>
+    <style>
+      canvas{
+        width: 100%;
+        object-fit: contain;
+        overflow: hidden;
+        height: auto;
+      }
+      
+    </style>
+  </head>
+  <body>
+    <div id="pdfContainer" class=""  ></div>
 
-        //How many pages it has
-        numPages = pdf.numPages;
 
-        //Start with first page
-        pdf.getPage( 1 ).then( handlePages );
+    <script>
+       pdfjsLib.getDocument('{% static "pdf/demopdf.pdf" %}').promise.then(function(pdf) {
+  // PDF loaded successfully
+  // Get the total number of pages
+  var numPages = pdf.numPages;
+
+  // Loop through all pages and render them
+  for (var pageNum = 1; pageNum <= numPages; pageNum++) {
+    pdf.getPage(pageNum).then(function(page) {
+      // Create a canvas element to render the page
+
+  
+      var canvas = document.createElement('canvas');
+      var context = canvas.getContext('2d');
+      var viewport = page.getViewport({ scale: 1});
+    
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+
+      // Append the canvas element to the container
+      document.getElementById('pdfContainer').appendChild(canvas);
+
+      // Render the page on the canvas
+      page.render({
+        canvasContext: context,
+        viewport: viewport
+      });
+    });
+  }
+}, function(error) {
+  // PDF loading error
+  console.error(error);
 });
 
-
-
-function handlePages(page)
-{
-    //This gives us the page's dimensions at full scale
-    var viewport = page.getViewport( 1 );
-
-    //We'll create a canvas for each page to draw it on
-    var canvas = document.createElement( "canvas" );
-    canvas.style.display = "block";
-    var context = canvas.getContext('2d');
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
-
-    //Draw it on the canvas
-    page.render({canvasContext: context, viewport: viewport});
-
-    //Add it to the web page
-    document.body.appendChild( canvas );
-
-    //Move to next page
-    currPage++;
-    if ( thePDF !== null && currPage <= numPages )
-    {
-        thePDF.getPage( currPage ).then( handlePages );
-    }
-}
- 
-</script>
-    </head>
-    <body>
-   
-    <h1>Privacy Policy</h1>
-    <div>
-         
-        <canvas id="pdf"  ></canvas>
-  
-    </div> 
-     
-
-      <!-- <object width="400" height="400" data="{% url 'privacy_policy' %}" type="application/pdf"></object> -->
- 
- 
-
-
+    </script>
 </body>
 </html>
+

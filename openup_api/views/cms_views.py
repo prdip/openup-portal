@@ -65,17 +65,7 @@ def privacy_policy(request):
      
     return render(request,'CMS/privacy_policy.html')
   
-
-# To render pdf 
-# link in temp <embed src={% url 'privacy_policy' %}'#toolbar=0&navpanes=0&scrollbar=0'style="width:718px; height:700px;" frameborder="0">
-    
-def pdf_read(request):
-  
-    try:
-        return FileResponse(open('pdf/sample.pdf', 'rb'), content_type='application/pdf')
-    except FileNotFoundError:
-        raise Http404('not found')
-   
+ 
 
 
 # Software License Page 

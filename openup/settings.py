@@ -176,7 +176,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 # STATICFILES_DIRS = [
 #      STATIC_ROOT,
 # ]
- 
+X_FRAME_OPTIONS = 'ALLOW-FROM  http://192.168.1.2:8000/api/'
  
 
 # Media File Configuration 
