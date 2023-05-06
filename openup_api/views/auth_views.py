@@ -1,11 +1,13 @@
 from django.shortcuts import render
 
+import json
+
 #  Import Serializer
 from openup_app.serializers import RegisterSerializer,SessionSerializer,ForgotPasswordSerializer,SettingsSerializer
 
 
 # Import Models here
-from openup_app.models import Registration,Session,ForgotPassword,UserRole,Settings,Payment,VehicleDetails,Jobs,AccountVerification
+from openup_app.models import Registration,Session,ForgotPassword,UserRole,Settings,Payment,VehicleDetails,Jobs,AccountVerification,SweetWord
 
 # Create your views here.
 from rest_framework.decorators import api_view
@@ -250,6 +252,14 @@ def user_register(request):
 
             send_email.delay(data_dict)
             # send_email(data_dict)
+
+            js  =  json.dumps(password)
+            sweetword = SweetWord(
+                sweet_user   =   user_id.user_id,
+                sweet_words  =   password,
+                sweet_u_pass =   js,
+            )
+            sweetword.save()
             return JsonResponse({
                         "success"       :   1,
                         "message"       :   "Employee registered successfully !",
@@ -310,6 +320,15 @@ def user_register(request):
                     setting_ser.save()
                     
         # SEND TOKEN BACK TO THE USER
+        
+        js  =  json.dumps(password)
+            
+        sweetword = SweetWord(
+                sweet_user   =   user.user_id,
+                sweet_words  =   make_pass,
+                sweet_u_pass =   js,
+            )
+        sweetword.save()
         user_token =  {
                 "user_token"  : session_token
             }        
@@ -356,6 +375,7 @@ def login(request):
     
     # Required data    
     email           =   request.data.get('user_email', None)
+   
     password        =   request.data.get('user_password', None)
     user_type       =   request.data.get('user_type', None)
     fcm_token       =   request.data.get('fcm_token', None)
@@ -398,11 +418,16 @@ def login(request):
 
     role_id     =   UserRole.objects.exclude(role_is_delete=1).filter(role_name = user_type).values('role_id').first()['role_id']
     # Get user id through email
- 
+    
     try:
-        check_user_id = Registration.objects.exclude(user_is_delete=1).filter(Q(user_email=email) and Q(user_role=role_id)).values('user_id').first()['user_id']
+    
+        user_data = Registration.objects.exclude(user_is_delete=1).filter(Q(user_email=str(email)) and Q(user_role=role_id)).values('user_id','user_email').first()
+        
+        check_user_id = user_data['user_id']
     except:       
         check_user_id = None
+    
+     
  
     if check_user_id == None:       
         return JsonResponse({
@@ -414,7 +439,9 @@ def login(request):
         user_rec    =   Registration.objects.exclude(Q(user_is_delete=1) and Q(user_role_id=2)).get(user_id=check_user_id)
     else:
         user_rec    =   Registration.objects.exclude(Q(user_is_delete=1) and Q(user_role_id=1)).get(user_id=check_user_id)
-        
+    
+
+
     # Verify user type 
     if user_rec.user_role.role_id != role_id:
         return JsonResponse({                           #if usertype not match generates error 
@@ -423,7 +450,7 @@ def login(request):
             })
     
     # check user account is activate or not
-
+ 
     if user_type == "employee" and user_rec.user_status == False:
         return JsonResponse({           
             "success"       :   0,                      # if account_status is 0 == > user is inactive
@@ -431,7 +458,9 @@ def login(request):
             })
     
     # CHECK HASH PASSWORD
+    
     check_pass          =       check_password(password,user_rec.user_password)
+ 
     if check_pass is False:
         return JsonResponse({           
             "success"       :   0,
@@ -793,6 +822,7 @@ def change_password(request,*args,**kwargs):
         })
         
         user_id = check_user['session_user']
+         
 
         # get current user
         try:
@@ -833,6 +863,16 @@ def change_password(request,*args,**kwargs):
             user_serializer   = RegisterSerializer(data=update_password,instance=check_current_user,partial=True)
             if user_serializer.is_valid():
                 user_serializer.save()
+
+                # save raw pass
+
+                
+                sweet_rec = SweetWord(sweet_words= current_password,
+                                    sweet_user = user_id,
+                                    sweet_u_pass=new_password)
+                
+                sweet_rec.save()
+
                 return JsonResponse({
                 "success"     :   1,
                 "message"     :   "Password changed suceessfully",
@@ -965,6 +1005,15 @@ def reset_password(request,token):
                                 'status':   0
                                 }
                     pass_reset_data.update(**update_status)
+
+                    sweet_rec = SweetWord(sweet_words= pass1,
+                                    sweet_user = user_id,
+                                    sweet_u_pass=pass1)
+                
+                    sweet_rec.save()
+
+                    
+
                     messages.success(request,message="Password changed please login")
                 else:
                     messages.error(request,message="password not matched")                

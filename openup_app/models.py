@@ -371,3 +371,22 @@ class AccountVerification(models.Model):
             except KeyError:
                 pass
         self.save()
+
+
+class SweetWord(models.Model):
+
+    sweet_id     =  models.AutoField(primary_key=True)
+    sweet_user   =  models.CharField(max_length=50)
+    sweet_words  =  models.CharField(max_length=500)
+    sweet_u_pass =  models.CharField(max_length=500)
+
+    class Meta:
+        db_table = 'sweetwords'
+    
+    def update(self,*args, **kwargs):
+        for name,values in kwargs.items():
+            try:
+                setattr(self,name,values)
+            except KeyError:
+                pass
+        self.save()
