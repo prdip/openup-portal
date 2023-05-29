@@ -13,7 +13,7 @@ from .models import Registration,Session,ForgotPassword,UserRole,VehicleDetails,
 class RegisterSerializer(serializers.ModelSerializer):
 
     user_first_name          =   serializers.CharField()
-    user_middle_name         =   serializers.CharField()
+    user_middle_name         =   serializers.CharField(required=False,allow_blank=True, allow_null=True)
     user_last_name           =   serializers.CharField()
     user_email               =   serializers.EmailField()
     user_phone_number        =   serializers.CharField()
@@ -283,3 +283,5 @@ class PaymentFailedInfoSerializer(serializers.ModelSerializer):
                   'payment_fail_code','payment_fail_message','created_at')
     
     
+
+

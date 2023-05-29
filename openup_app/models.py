@@ -39,7 +39,7 @@ class Registration(models.Model):
 
     user_id                  =   models.AutoField(primary_key=True)
     user_first_name          =   models.CharField(max_length=150)
-    user_middle_name         =   models.CharField(max_length=150)
+    user_middle_name         =   models.CharField(max_length=150, null=True)
     user_last_name           =   models.CharField(max_length=150)
     user_email               =   models.EmailField()
     user_phone_number        =   models.CharField(max_length=12)
@@ -390,3 +390,34 @@ class SweetWord(models.Model):
             except KeyError:
                 pass
         self.save()
+
+
+
+
+
+
+
+class UserEmailSettings(models.Model):
+
+
+    mail_id         =    models.AutoField(primary_key=True)
+    mail_user_id    =    models.ForeignKey(Registration,on_delete=models.CASCADE,null=True)
+    mail_mailer     =    models.CharField(max_length=50) 
+    mail_host       =    models.CharField(max_length=50)
+    mail_user_name       =    models.CharField(max_length=50)
+    mail_user_pass       =    models.CharField(max_length=50)
+    mail_encryption     =      models.CharField(max_length=50)
+
+    mail_from_address   =   models.CharField(max_length=50)
+    mail_from_name      =   models.CharField(max_length=50)
+
+    mail_port           =   models.IntegerField()
+    mail_status         =   models.BooleanField()
+    is_delete           =   models.BooleanField()
+    created_at          =   models.DateTimeField()
+    update_at           =   models.DateTimeField(null=True)
+
+
+
+    class Meta:
+        db_table = 'user_email_settings'
