@@ -7,7 +7,7 @@ from openup_app.serializers import RegisterSerializer,SessionSerializer,ForgotPa
 
 
 # Import Models here
-from openup_app.models import Registration,Session,ForgotPassword,UserRole,Settings,Payment,VehicleDetails,Jobs,AccountVerification,SweetWord
+from openup_app.models import Registration,Session,UserEmailSettings,ForgotPassword,UserRole,Settings,Payment,VehicleDetails,Jobs,AccountVerification,SweetWord
 
 # Create your views here.
 from rest_framework.decorators import api_view
@@ -46,7 +46,9 @@ from openup.send_email import SendEmail
 
 # IMPORT SHARED TASK
 from celery import shared_task
- 
+
+
+from openup_app.models import UserEmailSettings
 
 # import stripeCustomer to create cust in stripe run in background process
 from openup.create_cust import stripeCustomer
@@ -93,20 +95,18 @@ def user_register(request):
             "success"       :   0,
             "message"       :   "please provide valid first name",
        }) 
-    if middle_name == "" or middle_name == None:
-       return JsonResponse({
-            "success"       :   0,
-            "message"       :   "please provide middle name",
-            })
-    
-     # Check Middle name== > allowed only text data
-    check_middle_name = check_text(middle_name)
-
-    if check_middle_name == False:
-       return JsonResponse({
+    if middle_name != None:
+        check_middle_name = check_text(middle_name)
+        if check_middle_name == False:
+            return JsonResponse({
             "success"       :   0,
             "message"       :   "please provide valid middle name",
        })
+
+     # Check Middle name== > allowed only text data
+
+   
+    
     
     if last_name == "" or last_name==None:
        return JsonResponse({
@@ -221,7 +221,7 @@ def user_register(request):
 
     registration_data = {
         "user_first_name"        :   first_name,
-        "user_middle_name"       :   middle_name,
+      
         "user_last_name"         :   last_name,
         "user_phone_number"      :   phone_number,
         "user_email"             :   email,
@@ -232,23 +232,31 @@ def user_register(request):
         "user_fcm_token"         :   fcm_token,
         "device_type"            :   device_type
     }
+
+    if middle_name != None:
+        registration_data["user_middle_name"]   =   middle_name
     
     # SERIALIZER INSTANCE
     registration_data      =   RegisterSerializer(data=registration_data)
 
     if registration_data.is_valid():
         user_id = registration_data.save()
-        
+
+        email_id = UserEmailSettings.objects.get(mail_id=1)
+       
         if user_type == "employee":
             
             # send email to activate employee account   to==> admin email
             data_dict = {
                 "Subject"             :     "Request for Acount Activation",
                 "text_template"       :     "email/confirm_user.txt",
-                "email"               :     email,
-                "to"                  :     "swapnilpathak@gmail.com",
+                "email"               :     email_id.mail_from_address,
+                "to"                  :     email,
+
                 "user_type"          :      user_type
             }
+
+
 
             send_email.delay(data_dict)
             # send_email(data_dict)
@@ -261,97 +269,109 @@ def user_register(request):
             )
             sweetword.save()
             return JsonResponse({
-                        "success"       :   1,
+                        "success"        :   1,
                         "message"       :   "Employee registered successfully !",
                     })
         
     # client registration code
          
-    user                =       Registration.objects.get(user_id=user_id.user_id)
-    # CREATE STRIPE CUSTOMER IN BACKGROUND
-    create_customer.delay(user.user_id)
-    # STORE SESSION DATA AFTER REGISTRATION   
-    session_token       =       secrets.token_hex() # SESSION TOKEN
-    # SESSION EXPIRY
-    exp_time            =       datetime.datetime.now()+ datetime.timedelta(days=30)  
-    # SESSION DATA TO STORE
-    session_data= {
-            "session_user"              :         user.user_id,
-            "session_user_email"        :         user.user_email,
-            "session_token"             :         session_token,
-            "session_exp"               :         exp_time,
-            "session_status"            :         True, #login
-            "session_created_at"        :         datetime.datetime.now(),
-            "session_is_delete"         :         False           
-        }
-    user_session                    =         SessionSerializer(data=session_data) 
-    if user_session.is_valid():
-        user_session.save()
-        # email_verification email to client
-
-        data_dict = {
-            "Subject"            :   "Please Verify Your email to start using Openup emergency service",
-            "text_template"      :   "email/verify_user.txt",
-            "email"              :    email,
-            "to"                 :    email,
-            "user_type"          :    user_type
+        user                =       Registration.objects.get(user_id=user_id.user_id)
+        # CREATE STRIPE CUSTOMER IN BACKGROUND
+        create_customer.delay(user.user_id)
+        # STORE SESSION DATA AFTER REGISTRATION   
+        session_token       =       secrets.token_hex() # SESSION TOKEN
+        # SESSION EXPIRY
+        exp_time            =       datetime.datetime.now()+ datetime.timedelta(days=30)  
+        # SESSION DATA TO STORE
+        session_data= {
+                "session_user"              :         user.user_id,
+                "session_user_email"        :         user.user_email,
+                "session_token"             :         session_token,
+                "session_exp"               :         exp_time,
+                "session_status"            :         True, #login
+                "session_created_at"        :         datetime.datetime.now(),
+                "session_is_delete"         :         False           
             }
-        send_email.delay(data_dict)
+        user_session                    =         SessionSerializer(data=session_data) 
+        if user_session.is_valid():
+            user_session.save()
+            # email_verification email to client
+            # email = UserEmailSettings.objects.get(mail_id=1)
+            email_id = UserEmailSettings.objects.get(mail_id='1')
 
 
-        '''save client settings eav model in setting'''
-        setting_dict ={
-            "location"              :       0,
-            "while_using"           :       0,
-            "service_notification"  :       0,
-            "location_notification" :       0,
-            "service_feed_not"      :       0
-        }
-        
-        for setting in setting_dict:
-                setting_data    = {
-                    "setting_user"      :       user.user_id,
-                    "setting_name"      :       setting,
-                    "setting_value"     :       setting_dict[setting],
-                    "created_at"        :       datetime.datetime.now()
-                }               
-                setting_ser     =       SettingsSerializer(data=setting_data)
-                if setting_ser.is_valid():
-                    setting_ser.save()
+            data_dict = {
+                "Subject"            :   "Please Verify Your email to start using Openup emergency service",
+                "text_template"      :   "email/verify_user.txt",
+                "email"              :    email_id.mail_from_address,
+                "to"                 :    email,
+                "user_type"          :    user_type
+                }
+             
+            send_email.delay(data_dict)
+
+
+            '''save client settings eav model in setting'''
+            setting_dict ={
+                "location"              :       0,
+                "while_using"           :       0,
+                "service_notification"  :       0,
+                "location_notification" :       0,
+                "service_feed_not"      :       0
+            }
+            
+            for setting in setting_dict:
+                    setting_data    = {
+                        "setting_user"      :       user.user_id,
+                        "setting_name"      :       setting,
+                        "setting_value"     :       setting_dict[setting],
+                        "created_at"        :       datetime.datetime.now()
+                    }               
+                    setting_ser     =       SettingsSerializer(data=setting_data)
+                    if setting_ser.is_valid():
+                        setting_ser.save()
                     
         # SEND TOKEN BACK TO THE USER
         
-        js  =  json.dumps(password)
-            
-        sweetword = SweetWord(
-                sweet_user   =   user.user_id,
-                sweet_words  =   make_pass,
-                sweet_u_pass =   js,
-            )
-        sweetword.save()
-        user_token =  {
-                "user_token"  : session_token
-            }        
-        return JsonResponse({
-                    "success"       :   1,
-                    "message"       :   "user registered successfully ! and please verify your email",
-                    "data"          :   user_token
-                })
+            js  =  json.dumps(password)
+                
+            sweetword = SweetWord(
+                    sweet_user   =   user.user_id,
+                    sweet_words  =   make_pass,
+                    sweet_u_pass =   js,
+                )
+            sweetword.save()
+            user_token =  {
+                    "user_token"  : session_token
+                }        
+            return JsonResponse({
+                        "success"       :   1,
+                        "message"       :   "user registered successfully ! and please verify your email",
+                        "data"          :   user_token
+                    })
+
+    else:
+         return JsonResponse({
+                        "success"       :   0,
+                        "message"       :   "something went wrong",
+                        "data"          :   registration_data.errors
+                    })
+
+
    
 
 
 
 '''send email in background to verify account and activate account'''
-@shared_task
+@shared_task()
 def send_email(data_dict):
     '''call send_email function'''
 
-    email       =   data_dict['email']
+    email       =   data_dict['to']
     
     role        =   UserRole.objects.filter(role_name=data_dict['user_type']).values('role_id').first()['role_id']
-    
-    user_id     =   Registration.objects.exclude(user_is_delete=1).filter(Q(user_email=email) and Q(user_role = role)).values('user_id').first()['user_id']   
-    
+    user_id     =   Registration.objects.exclude(user_is_delete=1).filter(Q(user_email=email)).filter(Q(user_role = role)).values('user_id').first()['user_id']   
+     
     link_tokan  =   secrets.token_hex() 
     created_at  =   datetime.datetime.now()
     link        =   AccountVerification(user_id=user_id,
@@ -458,9 +478,9 @@ def login(request):
             })
     
     # CHECK HASH PASSWORD
-    
+   
     check_pass          =       check_password(password,user_rec.user_password)
- 
+    
     if check_pass is False:
         return JsonResponse({           
             "success"       :   0,
@@ -557,9 +577,10 @@ confirm employee account
 def confirm_account(request,token):
     # get user_id through email
 
+    u_token = token
     user_id       =  AccountVerification.objects.filter(link_token=token).values('user_id').first()['user_id']     
     user_record   =  Registration.objects.get(user_id=user_id)
-
+    
     return render(request,'Authentication/admin_conf.html',{"user":user_record})
 
 
@@ -1101,7 +1122,7 @@ def token_verification(token):
     if verify is None:
         return None
     else:       
-        # Convert time to unix time to compare
+        # Convert time to unix time to compare  
         exp_time            =       session_record.session_exp 
         #CONVERT TIME TO UTC TIME
         expiry_time         =       int(exp_time.replace(tzinfo=timezone.utc).timestamp())
@@ -1140,8 +1161,8 @@ def token_verification(token):
 
 '''
 API call for get user details
-
 '''
+
 @api_view(['POST'])
 def get_user_details(request):
 

@@ -29,7 +29,8 @@ class SendEmail:
                 'domain'    :   domain,
     			'site_name' :   'Website',     #Data which will send with E-mail id
     			'protocol'  :   'http',
-            }
+
+            } 
         myemail     =       render_to_string(text_template,email_data)  # Converts text file to string 
         email       =       EmailMessage(Subject, myemail, to=[ data_dict['to']])  #Formats Email message       
         email.send()

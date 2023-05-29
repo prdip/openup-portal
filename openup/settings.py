@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 from pathlib import Path
 # Import os 
 import os
+ 
 
 # CODE FOR ENV
 import environ
@@ -115,6 +116,8 @@ WSGI_APPLICATION = 'openup.wsgi.application'
 # EMAIL SETTINGS
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
+ 
+
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_USE_TLS = True
