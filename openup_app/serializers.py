@@ -174,8 +174,17 @@ class JobsSerializer(serializers.Serializer):
     location_latitude        =   serializers.FloatField(required=False)
     location_longitude       =   serializers.FloatField(required=False)
     job_accepted_by          =   serializers.CharField(required=False)
-    vehicle_details          =   serializers.CharField()
-    vehicle_modification     =   serializers.CharField()
+    # vehicle_details          =   serializers.CharField()
+    # vehicle_modification     =   serializers.CharField()
+
+    year                     =   serializers.CharField(allow_null=True)
+    model                    =   serializers.CharField(allow_null=True)
+    colour                   =   serializers.CharField(allow_null=True)
+    any_mod                  =   serializers.BooleanField(default=0)
+    window_tint              =   serializers.BooleanField(default=0)
+
+
+
     vehicle_license          =   serializers.FileField(required=False,allow_null=True)
     job_payment_id           =   serializers.CharField(required=False,allow_null=True)
     job_time                 =   serializers.CharField(required=False,allow_null=True)    #1==> SUCCESS 0==> NO PAYMENT
@@ -201,7 +210,7 @@ class JobsSerializer(serializers.Serializer):
     class Meta:
         model = Jobs
         fields = ('job_id','job_type','user','location_latitude',
-                  'location_longitude','vehicle_details',
+                  'location_longitude','vehicle_details','year','model','colour','any_mod','window_tint',
                   'vehicle_modification','vehicle_license',
                   'created_at','is_delete','job_status','job_accepted_by','job_distance','job_payment_id','job_time','job_pay_status')
 

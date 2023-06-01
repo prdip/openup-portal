@@ -238,14 +238,21 @@ class Jobs(models.Model):
     user                     =   models.ForeignKey(Registration,on_delete=models.CASCADE)
     location_latitude        =   models.FloatField()
     location_longitude       =   models.FloatField()
-    vehicle_details          =   models.CharField(max_length=300)
-    vehicle_modification     =   models.CharField(max_length=400)
+    # vehicle_details          =   models.CharField(max_length=300)
+    # vehicle_modification     =   models.CharField(max_length=400)
     vehicle_license          =   models.FileField(upload_to=file_name, null=True)
     job_accepted_by          =   models.CharField(max_length=31,null=True)
     job_payment_id           =   models.CharField(max_length=100,null=True)  # GENERATED AND SAVED AFTER SUCCESSFUL PAYMENT 
     job_pay_status           =   models.BooleanField(default=0)
     job_time                 =   models.CharField(max_length=100,null=True)    #1==> SUCCESS 0==> NO PAYMENT
     job_distance             =   models.CharField(max_length=100,null=True) 
+    
+    year                     =   models.CharField(max_length=5,null=True)
+    model                    =   models.CharField(max_length=10,null=True)
+    colour                   =   models.CharField(max_length=10,null=True)
+    any_mod                  =   models.BooleanField(default=0)
+    window_tint              =   models.BooleanField(default=0)
+    
     created_at               =   models.DateTimeField()
     update_at                =   models.DateTimeField(null=True)
     is_delete                =   models.BooleanField(default=0)

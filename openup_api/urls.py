@@ -6,6 +6,8 @@ from openup_api.views import usersetting
 from django.urls import reverse
 from django.views.static import serve
 
+from openup_api.views import paypal_views
+
 urlpatterns = [
 
 # User Authentication 
@@ -99,6 +101,8 @@ urlpatterns = [
   
   path('privacy_policy', cms_views.privacy_policy,name='privacy_policy'),
  
+  path('paypal', paypal_views.paypal,name='paypal'),
+
  
 ]
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

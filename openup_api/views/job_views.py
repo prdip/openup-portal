@@ -37,6 +37,9 @@ from django.db.models import Q
 
 # IMPORT SHARED TASK
 from celery import shared_task
+
+from .validation import check_number,check_text
+
  
 import environ 
 env = environ.Env()
@@ -55,7 +58,7 @@ def add_job(request):
     token = request.headers['Authorization']
     user_token = token.replace("Bearer",'')  
     check_user      =       token_verification(user_token)
-
+    
     if check_user is None:
         return JsonResponse({
                 "success"     :   0,
@@ -68,12 +71,58 @@ def add_job(request):
         job_type                =   request.data.get('job_type',None)
         current_location_lat    =   request.data.get('latitude',None)
         current_location_long   =   request.data.get('longitude',None)
-        vehicle_details         =   request.data.get('vehicle_details',None)
-        vehicle_modification    =   request.data.get('vehicle_modification',None)
+        # vehicle_details         =   request.data.get('vehicle_details',None)
+        # vehicle_modification    =   request.data.get('vehicle_modification',None)
         license                 =   request.data.get('vehicle_license',None)
         created_at              =   datetime.datetime.now()
         licence_name            =   request.data.get('licence_name',None)
         vehicle_id              =   request.data.get('vehicle_id',None)
+
+        year        =   request.data.get('year')
+        model       =   request.data.get('model')
+        colour      =   request.data.get('colour')
+        any_mod     =   request.data.get('any_mod')    # 1 === > Mod    0==> No mod
+        window_tint =   request.data.get('window_tint') # 1 === > Yes    0==> No
+        
+        if year == None or (year == ''):
+            return JsonResponse({
+                    "success"    :   0,
+                    "message"   :   "please provide year"
+                    })
+        check_yr = check_number(year)
+        if check_yr == False:
+            return JsonResponse({
+                    "success"    :   0,
+                    "message"   :   "please provide number in year"
+                    })
+
+
+        if model == None or (model == ''):
+            return JsonResponse({
+                    "success"    :   0,
+                    "message"   :   "please provide car model"
+                    })
+        
+        if colour == None or (colour == ''):
+            return JsonResponse({
+                    "success"    :   0,
+                    "message"   :   "please provide colour of car"
+                    })
+        
+        check_col = check_text(colour)
+        if check_col ==False:
+            return JsonResponse({
+                    "success"    :   0,
+                    "message"   :   "please provide colour of car"
+                    })
+
+
+        if window_tint == None or (window_tint == ''):
+            return JsonResponse({
+                    "success"    :   0,
+                    "message"   :   "please provide window tint or not"
+                    })
+
 
         # job type accepts only employee and emergency
 
@@ -95,18 +144,7 @@ def add_job(request):
                     "message"   :   "please provide current location "
                     })
 
-        if vehicle_details is None or vehicle_details == "":
-            return JsonResponse({
-                    "success"    :   0,
-                    "message"   :   "please provide current location "
-                    })
-        
-        if vehicle_modification is None or vehicle_modification == "":
-            return JsonResponse({
-                    "success"    :   0,
-                    "message"   :   "please provide current location "
-                    })
-        
+       
         user_id     =       check_user['session_user']
 
        
@@ -166,12 +204,17 @@ def add_job(request):
                 "location_latitude"     :   float(current_location_lat),
                 "location_longitude"    :   float(current_location_long),
               
-                "vehicle_details"       :   vehicle_details,
-                "vehicle_modification"  :   vehicle_modification,
+                # "vehicle_details"       :   vehicle_details,
+                # "vehicle_modification"  :   vehicle_modification,
                 "vehicle_license"       :   license,
                 "created_at"            :   created_at,
                 "user"                  :   user_rec.user_id,
-                "job_status"            :   job_id.status_id               
+                "job_status"            :   job_id.status_id,
+                "year"                  :   year,
+                "model"                 :   model,
+                "colour"                :   colour,
+                "any_mod"               :   any_mod,
+                "window_tint"           :   window_tint         
         }
         job_ser     =   JobsSerializer(data=job_details)
 
