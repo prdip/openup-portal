@@ -15,9 +15,9 @@ from openup_api.views.validation import password_validation
 from django.http import HttpResponse
 import datetime
 # import the logging library
-import logging
-# Get an instance of a logger
-logger = logging.getLogger(__file__)
+# import logging
+# # Get an instance of a logger
+# logger = logging.getLogger(__file__)
 
 
 from openup.stripe import InStripe   

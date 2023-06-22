@@ -43,7 +43,7 @@ class Registration(models.Model):
     user_last_name           =   models.CharField(max_length=150)
     user_email               =   models.EmailField()
     user_phone_number        =   models.CharField(max_length=12)
-    user_password            =   models.CharField(max_length=550)
+    user_password            =   models.CharField(max_length=1000)
     user_role                =   models.ForeignKey(UserRole,on_delete=models.CASCADE,null=True)
     create_at                =   models.DateTimeField()
     location_latitude        =   models.FloatField(null=True)
@@ -428,3 +428,40 @@ class UserEmailSettings(models.Model):
 
     class Meta:
         db_table = 'user_email_settings'
+
+
+
+
+
+
+
+class PaypalInfo(models.Model):
+
+    paypal_info_id      =   models.AutoField(primary_key=True)
+    paypal_user         =   models.ForeignKey(Registration,on_delete=models.CASCADE)
+    paypal_valut_id     =   models.CharField(max_length=50)
+    paypal_cust_id      =   models.CharField(max_length=100)
+    is_delete           =   models.BooleanField()
+    created_at          =   models.DateTimeField()
+    update_at           =   models.DateTimeField(null=True)
+
+
+
+    class Meta:
+        db_table = 'paypal_cust_info'
+
+
+
+
+class WebhookData(models.Model):
+
+    webhook_id          =   models.AutoField(primary_key=True)
+    webhook_data        =   models.CharField(max_length=1000)
+    is_delete           =   models.BooleanField()
+    created_at          =   models.DateTimeField()
+    update_at           =   models.DateTimeField(null=True)
+
+
+
+    class Meta:
+        db_table = 'webhook_data'

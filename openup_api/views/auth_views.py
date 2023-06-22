@@ -392,7 +392,7 @@ CLIENT LOGIN    ==> ON FIRST TIME LOGIN STRIPE CUSTOMER WILL CREATED
 '''
 @api_view(['POST'])
 def login(request):
-    
+     
     # Required data    
     email           =   request.data.get('user_email', None)
    
@@ -478,7 +478,9 @@ def login(request):
             })
     
     # CHECK HASH PASSWORD
-   
+    
+
+
     check_pass          =       check_password(password,user_rec.user_password)
     
     if check_pass is False:

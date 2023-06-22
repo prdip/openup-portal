@@ -1,7 +1,7 @@
 from django.urls import path,re_path
 from django.conf import settings
 from django.conf.urls.static import static
-from openup_api.views import auth_views, cms_views, force_update,vehicle_views,payment_views,job_views,feedback_views,location_views
+from openup_api.views import auth_views, cms_views, force_update,vehicle_views,payment_views,job_views,feedback_views,location_views, paypal_views
 from openup_api.views import usersetting
 from django.urls import reverse
 from django.views.static import serve
@@ -91,6 +91,20 @@ urlpatterns = [
 
 # Feedback
   path('add_feedback', feedback_views.add_feedback,name='add_feedback'),
+
+
+
+# create_customer
+
+  path('create-paypal-customer', paypal_views.create_customer,name='create_customer'),
+  path('paypal-payment', paypal_views.paypal_payment,name='paypal_payment'),
+  
+
+  path('create-webhook', paypal_views.create_webhook,name='create_webhook'),
+
+  path('paypal-payment-token-receiver', paypal_views.paypal_payment_token_receiver,name='paypal_payment_token_receiver'),
+  
+
   
 # Employee active inactive
   path('employee-status', auth_views.employee_status,name='employee_status'),
@@ -101,7 +115,8 @@ urlpatterns = [
   
   path('privacy_policy', cms_views.privacy_policy,name='privacy_policy'),
  
-  path('paypal', paypal_views.paypal,name='paypal'),
+  
+
 
  
 ]
