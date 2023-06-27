@@ -433,7 +433,7 @@ class UserEmailSettings(models.Model):
 
 
 
-
+# Save paypal valut id and customer id 
 
 class PaypalInfo(models.Model):
 
@@ -451,7 +451,7 @@ class PaypalInfo(models.Model):
         db_table = 'paypal_cust_info'
 
 
-
+# save webhook data 
 
 class WebhookData(models.Model):
 
