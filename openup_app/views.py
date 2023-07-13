@@ -1,5 +1,4 @@
 from django.shortcuts import render,redirect
-from django.core.paginator import Paginator,EmptyPage,PageNotAnInteger
 from openup_app.models import Registration,Session
 from django.http.response import JsonResponse,HttpResponse
 from django.contrib import messages

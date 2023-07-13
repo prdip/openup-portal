@@ -99,11 +99,12 @@ urlpatterns = [
   path('create-paypal-customer', paypal_views.create_customer,name='create_customer'),
   path('paypal-payment', paypal_views.paypal_payment,name='paypal_payment'),
   
-
-  path('create-webhook', paypal_views.create_webhook,name='create_webhook'),
-
   path('paypal-payment-token-receiver', paypal_views.paypal_payment_token_receiver,name='paypal_payment_token_receiver'),
   
+  # webhook urls  
+  path('create-webhook', paypal_views.create_webhook,name='create_webhook'),
+  path('webhook-data', paypal_views.receive_webhook_data, name='webhook_data'),
+
 
   
 # Employee active inactive

@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view
 
 
 # import Json Response
-from django.http.response import JsonResponse
+from django.http.response import JsonResponse, HttpResponseBadRequest
 
 # Import token verifications
 from openup_api.views.auth_views import token_verification
@@ -14,8 +14,11 @@ from django.http import HttpRequest
 #  Import Serializer
 from openup_app.serializers import RegisterSerializer
 from openup_app.models import Registration, PaypalInfo, WebhookData
+from django.views.decorators.csrf import csrf_exempt
  
 
+
+# Sandbox credentials for openupweb 
 
 client_id       =   'AT2Eg75NhoHdw91flmYm33N-1dQZNqhdupHFgRK6ZeXaiVVsazGzAYOandAn4w8eaB51oI4O6foq3pUN'
 client_secret   =   'EN_1SJC4D-gaenjo71ZeVtqtjojE6b2FyQqpLl4Sali-qENSPF0ybY5ixhYdzpEbl23qoLxXJZ2r3C09'
@@ -47,6 +50,7 @@ def create_customer(request):
         response        =   requests.post(url, headers=headers, data=data, auth=auth)
         access_token    =   response.json()['access_token']
 
+        # REQUIRED DATA FOR PAYMENT
         card_no          =  request.data.get('card_no')
         expiry           =  request.data.get('expiry')
         card_holder_name =  request.data.get('card_holder_name')
@@ -175,25 +179,24 @@ def create_customer(request):
 
 
 # Code for future payments
-
+# PAYMENT BY USING PAYPAL CUSTOMER ID
 
 @api_view(['POST'])
 
 def paypal_payment(request):
 
-    token = request.headers.get('Authorization')
-    user_token = token.replace("Bearer", "").strip()  # Remove leading/trailing spaces
-    
-    check_user = token_verification(user_token)
+    token       = request.headers.get('Authorization')
+    user_token  = token.replace("Bearer", "").strip()  # Remove leading/trailing spaces
+    check_user  = token_verification(user_token)
     
     if check_user is None:
         return JsonResponse({
             "success": 0,
             "message": "Unauthorized User",
         })
+    
     else:
         paypal_req_id   =   request.data.get('paypal_req_id')  # random text 
-        
         login_user      =   check_user['session_user']
         paypal_data     =   PaypalInfo.objects.filter(paypal_user=login_user).values().first()
         
@@ -233,8 +236,7 @@ def paypal_payment(request):
         headers = {'Content-Type': 'application/json','PayPal-Request-Id': paypal_req_id, 'Authorization': 'Bearer ' +access_token}
         response = requests.post(url, headers=headers, json=payload)
         response_data = response.json()
-        # print(response_data)
-        
+         
         return JsonResponse({
                         "success"       :   1,
                         "message"       :   "payment success",
@@ -245,6 +247,7 @@ def paypal_payment(request):
 
 
 # THIS API WILL CREATE WEBHOOK 
+# CURRENT URL MUST BE NEW URL AT TIME OF WEBHOOK CREATION
 @api_view(['POST'])
 
 def create_webhook(request: HttpRequest):
@@ -256,14 +259,25 @@ def create_webhook(request: HttpRequest):
     auth            =   (client_id, client_secret)
     response        =   requests.post(url, headers=headers, data=data, auth=auth)
     access_token    =   response.json()['access_token']
+   
+    request_data = response.json()
+    # SAVE REQUEST DATA
+    webhook_data    =   WebhookData(
+        webhook_type   =  "request", 
+        webhook_data   =   request_data,
+        is_delete       =   0,
+        created_at      =   datetime.datetime.now()
+    )
 
-
+    webhook_data.save()
     headers = {
     'Content-Type': 'application/json',
     'Authorization': 'Bearer '+access_token,
     }
 
-    current_url = request.build_absolute_uri()
+    # current_url = request.build_absolute_uri()
+     
+    current_url = 'https://www.openupweb.com'
  
     data = { "url": current_url, "event_types": 
             [ 
@@ -278,20 +292,40 @@ def create_webhook(request: HttpRequest):
     response = requests.post('https://api-m.sandbox.paypal.com/v1/notifications/webhooks', headers=headers, json=data)
 
     resp_data = json.loads(response.text)
+    data      = json.loads(resp_data)
 
-    if resp_data['name']:
-        return JsonResponse({
+    # SAVE ERROR OR RESPONSE OF WEBHOOK CREATION
+    try:
+        if resp_data['name']:
+            webhook_data    =   WebhookData(
+                webhook_type   =  "error",
+                webhook_data   =   data,
+                is_delete       =   0,
+                created_at      =   datetime.datetime.now()
+
+            )
+            webhook_data.save()
+
+            return JsonResponse({
                         "success"       :   0,
                         "message"       :   "something went wrong",
+                        "data"          :   resp_data
+                    })
+    except:
+        pass    
+    webhook_data    =   WebhookData(
+        webhook_type   =  "response",
+        webhook_data   =   data,
+        is_delete       =   0,
+        created_at      =   datetime.datetime.now()
+    )   
+    webhook_data.save()
 
-                })
-
-    else:
-        return JsonResponse({
-                            "success"       :   1,
-                            "message"       :   "webhook created",
-                            "data"          :   response.text
-                    })  
+    return JsonResponse({
+                        "success"       :   1,
+                        "message"       :   "webhook created",
+                        "data"          :   resp_data
+                        })  
     
     
 
@@ -305,8 +339,8 @@ def create_webhook(request: HttpRequest):
 def paypal_payment_token_receiver(request):
 
         token_info = request.data.get('token_receiver_info')    
+        data       = json.loads(token_info)
 
-        data = json.loads(token_info)
 
         webhook_data    =   WebhookData(
             webhook_data   =   data,
@@ -318,7 +352,7 @@ def paypal_payment_token_receiver(request):
 
         return JsonResponse({
                             "success"       :   1,
-                            "message"       :   "Token generated ",
+                            "message"       :   "paypal information received ",
                     })  
 
 
@@ -330,13 +364,36 @@ def paypal_payment_token_receiver(request):
 
  
 
+# RECEIVE WEBHOOK DATA AND SAVE IT TO THE DATABASE
 
 
+@csrf_exempt
 
+def receive_webhook_data(request):
 
+    try:
+        payload = json.loads(request.body)
+        
+        # Process the webhook data
+       
+        # Save data in webhook
+        webhook_data    =   WebhookData(
+                webhook_data   =   payload,
+                is_delete       =   0,
+                created_at      =   datetime.datetime.now()
+            )
 
+        webhook_data.save()
+        
+    # except ValueError:
+    #     return HttpResponseBadRequest("Invalid JSON payload")
+    except:
+        pass
 
-
+    return JsonResponse({
+                            "success"       :   1,
+                            "message"       :   "paypal information received ",
+                    })  
 
 
 
