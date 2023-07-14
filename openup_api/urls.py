@@ -106,6 +106,11 @@ urlpatterns = [
   path('webhook-data', paypal_views.receive_webhook_data, name='webhook_data'),
 
 
+  # path('create-payment-token', paypal_views.create_payment_token, name='create_payment_token'),
+
+
+
+
   
 # Employee active inactive
   path('employee-status', auth_views.employee_status,name='employee_status'),

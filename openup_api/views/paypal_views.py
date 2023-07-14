@@ -81,9 +81,9 @@ def create_customer(request):
         # "intent": "CAPTURE",
         # "payment_source": {
         #         "card": {
-        #             "number": "5555555555554444",
+        #             "number": "4111111111111111",
         #             "expiry": "2024-04",
-        #             "name": "swap pathak",
+        #             "name": "Akshay pathak",
         #             "billing_address": {
         #                 "address_line_1": "2211 N First Street",
         #                 "address_line_2": "Building 17",
@@ -101,7 +101,7 @@ def create_customer(request):
         #     },
         # "purchase_units": [
         #     {
-        #     "reference_id": "1234",    #Change id on each request
+        #     "reference_id": "1236",    #Change id on each request
         #     "amount": {
         #         "currency_code": "USD",
         #         "value": "110.00"
@@ -462,3 +462,52 @@ def save_customer_id(customer_id):
         if customer_id:
             save_customer_id(customer_id)
 
+
+
+
+# @api_view(['POST'])
+    
+# # CREATE PAYMENT TOKEN AFTER FIRST PAYMENT
+
+
+# def create_payment_token(request):
+
+#     #need  payment id which get from payment response after first payment  
+  
+
+#     paypal_req_id   =   request.data.get('paypal_req_id')  # random text 
+
+
+        
+#     # get access token
+#     url             =   'https://api-m.sandbox.paypal.com/v1/oauth2/token'
+#     headers         =   {'Accept': 'application/json', 'Accept-Language': 'en_US', 'PayPal-Request-Id': paypal_req_id,}
+#     data            =   {'grant_type': 'client_credentials'}
+#     auth            =   (client_id, client_secret)
+#     response        =   requests.post(url, headers=headers, data=data, auth=auth)
+#     access_token    =   response.json()['access_token']
+  
+#     headers = {
+#         'Content-Type': 'application/json',
+#         'Authorization':  'Bearer '+access_token,
+#         'PayPal-Request-Id': paypal_req_id,
+#     }
+    
+#     json_data = {
+#         'payment_source': {
+#             'token': {
+#                 'id': 'cus_O7gBRgYFhpJcgc',
+#                 'type': 'SETUP_TOKEN',
+#             },
+#         },
+#     }
+
+#     url = 'https://api-m.sandbox.paypal.com/v2/vault/payment-tokens/'
+
+#     response = requests.post(url, headers=headers, json=json_data, verify=False)
+
+#     return JsonResponse({
+#                             "success"       :   1,
+#                             "message"       :   "paypal method created ",
+#                             "response"      :   response.text
+#                     })  

@@ -456,8 +456,8 @@ class PaypalInfo(models.Model):
 class WebhookData(models.Model):
 
     webhook_id          =   models.AutoField(primary_key=True)
-    webhook_type        =   models.CharField(max_length=100,default="request")
-    webhook_data        =   models.CharField(max_length=1000)
+    webhook_type        =   models.CharField(max_length=150,default="request")
+    webhook_data        =   models.CharField(max_length=2000)
     is_delete           =   models.BooleanField()
     created_at          =   models.DateTimeField()
     update_at           =   models.DateTimeField(null=True)
