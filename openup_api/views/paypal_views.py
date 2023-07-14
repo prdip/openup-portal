@@ -7,7 +7,7 @@ from django.http.response import JsonResponse, HttpResponseBadRequest
 
 # Import token verifications
 from openup_api.views.auth_views import token_verification
-import datetime
+from datetime import datetime, timezone
 import requests
 import json
 from django.http import HttpRequest
@@ -157,7 +157,7 @@ def create_customer(request):
                         paypal_valut_id =   valut_id,
                         paypal_cust_id  =   cust_id,
                         is_delete       =   0,
-                        created_at      =   datetime.datetime.now()   
+                        created_at      =   timezone.now()   
             )
             paypal_data.save()
 
@@ -266,7 +266,7 @@ def create_webhook(request: HttpRequest):
         webhook_type   =  "request", 
         webhook_data   =   request_data,
         is_delete       =   0,
-        created_at      =   datetime.datetime.now()
+        created_at      =   timezone.now()
     )
 
     webhook_data.save()
@@ -302,7 +302,7 @@ def create_webhook(request: HttpRequest):
                 webhook_type   =  "error",
                 webhook_data   =   data,
                 is_delete       =   0,
-                created_at      =   datetime.datetime.now()
+                created_at      =   timezone.now()
 
             )
             webhook_data.save()
@@ -318,7 +318,7 @@ def create_webhook(request: HttpRequest):
         webhook_type   =  "response",
         webhook_data   =   data,
         is_delete       =   0,
-        created_at      =   datetime.datetime.now()
+        created_at      =   timezone.now()
     )   
     webhook_data.save()
 
@@ -346,7 +346,7 @@ def paypal_payment_token_receiver(request):
         webhook_data    =   WebhookData(
             webhook_data   =   data,
             is_delete       =   0,
-            created_at      =   datetime.datetime.now()
+            created_at      =   timezone.now()
         )
 
         webhook_data.save()
@@ -381,7 +381,7 @@ def receive_webhook_data(request):
         webhook_data    =   WebhookData(
                 webhook_data   =   payload,
                 is_delete       =   0,
-                created_at      =   datetime.datetime.now()
+                created_at      =   timezone.now()
             )
 
         webhook_data.save()
