@@ -440,6 +440,7 @@ class PaypalInfo(models.Model):
     paypal_info_id      =   models.AutoField(primary_key=True)
     paypal_user         =   models.ForeignKey(Registration,on_delete=models.CASCADE)
     paypal_valut_id     =   models.CharField(max_length=50)
+    paypal_response     =   models.TextField(default="text")
     paypal_cust_id      =   models.CharField(max_length=100)
     is_delete           =   models.BooleanField()
     created_at          =   models.DateTimeField()
@@ -457,7 +458,7 @@ class WebhookData(models.Model):
 
     webhook_id          =   models.AutoField(primary_key=True)
     webhook_type        =   models.CharField(max_length=150,default="request")
-    webhook_data        =   models.CharField(max_length=2000)
+    webhook_data        =   models.TextField()
     is_delete           =   models.BooleanField()
     created_at          =   models.DateTimeField()
     update_at           =   models.DateTimeField(null=True)

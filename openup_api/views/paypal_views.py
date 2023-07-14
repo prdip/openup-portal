@@ -29,7 +29,7 @@ client_secret   =   'EN_1SJC4D-gaenjo71ZeVtqtjojE6b2FyQqpLl4Sali-qENSPF0ybY5ixhY
 # yahiwo2214@bodeem.com 
 
 
-# CREATE FIRST PAYMENT IN PAYPAL AND SAVE VALUT ID FOR LATER USE
+# CREATE FIRST PAYMENT IN PAYPAL AND SAVE VALUT ID FOR LATER USE working
 
 @api_view(['POST'])
 def create_customer(request):
@@ -157,6 +157,7 @@ def create_customer(request):
             paypal_data = PaypalInfo(
                         paypal_user     =   user,
                         paypal_valut_id =   valut_id,
+                        paypal_response =   resp_data,
                         paypal_cust_id  =   cust_id,
                         is_delete       =   0,
                         created_at      =    timezone.now()  
@@ -180,7 +181,7 @@ def create_customer(request):
 
 
 
-# Code for future payments
+# Code for future payments   =>working
 # PAYMENT BY USING PAYPAL CUSTOMER ID
 
 @api_view(['POST'])
@@ -211,27 +212,46 @@ def paypal_payment(request):
         access_token    =   response.json()['access_token']
  
         # # Create payment payload
-        payload = {
+        # payload = {
+        #     "intent": "CAPTURE",
+        #     "payer": {
+        #         "payment_method": "paypal",
+        #         "payer_info": {
+        #             "customer_id": paypal_data['paypal_cust_id']
+        #         }
+        #     },
+        #      "purchase_units": [
+        #     {
+        #     "reference_id": "111",    #Change id on each request
+        #     "amount": {
+        #         "currency_code": "USD",
+        #         "value": "110.00"
+        #     }
+        #     }
+        # ],
+        #     "payee": {
+        #         "merchant_id": paypal_data['paypal_valut_id'] 
+        #     }
+        # }
+
+        # FUTURE PAYMENTS WILL BE CREATED BY USING VALUT ID 
+
+        payload={
             "intent": "CAPTURE",
-            "payer": {
-                "payment_method": "paypal",
-                "payer_info": {
-                    "customer_id": paypal_data['paypal_cust_id']
+            "purchase_units": [
+                {
+                    "amount": {
+                        "currency_code": "USD",
+                        "value": "100.00"
+                    }
                 }
-            },
-             "purchase_units": [
-            {
-            "reference_id": "111",    #Change id on each request
-            "amount": {
-                "currency_code": "USD",
-                "value": "110.00"
-            }
-            }
-        ],
-            "payee": {
-                "merchant_id": paypal_data['paypal_valut_id'] 
-            }
-        }
+            ],
+            "payment_source": {
+                "card": {
+                    "vault_id":paypal_data['paypal_valut_id'] 
+                            }          
+                        }
+                    }
 
         # Send payment request
         url = 'https://api-m.sandbox.paypal.com/v2/checkout/orders'
@@ -458,7 +478,7 @@ def save_customer_id(customer_id):
         # Usage
         customer_id = create_customer()
 
-
+        pass 
         if customer_id:
             save_customer_id(customer_id)
 
