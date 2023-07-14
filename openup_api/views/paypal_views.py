@@ -7,7 +7,9 @@ from django.http.response import JsonResponse, HttpResponseBadRequest
 
 # Import token verifications
 from openup_api.views.auth_views import token_verification
-from datetime import datetime, timezone
+from datetime import datetime
+from django.utils import timezone
+
 import requests
 import json
 from django.http import HttpRequest
@@ -157,7 +159,7 @@ def create_customer(request):
                         paypal_valut_id =   valut_id,
                         paypal_cust_id  =   cust_id,
                         is_delete       =   0,
-                        created_at      =   timezone.now()   
+                        created_at      =    timezone.now()  
             )
             paypal_data.save()
 
@@ -277,7 +279,7 @@ def create_webhook(request: HttpRequest):
 
     # current_url = request.build_absolute_uri()
      
-    # current_url = 'https://www.openupweb.com'
+    # current_url = 'https://www.openupwebsoln.com'
     current_url = 'http://138.197.0.56:8000'
  
     data = { "url": current_url, "event_types": 
@@ -293,14 +295,14 @@ def create_webhook(request: HttpRequest):
     response = requests.post('https://api-m.sandbox.paypal.com/v1/notifications/webhooks', headers=headers, json=data)
 
     resp_data = json.loads(response.text)
-    data      = json.loads(resp_data)
+    # data      = json.loads(resp_data)
 
     # SAVE ERROR OR RESPONSE OF WEBHOOK CREATION
     try:
         if resp_data['name']:
             webhook_data    =   WebhookData(
                 webhook_type   =  "error",
-                webhook_data   =   data,
+                webhook_data   =   resp_data,
                 is_delete       =   0,
                 created_at      =   timezone.now()
 
@@ -316,7 +318,7 @@ def create_webhook(request: HttpRequest):
         pass    
     webhook_data    =   WebhookData(
         webhook_type   =  "response",
-        webhook_data   =   data,
+        webhook_data   =   resp_data,
         is_delete       =   0,
         created_at      =   timezone.now()
     )   
