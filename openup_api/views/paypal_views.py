@@ -277,7 +277,8 @@ def create_webhook(request: HttpRequest):
 
     # current_url = request.build_absolute_uri()
      
-    current_url = 'https://www.openupweb.com'
+    # current_url = 'https://www.openupweb.com'
+    current_url = 'http://138.197.0.56:8000'
  
     data = { "url": current_url, "event_types": 
             [ 
