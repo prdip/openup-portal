@@ -450,7 +450,7 @@ def receive_webhook_data(request):
 def save_customer_id(customer_id):
         # You can implement your own logic to save the customer ID, such as storing it in a database or file
         # For demonstration purposes, we'll simply print it here
-        print(f'Saving customer ID: {customer_id}')
+
 
         # Usage
         customer_id = create_customer()
