@@ -241,8 +241,16 @@ def user_register(request):
 
     if registration_data.is_valid():
         user_id = registration_data.save()
+        try:
+            email_id = UserEmailSettings.objects.get(mail_id=1)
+        except:
+            email_id = None
+        if email_id == None:
+             return JsonResponse({
+                        "success"        :   0,
+                        "message"       :   "something went wrong !",
+                    })
 
-        email_id = UserEmailSettings.objects.get(mail_id=1)
        
         if user_type == "employee":
             
