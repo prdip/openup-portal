@@ -101,5 +101,6 @@ class Payments:
                 created_at=timezone.now()
             )
             payment_ser.save()
+            return True
 
 
