@@ -343,8 +343,10 @@ class PaymentFailedInfo(models.Model):
     user_id                 =   models.CharField(max_length=10)
     job_id                  =   models.CharField(max_length=10)
     payment_fail_type       =   models.CharField(max_length=500,null=True)
+    payment_fail_response   =   models.TextField(null=True)
     payment_fail_code       =   models.CharField(max_length=500,null=True)
-    payment_fail_message    =   models.CharField(max_length=500,null=True)
+    payment_fail_message    =   models.TextField(null=True)
+
     created_at              =   models.DateTimeField()
 
     class Meta:

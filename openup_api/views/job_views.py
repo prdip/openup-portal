@@ -199,6 +199,7 @@ def add_job(request):
                 "message"   :   "You are not allowed to add job! please verify email to use service ",
                 })
         job_id      =       JobsType.objects.first()
+        
         job_details = {
                 "job_type"              :   job_type,
                 "location_latitude"     :   float(current_location_lat),

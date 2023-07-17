@@ -95,10 +95,16 @@ urlpatterns = [
 
 
 # create_customer
-
+  # First Payment with paypal
   path('create-paypal-customer', paypal_views.create_customer,name='create_customer'),
+  # Recurring Payment
   path('paypal-payment', paypal_views.paypal_payment,name='paypal_payment'),
-  
+
+  #Check customer is stripe cust or paypal cust 
+  path('payment-type', paypal_views.payment_type,name='payment_type'),
+
+
+
   path('paypal-payment-token-receiver', paypal_views.paypal_payment_token_receiver,name='paypal_payment_token_receiver'),
   
   # webhook urls  

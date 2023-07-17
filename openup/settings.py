@@ -253,22 +253,14 @@ LOGGING = {
               
 
     },
-
-     
     'loggers': {
     
             'django.request':{
-                
                 'handlers': ['file'],
                 'level': 'DEBUG',  
                 'propagate' : False
-    
             },
- 
     },
-
-
-
      'formatters':{
         'custom_format':{
             'format': '{levelname} {asctime} {message} ',
@@ -276,9 +268,6 @@ LOGGING = {
         }
 
     },
-
-
-
 }
 
 

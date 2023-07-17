@@ -281,6 +281,7 @@ class PaymentFailedInfoSerializer(serializers.ModelSerializer):
     payment_fail_type       =   serializers.CharField(required=False,allow_null=True)
     payment_fail_code       =   serializers.CharField(required=False,allow_null=True)
     payment_fail_message    =   serializers.CharField(required=False,allow_null=True)
+    payment_fail_response   =   serializers.CharField(required=False,allow_null=True)
     created_at              =   serializers.DateTimeField()
 
     def create(self,validated_data):     
@@ -288,7 +289,7 @@ class PaymentFailedInfoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Feedback
-        fields = ('user_id','job_id','payment_fail_type',
+        fields = ('user_id','job_id','payment_fail_type','payment_fail_response',
                   'payment_fail_code','payment_fail_message','created_at')
     
     
