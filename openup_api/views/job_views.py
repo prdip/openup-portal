@@ -24,7 +24,7 @@ from django.http.response import JsonResponse
 from openup_api.views.auth_views import token_verification
 
 # Import Models here
-from openup_app.models import Registration,JobsType,Jobs,Alerts,VehicleDetails,Payment
+from openup_app.models import Registration,JobsType,Jobs,Alerts,VehicleDetails,Payment,PaypalInfo
 
 # Import Serializer
 from openup_app.serializers import JobsSerializer
@@ -40,6 +40,7 @@ from celery import shared_task
 
 from .validation import check_number,check_text
 
+import requests
  
 import environ 
 env = environ.Env()
@@ -51,6 +52,17 @@ NOTIFY EMPLOYEE JOB IS ADDED
 AND PAYMENT WILL GENERATED IN BACKGROUND
 
 '''
+
+
+
+# SET CLIENT ID AND SECRET IN .ENV FILE
+
+client_id=env("CLIENT_ID")
+client_secret=env("CLIENT_SECRET")
+
+
+
+
  
 @api_view(['POST'])
 def add_job(request):
@@ -83,7 +95,8 @@ def add_job(request):
         colour      =   request.data.get('colour')
         any_mod     =   request.data.get('any_mod')    # 1 === > Mod    0==> No mod
         window_tint =   request.data.get('window_tint') # 1 === > Yes    0==> No
-        
+        paypal_req_id = request.data.get('paypal_req_id')
+
         if year == None or (year == ''):
             return JsonResponse({
                     "success"    :   0,
@@ -225,10 +238,30 @@ def add_job(request):
             '''
                 JOB ALERT IS SHARED TASK FUNCTION RUN IN BACKGROUND @shardtask decorator required
             '''
+
             jobAlert.delay(id,current_location_lat,current_location_long)
 
-            '''Payment code '''
-            background_payment.delay(user_id,id)
+
+            payment_type = user_rec.user_payment_type
+            if payment_type == "stripe":
+                # '''Payment code '''
+                background_payment.delay(user_id,id)
+
+            if payment_type=="paypal":
+                # try: 
+                #     check_job = Jobs.objects.exclude(is_delete=1).filter(user=user_rec.user_id).exists()
+                # except:
+                #     check_job = False
+                # # if no job found means user is new
+                # if check_job == False:
+
+                data = {
+                    "user"          :   user_id,
+                    "job_id"        :   id,
+                    "paypal_req_id" :   paypal_req_id,
+                    
+                }
+                paypal_payment.delay(data)
             data = {
                 "job_id" : id,
             }
@@ -286,6 +319,128 @@ def background_payment(user_id,job_id):
  
     Payments.background_payments(data)
     return True
+
+
+
+
+
+
+
+
+@shared_task()
+def paypal_payment(data):
+        
+
+        job_id           =   data['job_id']
+        paypal_req_id   =   data['paypal_req_id']  # random text 
+        login_user      =   data['user']
+        paypal_data     =   PaypalInfo.objects.filter(paypal_user=login_user).values().first()
+        
+        # get access token
+        url             =   'https://api-m.sandbox.paypal.com/v1/oauth2/token'
+        headers         =   {'Accept': 'application/json', 'Accept-Language': 'en_US', 'PayPal-Request-Id': paypal_req_id,}
+        data            =   {'grant_type': 'client_credentials'}
+        auth            =   (client_id, client_secret)
+        response        =   requests.post(url, headers=headers, data=data, auth=auth)
+        access_token    =   response.json()['access_token']
+ 
+        # # Create payment payload
+        # payload = {
+        #     "intent": "CAPTURE",
+        #     "payer": {
+        #         "payment_method": "paypal",
+        #         "payer_info": {
+        #             "customer_id": paypal_data['paypal_cust_id']
+        #         }
+        #     },
+        #      "purchase_units": [
+        #     {
+        #     "reference_id": "111",    #Change id on each request
+        #     "amount": {
+        #         "currency_code": "USD",
+        #         "value": "110.00"
+        #     }
+        #     }
+        # ],
+        #     "payee": {
+        #         "merchant_id": paypal_data['paypal_valut_id'] 
+        #     }
+        # }
+
+        # FUTURE PAYMENTS WILL BE CREATED BY USING VALUT ID 
+
+        payload={
+            "intent": "CAPTURE",
+            "purchase_units": [
+                {
+                    "amount": {
+                        "currency_code": "USD",
+                        "value": "100.00"
+                    }
+                }
+            ],
+            "payment_source": {
+                "card": {
+                    "vault_id":paypal_data['paypal_valut_id'] 
+                            }          
+                        }
+                    }
+
+        # # Send payment request
+        # url = 'https://api-m.sandbox.paypal.com/v2/checkout/orders'
+        # headers = {'Content-Type': 'application/json','PayPal-Request-Id': paypal_req_id, 'Authorization': 'Bearer ' +access_token}
+        # response = requests.post(url, headers=headers, json=payload)
+        # response_data = response.json()
+         
+
+        payload_data = {
+            "paypal_req_id" :   paypal_req_id,
+            "payload"       :   payload,
+            "access_token"  :   access_token,
+            "url"           :   url,
+            "job_id"        :   job_id
+            }
+        # SEND PAYLOAD TO BACKGROUND TO INITIATE PAYMENT
+
+        Payments.background_payments(payload_data)
+
+        data = {
+            "job_id" : id,
+        }
+        # Update job after successfull payment.
+        job_record = Jobs.objects.exclude(is_delete=1).get(job_id=int(data['job_id']))   
+
+        
+        update_payment_status = {
+                "job_payment_id"    :      data['job_id'],
+                "job_pay_status"    :      1 
+                } 
+        
+        job_ser  = JobsSerializer(instance=job_record,data=update_payment_status,partial=True)
+        if job_ser.is_valid():
+            job_ser.save()
+            return True
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

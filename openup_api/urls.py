@@ -118,10 +118,10 @@ urlpatterns = [
   
 # Employee active inactive
   path('employee-status', auth_views.employee_status,name='employee_status'),
-  re_path(r'^media/(?P<path>.*)$', serve,{'document_root': settings.MEDIA_ROOT}),
+    re_path(r'^media/(?P<path>.*)$', serve,{'document_root': settings.MEDIA_ROOT}),
 
-  re_path(r'^static/(?P<path>.*)$', serve,{'document_root': settings.STATIC_ROOT}),
- 
+    re_path(r'^static/(?P<path>.*)$', serve,{'document_root': settings.STATIC_ROOT}),
+  
   
   path('privacy_policy', cms_views.privacy_policy,name='privacy_policy'),
  

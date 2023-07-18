@@ -281,11 +281,11 @@ def user_register(request):
                         "message"       :   "Employee registered successfully !",
                     })
         
-    # client registration code
+    # # client registration code
          
         user                =       Registration.objects.get(user_id=user_id.user_id)
-        # CREATE STRIPE CUSTOMER IN BACKGROUND
-        create_customer.delay(user.user_id)
+    #     # CREATE STRIPE CUSTOMER IN BACKGROUND
+    #     create_customer.delay(user.user_id)
         # STORE SESSION DATA AFTER REGISTRATION   
         session_token       =       secrets.token_hex() # SESSION TOKEN
         # SESSION EXPIRY
@@ -499,8 +499,8 @@ def login(request):
        
     # if client logs in for first time then create stripe customer
      
-    if user_type == "client" and (user_rec.user_stripe_id == "" or user_rec.user_stripe_id == None):         
-        create_customer.delay(user_rec.user_id)
+    # if user_type == "client" and (user_rec.user_stripe_id == "" or user_rec.user_stripe_id == None):         
+    #     create_customer.delay(user_rec.user_id)
     
     # Create session token
     session_token       =       secrets.token_hex()
@@ -573,11 +573,11 @@ def login(request):
 
 
 
-'''create stripe customer in background'''
+# '''create stripe customer in background'''
 
-@shared_task()
-def create_customer(user_id):
-        stripeCustomer.create_stripe_customer(user_id)
+# @shared_task()
+# def create_customer(user_id):
+#         stripeCustomer.create_stripe_customer(user_id)
 
 '''
 Renders confirm_account html page. 

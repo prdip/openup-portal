@@ -4,7 +4,7 @@ import stripe
 from django.http.response import JsonResponse
 
 # Import Models here
-from openup_app.models import  Jobs 
+from openup_app.models import  Jobs,VehicleDetails
 
 # Import Serializer
 from openup_app.serializers import JobsSerializer
@@ -86,7 +86,12 @@ class Payments:
 
             
         '''updated only on successfull payment'''    
-        job_record = Jobs.objects.exclude(is_delete=1).get(job_id=int(data['job_id']))   
+
+
+
+        job_record = Jobs.objects.exclude(is_delete=1).get(job_id=int(data['job_id']))  
+
+
         update_payment_status = {
                 "job_payment_id"    :      payment_data['id'],
                 "job_pay_status"    :      1 

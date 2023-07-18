@@ -26,6 +26,9 @@ from openup.paypal_first_payment import First_PayPal_Payment
 from celery import shared_task
 # from openup.background_paypal import backgoun
 
+# import stripeCustomer to create cust in stripe run in background process
+
+
 import environ 
 env = environ.Env()
 environ.Env.read_env()
@@ -52,11 +55,11 @@ client_secret=env("CLIENT_SECRET")
 
 @api_view(['POST'])
 def create_customer(request):
-    token = request.headers.get('Authorization')
-    user_token = token.replace("Bearer", "").strip()  # Remove leading/trailing spaces
-    
-    check_user = token_verification(user_token)
-    
+
+    token           = request.headers.get('Authorization')
+    user_token      = token.replace("Bearer", "").strip()  # Remove leading/trailing spaces
+    check_user      = token_verification(user_token)
+    paypal_req_id   =  request.data.get('paypal_req_id')
     if check_user is None:
         return JsonResponse({
             "success": 0,
@@ -64,30 +67,20 @@ def create_customer(request):
         })
     else:
         
+
+        login_customer  = check_user['session_user']
+        user            = Registration.objects.get(user_id=login_customer)
+
+        # To get access token 
         url             =   'https://api-m.sandbox.paypal.com/v1/oauth2/token'
         headers         =   {'Accept': 'application/json', 'Accept-Language': 'en_US'}
         data            =   {'grant_type': 'client_credentials'}
         auth            =   (client_id, client_secret)
+
         response        =   requests.post(url, headers=headers, data=data, auth=auth)
 
         access_token    =   response.json()['access_token']
 
-        # REQUIRED DATA FOR PAYMENT
-        card_no          =  request.data.get('card_no')
-        expiry           =  request.data.get('expiry')
-        card_holder_name =  request.data.get('card_holder_name')
-        address_line_1   =  request.data.get('address_line_1')
-        address_line_2   =  request.data.get('address_line_2')
-        admin_area_2     =  request.data.get('admin_area_2')  
-        admin_area_1     =  request.data.get('admin_area_1')
-        postal_code      =  request.data.get('postal_code')
-        country_code     =  request.data.get('country_code')
-        paypal_req_id    =  request.data.get('paypal_req_id') # random text 
-        # access_token     =  request.data.get('access_token')
-        job_id           =   request.data.get('job_id')
-        
-        login_customer = check_user['session_user']
-        # user = Registration.objects.get(user_id=login_customer)
 
         #  payapl authentication
         headers = {
@@ -96,165 +89,283 @@ def create_customer(request):
             'Authorization': 'Bearer '+ access_token,
         }
 
-        # Working static data 
-        data = {
-        "intent": "CAPTURE",
-        "payment_source": {
-                "card": {
-                    "number": "	374245455400126",
-                    "expiry": "2024-04",
-                    "name": "Swap pathak",
-                    "billing_address": {
-                        "address_line_1": "2211 N First Street",
-                        "address_line_2": "Building 17",
-                        "admin_area_2": "San Jose",
-                        "admin_area_1": "CA",
-                        "postal_code": "95131",
-                        "country_code": "US"
-                    },
-                    "attributes": {
-                        "vault": {
-                            "store_in_vault": "ON_SUCCESS"
+        #  Paypal payload
+        data={
+                "payment_source": {
+                    "card": {
+                        "number": "4111111111111111",
+                        "expiry": "2027-02",
+                        "name": "Firstname Lastname",
+                        "billing_address": {
+                            "address_line_1": "2211 N First Street",
+                            "address_line_2": "17.3.160",
+                            "admin_area_1": "CA",
+                            "admin_area_2": "San Jose",
+                            "postal_code": "95131",
+                            "country_code": "US"
+                        },
+                        "experience_context": {
+                            "brand_name": "YourBrandName",
+                            "locale": "en-US",
+                            "return_url": "https://example.com/returnUrl",
+                            "cancel_url": "https://example.com/cancelUrl"
                         }
                     }
                 }
-            },
-        "purchase_units": [{
-        #      #Change id on each request
-             "reference_id": "1132", 
-            "amount": {
-                "currency_code": "USD",
-                "value": "110.00"
             }
-        }]
-            
-            
-            }
+        #  set up payment token
+        response = requests.post('https://api-m.sandbox.paypal.com/v3/vault/setup-tokens', headers=headers, json=data)
 
-        # data = {
-        # "intent": "CAPTURE",
-        # "payment_source": {
-        #         "card": {
-        #             "number": card_no,
-        #             "expiry": expiry,
-        #             "name"  : card_holder_name,
-        #             "billing_address": {
-        #                 "address_line_1": address_line_1,
-        #                 "address_line_2": address_line_2,
-        #                 "admin_area_2"  : admin_area_2,
-        #                 "admin_area_1"  : admin_area_1,
-        #                 "postal_code"   : postal_code,
-        #                 "country_code"  : country_code
-        #             },
-        #             "attributes": {
-        #                 "vault": {
-        #                     "store_in_vault": "ON_SUCCESS"
-        #                 }
-        #             }
-        #         }
-        #     },
-        # "purchase_units": [
-        #     {
-        #     "reference_id": "112",    #Change id on each request
-        #     "amount": {
-        #         "currency_code": "USD",
-        #         "value": "110.00"
-        #     }
-        #     }
-        # ]
-        # }
+        resp_data = json.loads(response.text)
+         
+        payment_method_id = resp_data["id"]
 
-        # data = { "intent": "CAPTURE", "purchase_units": [ { "reference_id": "d9f80740-38f0-11e8-b467-0ed5f89f718b", "amount": { "currency_code": "USD", "value": "100.00" } } ], "payment_source": { "paypal": { "experience_context": { "payment_method_preference": "IMMEDIATE_PAYMENT_REQUIRED", "payment_method_selected": "PAYPAL", "brand_name": "EXAMPLE INC", "locale": "en-US", "landing_page": "LOGIN", "shipping_preference": "SET_PROVIDED_ADDRESS", "user_action": "PAY_NOW", "return_url": "https://example.com/returnUrl", "cancel_url": "https://example.com/cancelUrl" } } } }
-
-        #  payapl order api call to save valut id
-
-        # response = requests.post('https://api-m.sandbox.paypal.com/v2/checkout/orders/', headers=headers, json=data)
-
-        # resp_data = json.loads(response.text)
-
-        # try:
-        #     if resp_data["status"] == "COMPLETED":
-                
-        #         valut_id = resp_data['payment_source']["card"]["attributes"]["vault"]["id"]
-
-        #         cust_id  = resp_data['payment_source']["card"]["attributes"]["vault"]["customer"]["id"]
-
-        #         paypal_data = PaypalInfo(
-        #                     paypal_user     =   user,
-        #                     paypal_valut_id =   valut_id,
-        #                     paypal_response =   resp_data,
-        #                     paypal_cust_id  =   cust_id,
-        #                     is_delete       =   0,
-        #                     created_at      =    timezone.now()  
-        #         )
-        #         paypal_data.save()
-
-
-        #         job_record = Jobs.objects.exclude(is_delete=1).get(job_id=int(data['job_id']))   
-        #         update_payment_status = {
-        #                 "job_payment_id"    :      data['job_id'],
-        #                 "job_pay_status"    :      1 
-        #                 } 
-        #         job_ser  = JobsSerializer(instance=job_record,data=update_payment_status,partial=True)
-        #         if job_ser.is_valid():
-        #             job_ser.save()
-
-        #         return JsonResponse({
-        #                     "success"       :   1,
-        #                     "message"       :   "payment success",
-        #                     "data"          :   resp_data
-
-        #             })  
-        # except:
-        #     # return JsonResponse({
-        #     #         "success"       :   0,
-        #     #         "message"       :   "Something went wrong",       
-        #     # })
-
-        #     jobs =  Jobs.objects.get(job_id=job_id)
-        #     payment_details = {
-        #         "user_id"               :   user.user_id,
-        #         "job_id"                :   jobs,
-        #         "payment_fail_type"     :   resp_data['name'] ,
-        #         "payment_fail_code"     :   resp_data['body'],
-        #         "payment_fail_message"  :   resp_data['message'],
-        #         "created_at"            :   timezone.now(),
-        #     }
-
-        #     payment_ser     =   PaymentFailedInfoSerializer(data=payment_details)
-        #     if payment_ser.is_valid():
-        #         payment_ser.save()
-             
-        #         return JsonResponse({
-        #                 "success"       :   0,
-        #                 "message"       :   "Something went wrong",
-                        
-        #         })
-        #     else:
-        #         return JsonResponse({
-        #                     "success"       :   0,
-        #                     "message"       :   "Something went wrong",
-                            
-        #             })
-
-
-        data_dict = {
-
-            "headers"       :headers,
-            "payloads"      :data,
-            "url"           : url,
-            "job_id"        :job_id,
-            "user"          : login_customer
+        # 
+        payment_method_payload = {
+                "payment_source": {
+                    "token": {
+                        "id": payment_method_id,
+                        "type": "SETUP_TOKEN"
+                    }
                 }
+            }
+
+        response = requests.post('https://api-m.sandbox.paypal.com/v3/vault/payment-tokens', headers=headers, json=payment_method_payload)
+        resp_data = json.loads(response.text)
+        
+
+        valut_id =  resp_data["id"]
+        cust_id  =  resp_data["customer"]["id"]
 
 
-        first_payment.delay(data_dict)
-        # first_payment(data_dict)
+        paypal_data = PaypalInfo(
+                    paypal_user     =   user,
+                    paypal_valut_id =   valut_id,
+                    paypal_response =   resp_data,
+                    paypal_cust_id  =   cust_id,
+                    is_delete       =   0,
+                    created_at      =    timezone.now()  
+        )
+        paypal_data.save()
+
+
+
         return JsonResponse({
-                        "success"       :   1,
-                        "message"       :   "payment success",
+            "success"       :   0,
+            "message"       :   "Something went wrong",
+            "data"          :   resp_data       
+        })
 
-                })  
+
+              
+
+
+    # Working code
+    # token = request.headers.get('Authorization')
+    # user_token = token.replace("Bearer", "").strip()  # Remove leading/trailing spaces
+    
+    # check_user = token_verification(user_token)
+    
+    # if check_user is None:
+    #     return JsonResponse({
+    #         "success": 0,
+    #         "message": "Unauthorized User",
+    #     })
+    # else:
+        
+    #     url             =   'https://api-m.sandbox.paypal.com/v1/oauth2/token'
+    #     headers         =   {'Accept': 'application/json', 'Accept-Language': 'en_US'}
+    #     data            =   {'grant_type': 'client_credentials'}
+    #     auth            =   (client_id, client_secret)
+    #     response        =   requests.post(url, headers=headers, data=data, auth=auth)
+
+    #     access_token    =   response.json()['access_token']
+
+    #     # REQUIRED DATA FOR PAYMENT
+    #     card_no          =  request.data.get('card_no')
+    #     expiry           =  request.data.get('expiry')
+    #     card_holder_name =  request.data.get('card_holder_name')
+    #     address_line_1   =  request.data.get('address_line_1')
+    #     address_line_2   =  request.data.get('address_line_2')
+    #     admin_area_2     =  request.data.get('admin_area_2')  
+    #     admin_area_1     =  request.data.get('admin_area_1')
+    #     postal_code      =  request.data.get('postal_code')
+    #     country_code     =  request.data.get('country_code')
+    #     paypal_req_id    =  request.data.get('paypal_req_id') # random text 
+    #     # access_token     =  request.data.get('access_token')
+    #     job_id           =   request.data.get('job_id')
+        
+    #     login_customer = check_user['session_user']
+    #     # user = Registration.objects.get(user_id=login_customer)
+
+    #     #  payapl authentication
+    #     headers = {
+    #         'Content-Type': 'application/json',
+    #         'PayPal-Request-Id': paypal_req_id,  # change id on each request
+    #         'Authorization': 'Bearer '+ access_token,
+    #     }
+
+    #     # Working static data 
+    #     data = {
+    #     "intent": "CAPTURE",
+    #     "payment_source": {
+    #             "card": {
+    #                 "number": "	374245455400126",
+    #                 "expiry": "2024-04",
+    #                 "name": "Swap pathak",
+    #                 "billing_address": {
+    #                     "address_line_1": "2211 N First Street",
+    #                     "address_line_2": "Building 17",
+    #                     "admin_area_2": "San Jose",
+    #                     "admin_area_1": "CA",
+    #                     "postal_code": "95131",
+    #                     "country_code": "US"
+    #                 },
+    #                 "attributes": {
+    #                     "vault": {
+    #                         "store_in_vault": "ON_SUCCESS"
+    #                     }
+    #                 }
+    #             }
+    #         },
+    #     "purchase_units": [{
+    #     #      #Change id on each request
+    #          "reference_id": "1132", 
+    #         "amount": {
+    #             "currency_code": "USD",
+    #             "value": "110.00"
+    #         }
+    #     }]
+    #         }
+
+    #     # data = {
+    #     # "intent": "CAPTURE",
+    #     # "payment_source": {
+    #     #         "card": {
+    #     #             "number": card_no,
+    #     #             "expiry": expiry,
+    #     #             "name"  : card_holder_name,
+    #     #             "billing_address": {
+    #     #                 "address_line_1": address_line_1,
+    #     #                 "address_line_2": address_line_2,
+    #     #                 "admin_area_2"  : admin_area_2,
+    #     #                 "admin_area_1"  : admin_area_1,
+    #     #                 "postal_code"   : postal_code,
+    #     #                 "country_code"  : country_code
+    #     #             },
+    #     #             "attributes": {
+    #     #                 "vault": {
+    #     #                     "store_in_vault": "ON_SUCCESS"
+    #     #                 }
+    #     #             }
+    #     #         }
+    #     #     },
+    #     # "purchase_units": [
+    #     #     {
+    #     #     "reference_id": "112",    #Change id on each request
+    #     #     "amount": {
+    #     #         "currency_code": "USD",
+    #     #         "value": "110.00"
+    #     #     }
+    #     #     }
+    #     # ]
+    #     # }
+
+    #     # data = { "intent": "CAPTURE", "purchase_units": [ { "reference_id": "d9f80740-38f0-11e8-b467-0ed5f89f718b", "amount": { "currency_code": "USD", "value": "100.00" } } ], "payment_source": { "paypal": { "experience_context": { "payment_method_preference": "IMMEDIATE_PAYMENT_REQUIRED", "payment_method_selected": "PAYPAL", "brand_name": "EXAMPLE INC", "locale": "en-US", "landing_page": "LOGIN", "shipping_preference": "SET_PROVIDED_ADDRESS", "user_action": "PAY_NOW", "return_url": "https://example.com/returnUrl", "cancel_url": "https://example.com/cancelUrl" } } } }
+
+    #     #  payapl order api call to save valut id
+
+    #     # response = requests.post('https://api-m.sandbox.paypal.com/v2/checkout/orders/', headers=headers, json=data)
+
+    #     # resp_data = json.loads(response.text)
+
+    #     # try:
+    #     #     if resp_data["status"] == "COMPLETED":
+                
+    #     #         valut_id = resp_data['payment_source']["card"]["attributes"]["vault"]["id"]
+
+    #     #         cust_id  = resp_data['payment_source']["card"]["attributes"]["vault"]["customer"]["id"]
+
+    #     #         paypal_data = PaypalInfo(
+    #     #                     paypal_user     =   user,
+    #     #                     paypal_valut_id =   valut_id,
+    #     #                     paypal_response =   resp_data,
+    #     #                     paypal_cust_id  =   cust_id,
+    #     #                     is_delete       =   0,
+    #     #                     created_at      =    timezone.now()  
+    #     #         )
+    #     #         paypal_data.save()
+
+
+    #     #         job_record = Jobs.objects.exclude(is_delete=1).get(job_id=int(data['job_id']))   
+    #     #         update_payment_status = {
+    #     #                 "job_payment_id"    :      data['job_id'],
+    #     #                 "job_pay_status"    :      1 
+    #     #                 } 
+    #     #         job_ser  = JobsSerializer(instance=job_record,data=update_payment_status,partial=True)
+    #     #         if job_ser.is_valid():
+    #     #             job_ser.save()
+
+    #     #         return JsonResponse({
+    #     #                     "success"       :   1,
+    #     #                     "message"       :   "payment success",
+    #     #                     "data"          :   resp_data
+
+    #     #             })  
+    #     # except:
+    #     #     # return JsonResponse({
+    #     #     #         "success"       :   0,
+    #     #     #         "message"       :   "Something went wrong",       
+    #     #     # })
+
+    #     #     jobs =  Jobs.objects.get(job_id=job_id)
+    #     #     payment_details = {
+    #     #         "user_id"               :   user.user_id,
+    #     #         "job_id"                :   jobs,
+    #     #         "payment_fail_type"     :   resp_data['name'] ,
+    #     #         "payment_fail_code"     :   resp_data['body'],
+    #     #         "payment_fail_message"  :   resp_data['message'],
+    #     #         "created_at"            :   timezone.now(),
+    #     #     }
+
+    #     #     payment_ser     =   PaymentFailedInfoSerializer(data=payment_details)
+    #     #     if payment_ser.is_valid():
+    #     #         payment_ser.save()
+             
+    #     #         return JsonResponse({
+    #     #                 "success"       :   0,
+    #     #                 "message"       :   "Something went wrong",
+                        
+    #     #         })
+    #     #     else:
+    #     #         return JsonResponse({
+    #     #                     "success"       :   0,
+    #     #                     "message"       :   "Something went wrong",
+                            
+    #     #             })
+
+
+    #     data_dict = {
+
+    #         "headers"       :headers,
+    #         "payloads"      :data,
+    #         "url"           : url,
+    #         "job_id"        :job_id,
+    #         "user"          : login_customer
+    #             }
+
+
+    #     first_payment.delay(data_dict)
+    #     # first_payment(data_dict)
+    #     return JsonResponse({
+    #                     "success"       :   1,
+    #                     "message"       :   "payment success",
+
+    #             })  
+
+
+
+
 
 
 
@@ -279,6 +390,10 @@ def first_payment(data):
 @api_view(['POST'])
 
 def paypal_payment(request):
+
+     
+
+        # Working code of recurring payment
 
     token       = request.headers.get('Authorization')
     user_token  = token.replace("Bearer", "").strip()  # Remove leading/trailing spaces
@@ -436,6 +551,9 @@ def payment_type(request):
     else:
         login_customer = check_user['session_user']
         
+        payment_option =  request.data.get('payment_type')
+
+
         user = Registration.objects.exclude(user_is_delete=1).get(user_id=login_customer)
 
         try:
@@ -447,7 +565,8 @@ def payment_type(request):
             payment_type = "paypal"
         else:
             payment_type = "stripe"
-
+    
+          
         # if user.user_payment_id 
 
         # pass
@@ -457,6 +576,8 @@ def payment_type(request):
             "data"   :  payment_type
 
         })
+
+
 
 
 

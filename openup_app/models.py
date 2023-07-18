@@ -52,6 +52,7 @@ class Registration(models.Model):
     user_fcm_token           =   models.CharField(max_length=500,null=True,blank=True)
     user_stripe_id           =   models.CharField(max_length=500,null=True,blank=True)  #CLIENT STRIPE ID 
     user_payment_id          =   models.CharField(max_length=500,null=True,blank=True)  #CLIENT PAYMENT METHOD ID
+    user_payment_type        =    models.CharField(max_length=150,null=True)
     user_status              =   models.BooleanField(null=True,default=0)   #STATUS OF EMPLOYEE ACTIVE BY ADMIN
     user_is_verified         =   models.BooleanField(default=1)
     employee_status          =   models.BooleanField(null=True,default=0)   #STATUS OF EMPLOYEE ACTIVE SCREEN OR INACTIVE SCREEN

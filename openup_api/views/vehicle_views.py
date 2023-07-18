@@ -12,7 +12,11 @@ from openup_api.views.auth_views import token_verification
 from PIL import Image
 
 # Import Models here
-from openup_app.models import Registration,VehicleDetails
+from openup_app.models import Registration,VehicleDetails, Payment
+
+
+# import Payments class 
+from openup.payment import Payments
 
 # Import Serializer
 from openup_app.serializers import VehicleSerializer
@@ -24,6 +28,12 @@ import datetime
 import environ 
 env = environ.Env()
 environ.Env.read_env()
+
+
+# IMPORT SHARED TASK
+from celery import shared_task
+from openup.create_cust import stripeCustomer
+
 
 # API to add new vehicle 
 
@@ -46,7 +56,7 @@ def add_vehicle(request):
         # Required 
         vehicle_id              =       request.data.get('vehicle_id',None)
         vehicle_license_img     =       request.data.get('vehicle_license_img',None)
-
+        payment_type            =       request.data.get('payment_type')
         if vehicle_id == None:
 
             vehicle_details         =       request.data.get('vehicle_details',None)
@@ -105,6 +115,15 @@ def add_vehicle(request):
                 data = {
                     "vehicle_id" :  id.vehicle_id
                 }
+
+                if payment_type == "stripe":
+                    # CREATE STRIPE CUSTOMER IN BACKGROUND  
+                    create_customer.delay(user.user_id)
+
+                # if payment_type == "paypal":
+
+                
+              
                 return JsonResponse({
                         "success"      :   1,
                         "message"      :   "Vehicle information stored successfully",
@@ -133,12 +152,45 @@ def add_vehicle(request):
                 data = {
                     "vehicle_id"    :   id
                 }
+
+               
                 return JsonResponse({
                     "success"     :   1,
                     "message"     :   "Vehicle information updated successfully",
                     "data"         :    data
                 })
                     
+
+
+
+ 
+
+
+
+'''create stripe customer in background'''
+
+@shared_task()
+def create_customer(user_id):
+        stripeCustomer.create_stripe_customer(user_id)
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # Edit api call 
