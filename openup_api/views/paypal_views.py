@@ -557,6 +557,9 @@ def add_payment_type(request):
         login_customer = check_user['session_user']
 
         payment_type = request.data.get('payment_type')
+        card_number  = request.data.get('card_number')
+
+
         user         =   Registration.objects.exclude(user_is_delete=1).get(user_id = login_customer)
 
 
@@ -574,12 +577,14 @@ def add_payment_type(request):
             create_customer.delay(user.user_id)
             return JsonResponse({
                 "success"      :   1,
-                "message"      :   "Vehicle information stored successfully",
+                "message"      :   "Payment method added successfully",
                 "data"         :    payment_type
             }) 
 
         if payment_type == "paypal":
             paypal_req_id   =    request.data.get('paypal_req_id')
+            expiry          =    request.data.get('expiry')
+            address         =    request.data.get('address')
             # card_data       =    json.loads(request.body)
 
              # To get access token 
@@ -604,11 +609,11 @@ def add_payment_type(request):
             data={
                     "payment_source": {
                         "card": {
-                            "number": "4111111111111111",
-                            "expiry": "2027-02",
-                            "name": "Firstname Lastname",
+                            "number": card_number,
+                            "expiry": expiry,
+                            "name": user.user_first_name,
                             "billing_address": {
-                                "address_line_1": "2211 N First Street",
+                                "address_line_1": address,
                                 # "address_line_2": "17.3.160",
                                 # "admin_area_1": "CA",
                                 # "admin_area_2": "San Jose",
@@ -649,7 +654,6 @@ def add_payment_type(request):
             valut_id =  resp_data["id"]
             cust_id  =  resp_data["customer"]["id"]
 
-
             paypal_data = PaypalInfo(
                         paypal_user     =   user,
                         paypal_valut_id =   valut_id,
@@ -663,7 +667,7 @@ def add_payment_type(request):
 
         return JsonResponse({
                 "success"      :   1,
-                "message"      :   "Vehicle information stored successfully",
+                "message"      :   "Payment method added successfully",
                 "data"         :    payment_type
             }) 
 
