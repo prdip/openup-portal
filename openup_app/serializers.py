@@ -24,6 +24,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     employee_status          =   serializers.BooleanField(default=0,allow_null=True)
     user_stripe_id           =    serializers.CharField(allow_null=True,required=False)
     user_payment_id           =   serializers.CharField(allow_null=True,required=False)
+    user_payment_type        =    serializers.CharField(allow_null=True,required=False)
     user_is_verified         =   serializers.BooleanField(default=0,allow_null=True)
     user_role                =   serializers.PrimaryKeyRelatedField(queryset = UserRole.objects.all())
     user_is_delete           =   serializers.BooleanField(default=0,allow_null=True)
@@ -52,7 +53,7 @@ class RegisterSerializer(serializers.ModelSerializer):
                   'user_last_name', 'user_email',
                   'user_phone_number','user_password',
                   'location_latitude','location_longitude',
-                  'create_at','user_role','user_is_delete',
+                  'create_at','user_role','user_is_delete','user_payment_type',
                   'device_type','user_fcm_token','employee_status','user_is_verified','user_stripe_id','user_payment_id')
 
 

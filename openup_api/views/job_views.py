@@ -281,7 +281,7 @@ def add_job(request):
 
 '''
 code for background process
-if its first payment then payment will not occured
+if its first payment then payment will not occured STRIPE PAYMENT
 '''
 @shared_task()
 def background_payment(user_id,job_id):
@@ -325,7 +325,7 @@ def background_payment(user_id,job_id):
 
 
 
-
+# RECURRING PAYPAL PAYMENT
 
 @shared_task()
 def paypal_payment(data):

@@ -101,7 +101,7 @@ urlpatterns = [
   path('paypal-payment', paypal_views.paypal_payment,name='paypal_payment'),
 
   #Check customer is stripe cust or paypal cust 
-  path('payment-type', paypal_views.payment_type,name='payment_type'),
+  path('payment-type', paypal_views.add_payment_type,name='payment_type'),
 
 
 

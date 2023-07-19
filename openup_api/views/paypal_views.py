@@ -14,7 +14,7 @@ import requests
 import json
 from django.http import HttpRequest
 #  Import Serializer
-from openup_app.serializers import PaymentFailedInfoSerializer
+from openup_app.serializers import PaymentFailedInfoSerializer,RegisterSerializer
 from openup_app.models import Registration, PaypalInfo, WebhookData,Jobs, Payment
 from django.views.decorators.csrf import csrf_exempt
 
@@ -534,48 +534,226 @@ def background_payment(login_user,data):
 
 
 
-# API FOR USER TO DETECT STRIPE OR PAYPAL 
+# API WILL GET TYPE OF PAYMENT AND THEN SAVE IT TO THE USER TABLE IF IT IS STRIPE
+
+
+
 
 @api_view(['POST'])
-def payment_type(request):
-    token       = request.headers.get('Authorization')
-    user_token  = token.replace("Bearer", "").strip()  # Remove leading/trailing spaces
-    check_user  = token_verification(user_token)
-    
+def add_payment_type(request):
+         
+    token = request.headers['Authorization']
+    user_token = token.replace("Bearer",'')  
+    check_user      =       token_verification(user_token)
+
     if check_user is None:
         return JsonResponse({
-            "success": 0,
-            "message": "Unauthorized User",
-        })
-    
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+                })
+     
     else:
+
         login_customer = check_user['session_user']
-        
-        payment_option =  request.data.get('payment_type')
+
+        payment_type = request.data.get('payment_type')
+        user         =   Registration.objects.exclude(user_is_delete=1).get(user_id = login_customer)
 
 
-        user = Registration.objects.exclude(user_is_delete=1).get(user_id=login_customer)
+        # SAVE PAYMENT TYPE IN USER
+        update_data = {
+            "user_payment_type" : payment_type
+        }
+        # user instance to register serializer for update data   
+        user_serializer = RegisterSerializer(data=update_data,instance=user,partial=True)
+        if user_serializer.is_valid():
+            user_serializer.save()
 
-        try:
-            stripe = user.user_payment_id 
-        except:
-            stripe = None
+        if payment_type == "stripe":
+            # CREATE STRIPE CUSTOMER IN BACKGROUND  
+            create_customer.delay(user.user_id)
+            return JsonResponse({
+                "success"      :   1,
+                "message"      :   "Vehicle information stored successfully",
+                "data"         :    payment_type
+            }) 
 
-        if stripe == None:
-            payment_type = "paypal"
-        else:
-            payment_type = "stripe"
-    
-          
-        # if user.user_payment_id 
+        if payment_type == "paypal":
+            paypal_req_id   =    request.data.get('paypal_req_id')
+            # card_data       =    json.loads(request.body)
 
-        # pass
+             # To get access token 
+            url             =   'https://api-m.sandbox.paypal.com/v1/oauth2/token'
+            headers         =   {'Accept': 'application/json', 'Accept-Language': 'en_US'}
+            data            =   {'grant_type': 'client_credentials'}
+            auth            =   (client_id, client_secret)
+
+            response        =   requests.post(url, headers=headers, data=data, auth=auth)
+
+            access_token    =   response.json()['access_token']
+
+
+            #  payapl authentication
+            headers = {
+                'Content-Type': 'application/json',
+                'PayPal-Request-Id': paypal_req_id,  # change id on each request
+                'Authorization': 'Bearer '+ access_token,
+            }
+
+                #  Paypal payload
+            data={
+                    "payment_source": {
+                        "card": {
+                            "number": "4111111111111111",
+                            "expiry": "2027-02",
+                            "name": "Firstname Lastname",
+                            "billing_address": {
+                                "address_line_1": "2211 N First Street",
+                                # "address_line_2": "17.3.160",
+                                # "admin_area_1": "CA",
+                                # "admin_area_2": "San Jose",
+                                # "postal_code": "95131",
+                                "country_code": "US"
+                            },
+                            # "experience_context": {
+                            #     "brand_name": "YourBrandName",
+                            #     "locale": "en-US",
+                            #     "return_url": "https://example.com/returnUrl",
+                            #     "cancel_url": "https://example.com/cancelUrl"
+                            # }
+                        }
+                    }
+                }
+            
+             #  set up payment token
+            response = requests.post('https://api-m.sandbox.paypal.com/v3/vault/setup-tokens', headers=headers, json=data)
+
+            resp_data = json.loads(response.text)
+
+            payment_method_id = resp_data["id"]
+
+            # 
+            payment_method_payload = {
+                    "payment_source": {
+                        "token": {
+                            "id": payment_method_id,
+                            "type": "SETUP_TOKEN"
+                        }
+                    }
+                }
+
+            response = requests.post('https://api-m.sandbox.paypal.com/v3/vault/payment-tokens', headers=headers, json=payment_method_payload)
+            resp_data = json.loads(response.text)
+            
+
+            valut_id =  resp_data["id"]
+            cust_id  =  resp_data["customer"]["id"]
+
+
+            paypal_data = PaypalInfo(
+                        paypal_user     =   user,
+                        paypal_valut_id =   valut_id,
+                        paypal_response =   resp_data,
+                        paypal_cust_id  =   cust_id,
+                        is_delete       =   0,
+                        created_at      =    timezone.now()  
+            )
+            paypal_data.save()
+
+
         return JsonResponse({
-            "success":  1,
-            "message":  "User payment method",
-            "data"   :  payment_type
+                "success"      :   1,
+                "message"      :   "Vehicle information stored successfully",
+                "data"         :    payment_type
+            }) 
 
-        })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+'''create stripe customer in background'''
+
+@shared_task()
+def create_customer(user_id):
+        stripeCustomer.create_stripe_customer(user_id)
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# API FOR USER TO DETECT STRIPE OR PAYPAL 
+
+# @api_view(['POST'])
+# def payment_type(request):
+#     token       = request.headers.get('Authorization')
+#     user_token  = token.replace("Bearer", "").strip()  # Remove leading/trailing spaces
+#     check_user  = token_verification(user_token)
+    
+#     if check_user is None:
+#         return JsonResponse({
+#             "success": 0,
+#             "message": "Unauthorized User",
+#         })
+    
+#     else:
+#         login_customer = check_user['session_user']
+        
+#         payment_option =  request.data.get('payment_type')
+
+
+#         user = Registration.objects.exclude(user_is_delete=1).get(user_id=login_customer)
+
+#         # try:
+#         #     stripe = user.user_payment_id 
+#         # except:
+#         #     stripe = None
+
+#         # if stripe == None:
+#         #     payment_type = "paypal"
+#         # else:
+#         #     payment_type = "stripe"
+
+#         update_data = {
+#                 "user_payment_type" : payment_option
+#             }
+#             # user instance to register serializer for update data   
+#         user_serializer = RegisterSerializer(data=update_data,instance=user,partial=True)
+#         if user_serializer.is_valid():
+#             user_serializer.save()
+
+          
+#         # if user.user_payment_id 
+
+#         # pass
+#         return JsonResponse({
+#             "success":  1,
+#             "message":  "User payment method",
+#             "data"   :  payment_option
+
+#         })
 
 
 

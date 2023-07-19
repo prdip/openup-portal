@@ -12,17 +12,20 @@ from openup_api.views.auth_views import token_verification
 from PIL import Image
 
 # Import Models here
-from openup_app.models import Registration,VehicleDetails, Payment
+from openup_app.models import Registration,VehicleDetails, PaypalInfo
 
 
 # import Payments class 
 from openup.payment import Payments
 
 # Import Serializer
-from openup_app.serializers import VehicleSerializer
+from openup_app.serializers import VehicleSerializer, RegisterSerializer
 
 # Import datetime module
-import datetime
+import datetime, requests,json
+
+from django.utils import timezone
+
 
 # Import socket to get ip address
 import environ 
@@ -33,6 +36,12 @@ environ.Env.read_env()
 # IMPORT SHARED TASK
 from celery import shared_task
 from openup.create_cust import stripeCustomer
+
+
+
+client_id=env("CLIENT_ID")
+client_secret=env("CLIENT_SECRET")
+
 
 
 # API to add new vehicle 
@@ -115,15 +124,26 @@ def add_vehicle(request):
                 data = {
                     "vehicle_id" :  id.vehicle_id
                 }
+                # # SAVE PAYMENT TYPE IN USER
+                # update_data = {
+                #     "user_payment_type" : payment_type
+                # }
+                # # user instance to register serializer for update data   
+                # user_serializer = RegisterSerializer(data=update_data,instance=user,partial=True)
+                # if user_serializer.is_valid():
+                #     user_serializer.save()
 
-                if payment_type == "stripe":
-                    # CREATE STRIPE CUSTOMER IN BACKGROUND  
-                    create_customer.delay(user.user_id)
+                # if payment_type == "stripe":
+                #     # CREATE STRIPE CUSTOMER IN BACKGROUND  
+                #     create_customer.delay(user.user_id)
 
                 # if payment_type == "paypal":
+                #     return JsonResponse({
+                #         "success"      :   1,
+                #         "message"      :   "Vehicle information stored successfully",
+                #         "data"         :    payment_type
+                #     }) 
 
-                
-              
                 return JsonResponse({
                         "success"      :   1,
                         "message"      :   "Vehicle information stored successfully",
@@ -167,14 +187,10 @@ def add_vehicle(request):
 
 
 
-'''create stripe customer in background'''
-
-@shared_task()
-def create_customer(user_id):
-        stripeCustomer.create_stripe_customer(user_id)
 
 
- 
+
+
 
 
 
