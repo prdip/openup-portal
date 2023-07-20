@@ -9,7 +9,7 @@ from django.http.response import JsonResponse, HttpResponseBadRequest
 from openup_api.views.auth_views import token_verification
 from datetime import datetime
 from django.utils import timezone
-
+import stripe
 import requests
 import json
 from django.http import HttpRequest
@@ -24,8 +24,11 @@ from openup.background_paypal import PaypalPayment
 from openup.paypal_first_payment import First_PayPal_Payment
 
 from celery import shared_task
+from django.db.models import Q
+
 # from openup.background_paypal import backgoun
 from openup.create_cust import stripeCustomer
+
 
 
 # import stripeCustomer to create cust in stripe run in background process
@@ -585,12 +588,25 @@ def add_payment_type(request):
 
         if payment_type == "stripe":
             # CREATE STRIPE CUSTOMER IN BACKGROUND  
-            create_customer.delay(user.user_id)
-            return JsonResponse({
-                "success"      :   1,
-                "message"      :   "Payment method added successfully",
-                "data"         :    payment_type
-            }) 
+            # create_customer.delay(user.user_id)
+
+
+            response_data   =  stripe.Customer.create(description="client added to stripe",
+                                       email = user.user_email,
+                                       name  = user.user_first_name+' '+user.user_last_name)
+            cust_id         = response_data['id']
+            # code to create ephemeral key to stripe
+            update_data = {
+                        "user_stripe_id" : cust_id, 
+                       }    
+            user_serializer = RegisterSerializer(instance=user,data=update_data,partial=True)
+            if user_serializer.is_valid():
+                user_serializer.save()
+                return JsonResponse({
+                    "success"      :   1,
+                    "message"      :   "Payment method added successfully",
+                    "data"         :    payment_type
+                }) 
 
         if payment_type == "paypal":
             paypal_req_id   =    request.data.get('paypal_req_id')
@@ -701,11 +717,11 @@ def add_payment_type(request):
 
 
 
-'''create stripe customer in background'''
+# '''create stripe customer in background'''
 
-@shared_task()
-def create_customer(user_id):
-        stripeCustomer.create_stripe_customer(user_id)
+# # @shared_task()
+# def create_customer(user_id):
+        # stripeCustomer.create_stripe_customer(user_id)
 
 
  
