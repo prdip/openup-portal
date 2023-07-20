@@ -19,7 +19,7 @@ from openup_app.models import Registration, PaypalInfo, WebhookData,Jobs, Paymen
 from django.views.decorators.csrf import csrf_exempt
 
 # import Payments class 
-from openup.background_paypal import Payments
+from openup.background_paypal import PaypalPayment
 
 from openup.paypal_first_payment import First_PayPal_Payment
 
@@ -528,7 +528,7 @@ def background_payment(login_user,data):
     except:
         pass
 
-    Payments.background_payments(data)
+    PaypalPayment.background_payments(data)
     return True
     
 
@@ -665,7 +665,7 @@ def add_payment_type(request):
 
             response = requests.post('https://api-m.sandbox.paypal.com/v3/vault/payment-tokens', headers=headers, json=payment_method_payload)
             resp_data = json.loads(response.text)
-            
+
 
             valut_id =  resp_data["id"]
             cust_id  =  resp_data["customer"]["id"]

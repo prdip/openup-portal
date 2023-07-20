@@ -1,4 +1,4 @@
-import stripe
+import stripe,json
  
 # import Json Response
 from django.http.response import JsonResponse
@@ -26,7 +26,7 @@ from openup_app.models import PaypalInfo, PaymentFailedInfo
 
 
 
-class Payments:
+class PaypalPayment:
     
     def background_payments(data):
         
@@ -51,7 +51,7 @@ class Payments:
         url = 'https://api-m.sandbox.paypal.com/v2/checkout/orders'
         headers = {'Content-Type': 'application/json','PayPal-Request-Id':data['paypal_valut_id'] , 'Authorization': 'Bearer ' +data['access_token']}
         response = requests.post(url, headers=headers, json=payload)
-        resp_data = response.json()
+        resp_data = json.loads(response.text)
 
 
 
@@ -64,10 +64,8 @@ class Payments:
         if status != "Failed": 
         # '''updated only on successfull payment'''    
 
-            valut_id = resp_data['payment_source']["card"]["attributes"]["vault"]["id"]
-
-            cust_id  = resp_data['payment_source']["card"]["attributes"]["vault"]["customer"]["id"]
-
+            valut_id = resp_data["id"]
+            cust_id  =  resp_data["customer"]["id"]
             paypal_data = PaypalInfo(
                         paypal_user     =   data['user'],
                         paypal_valut_id =   valut_id,

@@ -17,6 +17,8 @@ from openup.fcm import FCM
 # import Payments class 
 from openup.payment import Payments
 
+from openup.background_paypal import PaypalPayment
+
 # import Json Response
 from django.http.response import JsonResponse
 
@@ -261,7 +263,7 @@ def add_job(request):
                     "paypal_req_id" :   paypal_req_id,
                     
                 }
-                paypal_payment.delay(data)
+                paypal_payment(data)
             data = {
                 "job_id" : id,
             }
@@ -327,7 +329,7 @@ def background_payment(user_id,job_id):
 
 # RECURRING PAYPAL PAYMENT
 
-@shared_task()
+# @shared_task()
 def paypal_payment(data):
         
 
@@ -335,7 +337,7 @@ def paypal_payment(data):
         paypal_req_id   =   data['paypal_req_id']  # random text 
         login_user      =   data['user']
         paypal_data     =   PaypalInfo.objects.filter(paypal_user=login_user).values().first()
-        
+
         # get access token
         url             =   'https://api-m.sandbox.paypal.com/v1/oauth2/token'
         headers         =   {'Accept': 'application/json', 'Accept-Language': 'en_US', 'PayPal-Request-Id': paypal_req_id,}
@@ -387,27 +389,28 @@ def paypal_payment(data):
                     }
 
         # # Send payment request
-        # url = 'https://api-m.sandbox.paypal.com/v2/checkout/orders'
-        # headers = {'Content-Type': 'application/json','PayPal-Request-Id': paypal_req_id, 'Authorization': 'Bearer ' +access_token}
-        # response = requests.post(url, headers=headers, json=payload)
-        # response_data = response.json()
+        url = 'https://api-m.sandbox.paypal.com/v2/checkout/orders'
+        headers = {'Content-Type': 'application/json','PayPal-Request-Id': paypal_req_id, 'Authorization': 'Bearer ' +access_token}
+        response = requests.post(url, headers=headers, json=payload)
+        response_data = response.json()
          
-
-        payload_data = {
-            "paypal_req_id" :   paypal_req_id,
-            "payload"       :   payload,
-            "access_token"  :   access_token,
-            "url"           :   url,
-            "job_id"        :   job_id
-            }
+        
+        # payload_data = {
+        #     "paypal_req_id" :   paypal_req_id,
+        #     "payload"       :   payload,
+        #     "access_token"  :   access_token,
+        #     "url"           :   url,
+        #     "job_id"        :   job_id,
+        #     "paypal_valut_id":paypal_data['paypal_valut_id']
+        #     }
         # SEND PAYLOAD TO BACKGROUND TO INITIATE PAYMENT
 
-        Payments.background_payments(payload_data)
+        # PaypalPayment.background_payments(payload_data)
 
         data = {
-            "job_id" : id,
+            "job_id" : job_id,
         }
-        # Update job after successfull payment.
+        # # Update job after successfull payment.
         job_record = Jobs.objects.exclude(is_delete=1).get(job_id=int(data['job_id']))   
 
         
@@ -419,7 +422,7 @@ def paypal_payment(data):
         job_ser  = JobsSerializer(instance=job_record,data=update_payment_status,partial=True)
         if job_ser.is_valid():
             job_ser.save()
-            return True
+        return True
 
 
 
