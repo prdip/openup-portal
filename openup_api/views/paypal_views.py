@@ -590,7 +590,11 @@ def add_payment_type(request):
 
         if payment_type == "paypal":
             paypal_req_id   =    request.data.get('paypal_req_id')
+             
             expiry          =    request.data.get('expiry')
+
+            date = datetime.strptime(expiry,'%m/%y').strftime('%Y-%m')
+            
             address         =    request.data.get('address')
             # card_data       =    json.loads(request.body)
 
@@ -617,7 +621,7 @@ def add_payment_type(request):
                     "payment_source": {
                         "card": {
                             "number": card_number,
-                            "expiry": expiry,
+                            "expiry": date,
                             "name": user.user_first_name,
                             "billing_address": {
                                 "address_line_1": address,
@@ -641,6 +645,7 @@ def add_payment_type(request):
             response = requests.post('https://api-m.sandbox.paypal.com/v3/vault/setup-tokens', headers=headers, json=data)
 
             resp_data = json.loads(response.text)
+            print(resp_data)
 
             payment_method_id = resp_data["id"]
 
