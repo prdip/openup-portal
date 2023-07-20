@@ -1,6 +1,7 @@
 # IMPORT CELERY
 from openup import celery_app
  
+import json
 
 # IMPORT GEODESIC FROM GEOPY
 from geopy.distance import geodesic as gd
@@ -26,7 +27,7 @@ from django.http.response import JsonResponse
 from openup_api.views.auth_views import token_verification
 
 # Import Models here
-from openup_app.models import Registration,JobsType,Jobs,Alerts,VehicleDetails,Payment,PaypalInfo
+from openup_app.models import Registration,JobsType,Jobs,Alerts,VehicleDetails,Payment,PaypalInfo,PaymentFailedInfo
 
 # Import Serializer
 from openup_app.serializers import JobsSerializer
@@ -41,6 +42,8 @@ from django.db.models import Q
 from celery import shared_task
 
 from .validation import check_number,check_text
+
+from django.utils import timezone
 
 import requests
  
@@ -337,7 +340,7 @@ def paypal_payment(data):
         paypal_req_id   =   data['paypal_req_id']  # random text 
         login_user      =   data['user']
         paypal_data     =   PaypalInfo.objects.filter(paypal_user=login_user).values().first()
-
+        user            =   Registration.objects.get(user_id=login_user)
         # get access token
         url             =   'https://api-m.sandbox.paypal.com/v1/oauth2/token'
         headers         =   {'Accept': 'application/json', 'Accept-Language': 'en_US', 'PayPal-Request-Id': paypal_req_id,}
@@ -392,8 +395,16 @@ def paypal_payment(data):
         url = 'https://api-m.sandbox.paypal.com/v2/checkout/orders'
         headers = {'Content-Type': 'application/json','PayPal-Request-Id': paypal_req_id, 'Authorization': 'Bearer ' +access_token}
         response = requests.post(url, headers=headers, json=payload)
-        response_data = response.json()
-         
+        response_data = json.loads(response.text)
+
+        if response_data["name"]:
+            paypal_data = PaymentFailedInfo(
+                user_id=user.user_id, job_id=job_id, payment_fail_response=response_data, created_at=timezone.now()
+            )
+            paypal_data.save()
+
+              
+        # paypal_data.save()
         
         # payload_data = {
         #     "paypal_req_id" :   paypal_req_id,

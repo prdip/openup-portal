@@ -135,7 +135,7 @@ def add_vehicle(request):
 
                 # if payment_type == "stripe":
                 #     # CREATE STRIPE CUSTOMER IN BACKGROUND  
-                #     create_customer.delay(user.user_id)
+                # create_customer.delay(user.user_id)
 
                 # if payment_type == "paypal":
                 #     return JsonResponse({
@@ -191,6 +191,10 @@ def add_vehicle(request):
 
 
 
+
+@shared_task()
+def create_customer(user_id):
+        stripeCustomer.create_stripe_customer(user_id)
 
 
 
