@@ -645,7 +645,7 @@ def add_payment_type(request):
             response = requests.post('https://api-m.sandbox.paypal.com/v3/vault/setup-tokens', headers=headers, json=data)
 
             resp_data = json.loads(response.text)
-            print(resp_data)
+
 
             payment_method_id = resp_data["id"]
 

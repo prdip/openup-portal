@@ -21,6 +21,8 @@ from .validation import check_text,verify_card
 
 # import stripe
 import stripe
+from openup.create_cust import stripeCustomer
+
 
 from openup.fcm import FCM
 
