@@ -559,6 +559,8 @@ def add_payment_type(request):
         payment_type = request.data.get('payment_type')
         card_number  = request.data.get('card_number')
 
+        card = card_number.replace(" ", "")
+
 
         user         =   Registration.objects.exclude(user_is_delete=1).get(user_id = login_customer)
 
@@ -620,7 +622,7 @@ def add_payment_type(request):
             data={
                     "payment_source": {
                         "card": {
-                            "number": card_number,
+                            "number": card,
                             "expiry": date,
                             "name": user.user_first_name,
                             "billing_address": {
