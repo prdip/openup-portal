@@ -25,6 +25,8 @@ from openup.paypal_first_payment import First_PayPal_Payment
 
 from celery import shared_task
 # from openup.background_paypal import backgoun
+from openup.create_cust import stripeCustomer
+
 
 # import stripeCustomer to create cust in stripe run in background process
 
