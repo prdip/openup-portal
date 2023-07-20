@@ -571,6 +571,13 @@ def add_payment_type(request):
         user_serializer = RegisterSerializer(data=update_data,instance=user,partial=True)
         if user_serializer.is_valid():
             user_serializer.save()
+        else:
+             return JsonResponse({
+            "success"      :   0,
+                "message"      :   "something went wrong",
+
+            }) 
+
 
         if payment_type == "stripe":
             # CREATE STRIPE CUSTOMER IN BACKGROUND  

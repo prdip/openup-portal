@@ -242,7 +242,7 @@ def user_register(request):
     if registration_data.is_valid():
         user_id = registration_data.save()
         try:
-            email_id = UserEmailSettings.objects.get(mail_id=1)
+            email_id = UserEmailSettings.objects.get(mail_id=user_id)
         except:
             email_id = None
         if email_id == None:
