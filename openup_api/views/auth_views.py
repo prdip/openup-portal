@@ -25,6 +25,10 @@ from .validation import check_text,email_address,mobile_number, password_validat
 
 #  Make hash password 
 from django.contrib.auth.hashers import make_password, check_password
+# 
+
+
+
 
 # Get object
 from django.shortcuts import get_object_or_404
@@ -52,6 +56,9 @@ from openup_app.models import UserEmailSettings
 
 # import stripeCustomer to create cust in stripe run in background process
 from openup.create_cust import stripeCustomer
+
+# from passlib.hash import django_pbkdf2_sha256
+
 
 
 
@@ -210,12 +217,18 @@ def user_register(request):
             password should contain atleast one digit
             password should contain atleast one upper case letter''',
        })
-        
+    
+         
     role        =   UserRole.objects.filter(role_name= user_type).values('role_id').first()['role_id']              
     role_id     =   UserRole.objects.get(role_id=role)
     # To make hash password
     make_pass   =   make_password(password)   
+
+
+
+
     created_at  =   datetime.datetime.now()
+
     # Employee status 0 ==> inactive 
     # USER REGISTRATION DATA 
 
@@ -242,7 +255,7 @@ def user_register(request):
     if registration_data.is_valid():
         user_id = registration_data.save()
         try:
-            email_id = UserEmailSettings.objects.get(mail_id=user_id)
+            email_id = UserEmailSettings.objects.get(mail_id='1')
         except:
             email_id = None
         if email_id == None:
@@ -305,7 +318,17 @@ def user_register(request):
             user_session.save()
             # email_verification email to client
             # email = UserEmailSettings.objects.get(mail_id=1)
-            email_id = UserEmailSettings.objects.get(mail_id='1')
+            # email_id = UserEmailSettings.objects.get(mail_id='1')
+            try:
+                email_id = UserEmailSettings.objects.get(mail_id='1')
+            except:
+                email_id = None
+            if email_id == None:
+                return JsonResponse({
+                            "success"        :   0,
+                            "message"       :   "something went wrong !",
+                        })
+
 
 
             data_dict = {
@@ -449,12 +472,11 @@ def login(request):
     
     try:
     
-        user_data = Registration.objects.exclude(user_is_delete=1).filter(Q(user_email=str(email)) and Q(user_role=role_id)).values('user_id','user_email').first()
+        user_data = Registration.objects.exclude(user_is_delete=1).filter(user_email=str(email)).filter(user_role=role_id).values('user_id','user_email').first()
         
         check_user_id = user_data['user_id']
     except:       
         check_user_id = None
-    
      
  
     if check_user_id == None:       
@@ -468,7 +490,6 @@ def login(request):
     else:
         user_rec    =   Registration.objects.exclude(Q(user_is_delete=1) and Q(user_role_id=1)).get(user_id=check_user_id)
     
-
 
     # Verify user type 
     if user_rec.user_role.role_id != role_id:
@@ -486,11 +507,9 @@ def login(request):
             })
     
     # CHECK HASH PASSWORD
+    hash_pass = user_rec.user_password
+    check_pass          =       check_password(password,hash_pass)
     
-
-
-    check_pass          =       check_password(password,user_rec.user_password)
-
     if check_pass is False:
         return JsonResponse({           
             "success"       :   0,
