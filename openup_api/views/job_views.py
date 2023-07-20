@@ -396,8 +396,11 @@ def paypal_payment(data):
         headers = {'Content-Type': 'application/json','PayPal-Request-Id': paypal_req_id, 'Authorization': 'Bearer ' +access_token}
         response = requests.post(url, headers=headers, json=payload)
         response_data = json.loads(response.text)
-
-        if response_data["name"]:
+        try:
+            error = response_data["name"]
+        except:
+            error = False
+        if error:
             paypal_data = PaymentFailedInfo(
                 user_id=user.user_id, job_id=job_id, payment_fail_response=response_data, created_at=timezone.now()
             )
