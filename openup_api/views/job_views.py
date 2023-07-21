@@ -402,7 +402,7 @@ def paypal_payment(data):
         except:
             error = False
 
-        if error == "UNPROCESSABLE_ENTITY":
+        if error == "UNPROCESSABLE_ENTITY" or error == "INVALID_REQUEST":
             paypal_data = PaymentFailedInfo(
                 user_id=user.user_id, job_id=job_id, payment_fail_response=response_data, created_at=timezone.now()
             )
@@ -421,8 +421,7 @@ def paypal_payment(data):
             )
             paypal_data.save()
             return True
-
-     
+        
         # paypal_data.save()
         
         # payload_data = {
