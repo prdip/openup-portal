@@ -665,6 +665,18 @@ def job_details(request):
         
         if job_serializer['job_status'] == "3":
             job_serializer['job_status']="completed"
+
+
+        if job_serializer['any_mod'] == True:
+             job_serializer['any_mod'] = "1"
+        else:
+             job_serializer['any_mod'] = "0"
+        
+        
+        if job_serializer['window_tint'] == True:
+             job_serializer['window_tint'] = "1"
+        else:
+             job_serializer['window_tint'] = "0"
         
         # if block execute when job_accepted_by in job record is null
         if job_data.job_accepted_by != None:
