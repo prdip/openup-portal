@@ -110,18 +110,23 @@ class ForgotPasswordSerializer(serializers.ModelSerializer):
 class VehicleSerializer(serializers.ModelSerializer):
 
     user                    =       serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
-    vehicle_details         =       serializers.CharField()
-    vehicle_modification    =       serializers.CharField()
+   
     vehicle_license         =       serializers.FileField(required = False)  
+    year                    =       serializers.CharField(allow_null=True)
+    model                   =       serializers.CharField(allow_null=True)
+    colour                  =       serializers.CharField(allow_null=True)
+    any_mod                 =       serializers.BooleanField(default=0)
+    window_tint             =       serializers.BooleanField(default=0)
+
     created_at              =       serializers.DateTimeField()
     
     
     class Meta:
         model = VehicleDetails
 
-        fields = ('user','vehicle_details',
+        fields = ('user','year','model','colour','any_mod','window_tint',
                     'vehicle_license',
-                   'vehicle_modification',
+                   
                    'created_at'
                     )
 

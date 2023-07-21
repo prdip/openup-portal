@@ -63,27 +63,33 @@ def add_vehicle(request):
      
     else:
         # Required 
-        vehicle_id              =       request.data.get('vehicle_id',None)
-        vehicle_license_img     =       request.data.get('vehicle_license_img',None)
-        payment_type            =       request.data.get('payment_type')
+        vehicle_id              =   request.data.get('vehicle_id',None)
+        vehicle_license_img     =   request.data.get('vehicle_license_img',None)
+        year                    =   request.data.get('year')
+        model                   =   request.data.get('model')
+        colour                  =   request.data.get('colour')
+        any_mod                 =   request.data.get('any_mod')    # 1 === > Mod    0==> No mod
+        window_tint             =   request.data.get('window_tint')
+
+
         if vehicle_id == None:
 
-            vehicle_details         =       request.data.get('vehicle_details',None)
-            vehicle_modification    =       request.data.get('vehicle_modification',None)
+            # vehicle_details         =       request.data.get('vehicle_details',None)
+            # vehicle_modification    =       request.data.get('vehicle_modification',None)
 
-            # check vehicle_details
-            if vehicle_details is None or vehicle_details == "":
-                return JsonResponse({
-                    "success"     :   0,
-                    "message"     :   "please provide vehicle details",
-                }) 
+            # # check vehicle_details
+            # if vehicle_details is None or vehicle_details == "":
+            #     return JsonResponse({
+            #         "success"     :   0,
+            #         "message"     :   "please provide vehicle details",
+            #     }) 
 
-            # check vehicle_modification data
-            if vehicle_modification is None or vehicle_modification == "":
-                return JsonResponse({
-                    "success"     :   0,
-                    "message"     :   "please provide vehicle mod",
-                })
+            # # check vehicle_modification data
+            # if vehicle_modification is None or vehicle_modification == "":
+            #     return JsonResponse({
+            #         "success"     :   0,
+            #         "message"     :   "please provide vehicle mod",
+            #     })
             # Check file upload is image or not
             if vehicle_license_img != None:
                 try:
@@ -108,8 +114,11 @@ def add_vehicle(request):
             # Vehicle data 
             vehicle_data = {
                 "user"                  :   user.user_id,
-                "vehicle_details"       :   vehicle_details,
-                "vehicle_modification"  :   vehicle_modification,
+                "year"                  :   year,
+                "model"                 :   model,
+                "colour"                :   colour,
+                "any_mod"               :   any_mod,
+                "window_tint"           :   window_tint,
                 "created_at"            :   created_at
                 }
             
@@ -154,17 +163,35 @@ def add_vehicle(request):
                 "vehicle_license"   :   vehicle_license_img
                 }
 
-            vehicle_details         =       request.data.get('vehicle_details',None)
-            vehicle_modification    =       request.data.get('vehicle_modification',None)
+         
+            year                    =       request.data.get('year',None)
+            model                   =       request.data.get('model',None)
+            colour                  =       request.data.get('colour',None)
+            any_mod                 =       request.data.get('any_mod',None)    # 1 === > Mod    0==> No mod
+            window_tint             =       request.data.get('window_tint',None)
             
-            if vehicle_details != None:
-                 update_data["vehicle_details"] = vehicle_details
+       
+            if year != None:
+                update_data["year"] = year
+            
+            if model != None:
+                update_data["model"] = model
+            
+            
+            if colour != None:
+                update_data["colour"] = colour
 
-            if vehicle_modification != None:
-                 update_data["vehicle_modification"] = vehicle_modification
+            
+            if any_mod != None:
+                update_data["any_mod"] = any_mod
+            
+            if window_tint != None:
+                update_data["window_tint"] = window_tint
+
                  
             vehicle_rec     =   VehicleDetails.objects.get(vehicle_id=vehicle_id)
             vehicle_ser     =   VehicleSerializer(instance=vehicle_rec,data=update_data,partial=True)
+            
 
             if vehicle_ser.is_valid():
                 id = vehicle_ser.save()
@@ -321,20 +348,37 @@ def vehicle_details(request):
 
         vehicle_ser.pop('created_at')
         vehicle_ser.pop('vehicle_license')
- 
+
        
         domain      =   env('BASE_URL')
-   
-        obj         =   vehicle_details.vehicle_license.url
-         
-        url         =   '{domain}{path}'.format(domain=domain, path=obj)
+        try:
+            obj         =   vehicle_details.vehicle_license.url
+        except:
+            obj = None
+        if obj != None:
+            url         =   '{domain}{path}'.format(domain=domain, path=obj)
         
-        vehicle_ser['vehicle_license_url'] = url
+            vehicle_ser['vehicle_license'] = url
+            
+            img_name    =   str(vehicle_details.vehicle_license)
+            img_name    =   img_name.replace("licenses/"," ")
+            
+            vehicle_ser['vehicle_image_name'] =    img_name
         
-        img_name    =   str(vehicle_details.vehicle_license)
-        img_name    =   img_name.replace("licenses/"," ")
+
+
+        if vehicle_ser['any_mod'] == True:
+             vehicle_ser['any_mod'] = "1"
+        else:
+             vehicle_ser['any_mod'] = "0"
         
-        vehicle_ser['vehicle_image_name'] =    img_name
+        
+        if vehicle_ser['window_tint'] == True:
+             vehicle_ser['window_tint'] = "1"
+        else:
+             vehicle_ser['window_tint'] = "0"
+
+
         data = {
              "vehicle_details" : vehicle_ser
             } 

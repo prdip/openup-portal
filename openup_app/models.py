@@ -151,9 +151,15 @@ class VehicleDetails(models.Model):
 
     vehicle_id              =       models.AutoField(primary_key=True)
     user                    =       models.ForeignKey(Registration,on_delete=models.CASCADE)
-    vehicle_details         =       models.CharField(max_length=200)
-    vehicle_modification    =       models.CharField(max_length=200,null=True)
     vehicle_license         =       models.FileField(upload_to=file_name,blank=True,null=True)  #licenses
+
+    year                     =      models.CharField(max_length=5,null=True)
+    model                    =      models.CharField(max_length=10,null=True)
+    colour                   =      models.CharField(max_length=10,null=True)
+    any_mod                  =      models.BooleanField(default=0)
+    window_tint              =      models.BooleanField(default=0)
+
+
     created_at              =       models.DateTimeField()
     update_at               =       models.DateTimeField(null=True)
     vehicle_status          =       models.BooleanField(default=0)
