@@ -26,6 +26,8 @@ from .validation import check_text,email_address,mobile_number, password_validat
 #  Make hash password 
 from django.contrib.auth.hashers import make_password, check_password
 # 
+from django.views.decorators.csrf import csrf_exempt
+
 
 
 
@@ -619,6 +621,7 @@ def confirm_account(request,token):
  EMPLOYEE STATUS WILL CHANGE TO 1
 
 '''
+# @csrf_exempt
 def activate_account(request):
 
     id = request.POST.get('id')
@@ -1382,6 +1385,7 @@ def verify_account(request,token):
 
 '''Verify client account and change status'''
 
+# @csrf_exempt
 def verify_client(request):
 
     if request.method == "POST":

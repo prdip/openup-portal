@@ -271,4 +271,4 @@ LOGGING = {
 }
 
 
-CSRF_TRUSTED_ORIGINS = ['https://app.opnup.net/']
+CSRF_TRUSTED_ORIGINS = ['https://app.opnup.net']
