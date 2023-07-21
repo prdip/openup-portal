@@ -396,6 +396,7 @@ def paypal_payment(data):
         headers = {'Content-Type': 'application/json','PayPal-Request-Id': paypal_req_id, 'Authorization': 'Bearer ' +access_token}
         response = requests.post(url, headers=headers, json=payload)
         response_data = json.loads(response.text)
+
         try:
             error = response_data["name"]
         except:
@@ -406,6 +407,17 @@ def paypal_payment(data):
             )
             paypal_data.save()
 
+        try:
+            status = response_data["status"]
+        
+        except:
+            status = False
+        
+        if status:
+            paypal_data = PaymentFailedInfo(
+                user_id=user.user_id, job_id=job_id, payment_fail_response=response_data, created_at=timezone.now()
+            )
+            paypal_data.save()
               
         # paypal_data.save()
         
@@ -430,7 +442,8 @@ def paypal_payment(data):
         
         update_payment_status = {
                 "job_payment_id"    :      data['job_id'],
-                "job_pay_status"    :      1 
+                "job_pay_status"    :      1,
+                 
                 } 
         
         job_ser  = JobsSerializer(instance=job_record,data=update_payment_status,partial=True)
