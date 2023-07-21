@@ -1,10 +1,10 @@
-import stripe
+import stripe,json
  
 # import Json Response
 from django.http.response import JsonResponse
 
 # Import Models here
-from openup_app.models import  Jobs,VehicleDetails
+from openup_app.models import  Jobs,SuccessPayments
 
 # Import Serializer
 from openup_app.serializers import JobsSerializer
@@ -14,6 +14,8 @@ import datetime
 
 # import serializer
 from openup_app.serializers import PaymentFailedInfoSerializer
+
+from django.utils import timezone
 
 '''background payment 
 required data ==> amount, currency, customer_id, payment_method_id 
@@ -100,5 +102,14 @@ class Payments:
         job_ser  = JobsSerializer(instance=job_record,data=update_payment_status,partial=True)
         if job_ser.is_valid():
             job_ser.save()
+            # Save the success response in database
+            pay_info = SuccessPayments(
+            pay_user = data['user_id'],
+            pay_job =  data['job_id'],
+            pay_response = payment_data,
+            create_at = timezone.now()
+            )
+            
+            pay_info.save()
             return True
 
