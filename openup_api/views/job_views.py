@@ -27,7 +27,7 @@ from django.http.response import JsonResponse
 from openup_api.views.auth_views import token_verification
 
 # Import Models here
-from openup_app.models import Registration,JobsType,Jobs,Alerts,VehicleDetails,Payment,PaypalInfo,PaymentFailedInfo
+from openup_app.models import Registration,JobsType,Jobs,Alerts,VehicleDetails,Payment,PaypalInfo,PaymentFailedInfo,SuccessPayments
 
 # Import Serializer
 from openup_app.serializers import JobsSerializer
@@ -401,11 +401,13 @@ def paypal_payment(data):
             error = response_data["name"]
         except:
             error = False
-        if error:
+
+        if error == "UNPROCESSABLE_ENTITY":
             paypal_data = PaymentFailedInfo(
                 user_id=user.user_id, job_id=job_id, payment_fail_response=response_data, created_at=timezone.now()
             )
             paypal_data.save()
+            return True
 
         try:
             status = response_data["status"]
@@ -413,12 +415,14 @@ def paypal_payment(data):
         except:
             status = False
         
-        if status:
+        if status == "PAYER_ACTION_REQUIRED":
             paypal_data = PaymentFailedInfo(
                 user_id=user.user_id, job_id=job_id, payment_fail_response=response_data, created_at=timezone.now()
             )
             paypal_data.save()
-              
+            return True
+
+     
         # paypal_data.save()
         
         # payload_data = {
@@ -449,6 +453,14 @@ def paypal_payment(data):
         job_ser  = JobsSerializer(instance=job_record,data=update_payment_status,partial=True)
         if job_ser.is_valid():
             job_ser.save()
+
+        pay_info = SuccessPayments(
+            pay_user = login_user,
+            pay_job = job_id,
+            pay_response = response_data,
+            create_at = timezone.now()
+        )
+        pay_info.save()
         return True
 
 

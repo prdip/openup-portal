@@ -470,3 +470,16 @@ class WebhookData(models.Model):
 
     class Meta:
         db_table = 'webhook_data'
+
+
+
+class SuccessPayments(models.Model):
+
+    pay_id  = models.AutoField(primary_key=True)
+    pay_user= models.CharField(max_length=100)
+    pay_job = models.CharField(max_length=1000)
+    pay_response = models.TextField()
+    create_at    = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'sucess_payments'
