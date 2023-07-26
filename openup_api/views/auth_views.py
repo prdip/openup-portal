@@ -7,7 +7,7 @@ from openup_app.serializers import RegisterSerializer,SessionSerializer,ForgotPa
 
 
 # Import Models here
-from openup_app.models import Registration,Session,UserEmailSettings,ForgotPassword,UserRole,Settings,Payment,VehicleDetails,Jobs,AccountVerification,SweetWord
+from openup_app.models import Registration,Session,UserEmailSettings,ForgotPassword,UserRole,Settings,Payment,VehicleDetails,Jobs,AccountVerification,SweetWord, PaypalInfo
 
 # Create your views here.
 from rest_framework.decorators import api_view
@@ -1253,6 +1253,8 @@ def get_user_details(request):
             get_user_details["payment_method_id"]   = 1
         else:
             get_user_details["payment_method_id"]   = 0
+
+        
             
         # Add data to the dictionary
         get_user_details["setting_id"]      =    setting_id
@@ -1310,6 +1312,34 @@ def get_user_details(request):
  
             if job_posted is None:
                 get_user_details['posted_job'] = 0
+
+
+            
+            try:
+                paypal = PaypalInfo.objects.filter(paypal_user = user_record.user_id).exists()
+            except:
+                paypal = False
+        
+            try:
+                stripe = user_record.user_stripe_id
+            
+            except:
+                stripe = None
+            
+            try:
+                payment_id = user_record.user_payment_id
+            except:
+                payment_id = None
+                
+        
+            if paypal == False and (stripe == None or payment_id == None):
+                
+                get_user_details["payment_status"] = 0
+            
+            else:
+                get_user_details["payment_status"] = 1
+        
+
 
         data={
             "user_details"  :   get_user_details,

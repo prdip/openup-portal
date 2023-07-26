@@ -70,6 +70,7 @@ def add_vehicle(request):
         colour                  =   request.data.get('colour')
         any_mod                 =   request.data.get('any_mod')    # 1 === > Mod    0==> No mod
         window_tint             =   request.data.get('window_tint')
+        make                    =   request.data.get('make')
 
 
         if vehicle_id == None:
@@ -119,6 +120,7 @@ def add_vehicle(request):
                 "colour"                :   colour,
                 "any_mod"               :   any_mod,
                 "window_tint"           :   window_tint,
+                "make"                  :   make,
                 "created_at"            :   created_at
                 }
             
@@ -164,12 +166,13 @@ def add_vehicle(request):
                 }
 
          
-            year                    =       request.data.get('year',None)
-            model                   =       request.data.get('model',None)
-            colour                  =       request.data.get('colour',None)
-            any_mod                 =       request.data.get('any_mod',None)    # 1 === > Mod    0==> No mod
-            window_tint             =       request.data.get('window_tint',None)
-            
+            year           =    request.data.get('year',None)
+            model          =    request.data.get('model',None)
+            colour         =    request.data.get('colour',None)
+            any_mod        =    request.data.get('any_mod',None)    # 1 === > Mod    0==> No mod
+            window_tint    =    request.data.get('window_tint',None)
+            make           =    request.data.get('make',None)
+
        
             if year != None:
                 update_data["year"] = year
@@ -187,7 +190,10 @@ def add_vehicle(request):
             
             if window_tint != None:
                 update_data["window_tint"] = window_tint
+            
+            if make != None:
 
+                update_data["make"] = make
                  
             vehicle_rec     =   VehicleDetails.objects.get(vehicle_id=vehicle_id)
             vehicle_ser     =   VehicleSerializer(instance=vehicle_rec,data=update_data,partial=True)

@@ -158,7 +158,7 @@ class VehicleDetails(models.Model):
     colour                   =      models.CharField(max_length=10,null=True)
     any_mod                  =      models.BooleanField(default=0)
     window_tint              =      models.BooleanField(default=0)
-
+    make                     =      models.CharField(max_length=100,null=True)
 
     created_at              =       models.DateTimeField()
     update_at               =       models.DateTimeField(null=True)
@@ -259,7 +259,8 @@ class Jobs(models.Model):
     colour                   =   models.CharField(max_length=10,null=True)
     any_mod                  =   models.BooleanField(default=0)
     window_tint              =   models.BooleanField(default=0)
-    
+    make                     =   models.CharField(max_length=100,null=True)
+
     created_at               =   models.DateTimeField()
     update_at                =   models.DateTimeField(null=True)
     is_delete                =   models.BooleanField(default=0)

@@ -101,6 +101,7 @@ def add_job(request):
         any_mod     =   request.data.get('any_mod')    # 1 === > Mod    0==> No mod
         window_tint =   request.data.get('window_tint') # 1 === > Yes    0==> No
         paypal_req_id = request.data.get('paypal_req_id')
+        make         = request.data.get('make')   
 
         if year == None or (year == ''):
             return JsonResponse({
@@ -210,7 +211,7 @@ def add_job(request):
         
         # get instance of login user
         user_rec    =       Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
-       
+
         try:
             paypal = PaypalInfo.objects.filter(paypal_user = user_rec.user_id).exists()
         except:
@@ -258,7 +259,8 @@ def add_job(request):
                 "model"                 :   model,
                 "colour"                :   colour,
                 "any_mod"               :   any_mod,
-                "window_tint"           :   window_tint         
+                "window_tint"           :   window_tint,      
+                "make"                  :   make   
         }
         job_ser     =   JobsSerializer(data=job_details)
 

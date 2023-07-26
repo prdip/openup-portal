@@ -117,6 +117,7 @@ class VehicleSerializer(serializers.ModelSerializer):
     colour                  =       serializers.CharField(allow_null=True)
     any_mod                 =       serializers.BooleanField(default=0)
     window_tint             =       serializers.BooleanField(default=0)
+    make                     =      serializers.CharField(allow_null=True)
 
     created_at              =       serializers.DateTimeField()
     
@@ -125,7 +126,7 @@ class VehicleSerializer(serializers.ModelSerializer):
         model = VehicleDetails
 
         fields = ('user','year','model','colour','any_mod','window_tint',
-                    'vehicle_license',
+                    'vehicle_license','make',
                    
                    'created_at'
                     )
@@ -188,6 +189,7 @@ class JobsSerializer(serializers.Serializer):
     colour                   =   serializers.CharField(allow_null=True)
     any_mod                  =   serializers.BooleanField(default=0)
     window_tint              =   serializers.BooleanField(default=0)
+    make                     =   serializers.CharField(allow_null=True)
 
 
 
@@ -216,7 +218,7 @@ class JobsSerializer(serializers.Serializer):
     class Meta:
         model = Jobs
         fields = ('job_id','job_type','user','location_latitude',
-                  'location_longitude','vehicle_details','year','model','colour','any_mod','window_tint',
+                  'location_longitude','vehicle_details','year','model','colour','any_mod','window_tint','make',
                   'vehicle_modification','vehicle_license',
                   'created_at','is_delete','job_status','job_accepted_by','job_distance','job_payment_id','job_time','job_pay_status')
 
