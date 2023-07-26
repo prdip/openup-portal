@@ -210,7 +210,32 @@ def add_job(request):
         
         # get instance of login user
         user_rec    =       Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
+       
+        try:
+            paypal = PaypalInfo.objects.filter(paypal_user = user_rec.user_id).exists()
+        except:
+            paypal = False
+    
+        try:
+            stripe = user_rec.user_stripe_id
         
+        except:
+            stripe = None
+        
+        try:
+            payment_id = user_rec.user_payment_id
+        except:
+            payment_id = None
+            
+       
+        if paypal == False and (stripe == None or payment_id == None):
+            return JsonResponse({
+                    "success"     :   0,
+                    "message"     :   "You are not allow to add job",
+                    
+                })
+
+
         if user_rec.user_is_verified == 0:
              return JsonResponse({   
                 "success"    :   0,
@@ -249,24 +274,26 @@ def add_job(request):
 
             payment_type = user_rec.user_payment_type
             if payment_type == "stripe":
+                 
                 # '''Payment code '''
                 background_payment.delay(user_id,id)
 
             if payment_type=="paypal":
-                # try: 
-                #     check_job = Jobs.objects.exclude(is_delete=1).filter(user=user_rec.user_id).exists()
-                # except:
-                #     check_job = False
-                # # if no job found means user is new
-                # if check_job == False:
 
-                data = {
-                    "user"          :   user_id,
-                    "job_id"        :   id,
-                    "paypal_req_id" :   paypal_req_id,
-                    
-                }
-                paypal_payment(data)
+                try: 
+                    check_job = Jobs.objects.exclude(is_delete=1).filter(user=user_rec.user_id).exists()
+                except:
+                    check_job = False
+                # # if no job found means user is new
+                if check_job == False:
+
+                    data = {
+                        "user"          :   user_id,
+                        "job_id"        :   id,
+                        "paypal_req_id" :   paypal_req_id,
+                        
+                    }
+                    paypal_payment(data)
             data = {
                 "job_id" : id,
             }

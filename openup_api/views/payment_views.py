@@ -40,6 +40,9 @@ environ.Env.read_env()
 
 # Api for add and edit card data
 
+
+# tehatol844@iturchia.com
+
 @api_view(['POST'])
 def add_card(request):
      #  Token Verification

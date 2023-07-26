@@ -198,8 +198,8 @@ def service_available(request):
     else:
         # required data
 
-        latitude     =       float(request.data.get('latitude',None))
-        longitude    =       float(request.data.get('longitude',None))
+        latitude     =       request.data.get('latitude',None)
+        longitude    =       request.data.get('longitude',None)
 
 
         if latitude is None or longitude is None:
