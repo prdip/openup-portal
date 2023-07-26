@@ -36,6 +36,8 @@ urlpatterns = [
   path('cms_details', cms_views.cms_details,name='cms_details'),
 
 #  CMS PAGES
+  path('privacy-policy', cms_views.privacy_policy,name='privacy_policy'),
+
   path('copyright_page', cms_views.copyright_page,name='copyright_page'),
   path('terms_and_condition', cms_views.terms_and_condition,name='terms_and_condition'),  
   path('software_license', cms_views.software_license,name='software_license'),

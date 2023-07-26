@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+    {% load static %}
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -9,11 +10,54 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
 		
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.3/jquery.min.js"></script>
-
+    <style>
+        canvas{
+          width: 100%;
+          object-fit: contain;
+          overflow: hidden;
+          height: auto;
+        }
+        
+      </style>
 </head>
 <body>
-    
-<h1> Copyright Page</h1>
+    <div id="pdfContainer" class=""  ></div>
 
+
+    <script>
+       pdfjsLib.getDocument('{% static "pdf/copyright_notice.pdf" %}').promise.then(function(pdf) {
+  // PDF loaded successfully
+  // Get the total number of pages
+  var numPages = pdf.numPages;
+
+  // Loop through all pages and render them
+  for (var pageNum = 1; pageNum <= numPages; pageNum++) {
+    pdf.getPage(pageNum).then(function(page) {
+      // Create a canvas element to render the page
+
+  
+      var canvas = document.createElement('canvas');
+      var context = canvas.getContext('2d');
+      var viewport = page.getViewport({ scale: 1});
+    
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+
+      // Append the canvas element to the container
+      document.getElementById('pdfContainer').appendChild(canvas);
+
+      // Render the page on the canvas
+      page.render({
+        canvasContext: context,
+        viewport: viewport
+      });
+    });
+  }
+}, function(error) {
+  // PDF loading error
+  console.error(error);
+});
+
+    </script>
 </body>
 </html>

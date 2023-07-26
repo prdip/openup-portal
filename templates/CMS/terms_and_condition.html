@@ -12,8 +12,44 @@
 
 </head>
 <body>
+    <div id="pdfContainer" class=""  ></div>
+
+
+    <script>
+       pdfjsLib.getDocument('{% static "pdf/application_terms_and_conditions.pdf" %}').promise.then(function(pdf) {
+  // PDF loaded successfully
+  // Get the total number of pages
+  var numPages = pdf.numPages;
+
+  // Loop through all pages and render them
+  for (var pageNum = 1; pageNum <= numPages; pageNum++) {
+    pdf.getPage(pageNum).then(function(page) {
+      // Create a canvas element to render the page
+
+  
+      var canvas = document.createElement('canvas');
+      var context = canvas.getContext('2d');
+      var viewport = page.getViewport({ scale: 1});
     
-<h1>Terms and Conditions</h1>
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+
+      // Append the canvas element to the container
+      document.getElementById('pdfContainer').appendChild(canvas);
+
+      // Render the page on the canvas
+      page.render({
+        canvasContext: context,
+        viewport: viewport
+      });
+    });
+  }
+}, function(error) {
+  // PDF loading error
+  console.error(error);
+});
+
+    </script>
 
   
 </body>
