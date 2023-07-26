@@ -92,6 +92,12 @@ def add_vehicle(request):
             #         "message"     :   "please provide vehicle mod",
             #     })
             # Check file upload is image or not
+            
+            if make == '' or make == None:
+                return JsonResponse({
+                        "success"    :   0,
+                        "message"   :   "please provide string in make"
+                        })
             if vehicle_license_img != None:
                 try:
                     im = Image.open(vehicle_license_img)
@@ -172,6 +178,7 @@ def add_vehicle(request):
             any_mod        =    request.data.get('any_mod',None)    # 1 === > Mod    0==> No mod
             window_tint    =    request.data.get('window_tint',None)
             make           =    request.data.get('make',None)
+
 
        
             if year != None:

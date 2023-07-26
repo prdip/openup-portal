@@ -103,6 +103,12 @@ def add_job(request):
         paypal_req_id = request.data.get('paypal_req_id')
         make         = request.data.get('make')   
 
+        if make == '' or make == None:
+            return JsonResponse({
+                    "success"    :   0,
+                    "message"   :   "please provide string in make"
+                    })
+
         if year == None or (year == ''):
             return JsonResponse({
                     "success"    :   0,
