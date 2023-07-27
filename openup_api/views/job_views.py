@@ -103,7 +103,7 @@ def add_job(request):
         paypal_req_id = request.data.get('paypal_req_id')
         make         = request.data.get('make')   
         payment_type = request.data.get('payment_type')
-        
+
         if make == '' or make == None:
             return JsonResponse({
                     "success"    :   0,
@@ -290,12 +290,12 @@ def add_job(request):
 
             if payment_type=="paypal":
 
-                try: 
-                    check_job = Jobs.objects.exclude(is_delete=1).filter(user=user_rec.user_id).exists()
-                except:
-                    check_job = False
-                # # if no job found means user is new
-                if check_job == False:
+                # try: 
+                #     check_job = Jobs.objects.exclude(is_delete=1).filter(user=user_rec.user_id).exists()
+                # except:
+                #     check_job = False
+                # # # if no job found means user is new
+                # if check_job == False:
 
                     data = {
                         "user"          :   user_id,
