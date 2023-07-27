@@ -590,7 +590,6 @@ def add_payment_type(request):
             # CREATE STRIPE CUSTOMER IN BACKGROUND  
             # create_customer.delay(user.user_id)
 
-
             response_data   =  stripe.Customer.create(description="client added to stripe",
                                        email = user.user_email,
                                        name  = user.user_first_name+' '+user.user_last_name)
@@ -719,9 +718,9 @@ def add_payment_type(request):
 
 # '''create stripe customer in background'''
 
-# # @shared_task()
+# @shared_task()
 # def create_customer(user_id):
-        # stripeCustomer.create_stripe_customer(user_id)
+#         stripeCustomer.create_stripe_customer(user_id)
 
 
  

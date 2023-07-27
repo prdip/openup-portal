@@ -1319,7 +1319,13 @@ def get_user_details(request):
                 paypal = PaypalInfo.objects.filter(paypal_user = user_record.user_id).exists()
             except:
                 paypal = False
-        
+
+            if paypal:
+                 paypal = PaypalInfo.objects.filter(paypal_user=user_record.user_id).values('paypal_cust_id').first()['paypal_cust_id']
+                 get_user_details["user_paypal_id"] = paypal
+            else:
+                get_user_details["user_paypal_id"] = None
+
             try:
                 stripe = user_record.user_stripe_id
             
@@ -1344,7 +1350,7 @@ def get_user_details(request):
         data={
             "user_details"  :   get_user_details,
             }
-            
+        
         return JsonResponse({
                             "success"        :       1,
                             "message"        :      "user details fetched",
