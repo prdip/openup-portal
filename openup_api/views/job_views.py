@@ -287,7 +287,7 @@ def add_job(request):
                  
                 # '''Payment code '''
                 background_payment.delay(user_id,id)
-
+    
             if payment_type=="paypal":
 
                 # try: 
@@ -303,6 +303,7 @@ def add_job(request):
                         "paypal_req_id" :   paypal_req_id,
                         
                     }
+                    print(data)
                     paypal_payment(data)
 
             if job_type == "emergency":
@@ -441,12 +442,20 @@ def paypal_payment(data):
 
         payload={
             "intent": "CAPTURE",
+            "payer": {
+                "payment_method": "paypal",
+                "payer_info": {
+                    "customer_id": paypal_data['paypal_cust_id']
+                }
+            },
             "purchase_units": [
                 {
+                     "reference_id": "112",
                     "amount": {
                         "currency_code": "USD",
                         "value": "100.00"
-                    }
+                    },
+           
                 }
             ],
             "payment_source": {
@@ -461,7 +470,7 @@ def paypal_payment(data):
         headers = {'Content-Type': 'application/json','PayPal-Request-Id': paypal_req_id, 'Authorization': 'Bearer ' +access_token}
         response = requests.post(url, headers=headers, json=payload)
         response_data = json.loads(response.text)
-
+        print(response_data)
         try:
             error = response_data["name"]
         except:
