@@ -106,6 +106,7 @@ class Payments:
             pay_info = SuccessPayments(
             pay_user = data['user_id'],
             pay_job =  data['job_id'],
+            pay_type= "stripe",
             pay_response = payment_data,
             create_at = timezone.now()
             )

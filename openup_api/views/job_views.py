@@ -102,7 +102,8 @@ def add_job(request):
         window_tint =   request.data.get('window_tint') # 1 === > Yes    0==> No
         paypal_req_id = request.data.get('paypal_req_id')
         make         = request.data.get('make')   
-
+        payment_type = request.data.get('payment_type')
+        
         if make == '' or make == None:
             return JsonResponse({
                     "success"    :   0,
@@ -280,7 +281,8 @@ def add_job(request):
             jobAlert.delay(id,current_location_lat,current_location_long)
 
 
-            payment_type = user_rec.user_payment_type
+            # payment_type = user_rec.user_payment_type
+
             if payment_type == "stripe":
                  
                 # '''Payment code '''
@@ -302,6 +304,34 @@ def add_job(request):
                         
                     }
                     paypal_payment(data)
+
+            if job_type == "emergency":
+                
+                pay_type     = SuccessPayments.objects.filter(pay_user = user_id).order_by('pay_id').reverse()[:1] 
+                payment_type = pay_type.values('pay_type').first()['pay_type']
+                
+                if payment_type == "stripe":
+                    
+                    # '''Payment code '''
+                    background_payment.delay(user_id,id)
+
+                if payment_type=="paypal":
+
+                    try: 
+                        check_job = Jobs.objects.exclude(is_delete=1).filter(user=user_rec.user_id).exists()
+                    except:
+                        check_job = False
+                    # if no job found means user is new
+                    if check_job == False:
+
+                        data = {
+                            "user"          :   user_id,
+                            "job_id"        :   id,
+                            "paypal_req_id" :   paypal_req_id,
+                            
+                        }
+                        paypal_payment(data)
+
             data = {
                 "job_id" : id,
             }
@@ -491,6 +521,7 @@ def paypal_payment(data):
         pay_info = SuccessPayments(
             pay_user = login_user,
             pay_job = job_id,
+            pay_type = "paypal",
             pay_response = response_data,
             create_at = timezone.now()
         )
