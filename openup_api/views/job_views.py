@@ -398,7 +398,7 @@ def background_payment(user_id,job_id):
 
 # RECURRING PAYPAL PAYMENT
 
-# @shared_task()
+@shared_task()
 def paypal_payment(data):
         
 
@@ -442,15 +442,10 @@ def paypal_payment(data):
 
         payload={
             "intent": "CAPTURE",
-            # "payer": {
-            #     "payment_method": "paypal",
-            #     "payer_info": {
-            #         "customer_id": paypal_data['paypal_cust_id']
-            #     }
-            # },
+          
             "purchase_units": [
                 {
-                    #  "reference_id": "112",
+                     "reference_id": "1123",
                     "amount": {
                         "currency_code": "USD",
                         "value": "100.00"
@@ -466,75 +461,78 @@ def paypal_payment(data):
                     }
 
         # # Send payment request
-        url = 'https://api-m.sandbox.paypal.com/v2/checkout/orders'
-        headers = {'Content-Type': 'application/json','PayPal-Request-Id': paypal_req_id, 'Authorization': 'Bearer ' +access_token}
-        response = requests.post(url, headers=headers, json=payload)
-        response_data = json.loads(response.text)
+        # url = 'https://api-m.sandbox.paypal.com/v2/checkout/orders'
+        # headers = {'Content-Type': 'application/json','PayPal-Request-Id': paypal_req_id, 'Authorization': 'Bearer ' +access_token}
+        # response = requests.post(url, headers=headers, json=payload)
+        # response_data = json.loads(response.text)
 
-        try:
-            error = response_data["name"]
-        except:
-            error = False
+        # try:
+        #     error = response_data["name"]
+        # except:
+        #     error = False
 
-        if error == "UNPROCESSABLE_ENTITY" or error == "INVALID_REQUEST":
-            paypal_data = PaymentFailedInfo(
-                user_id=user.user_id, job_id=job_id, payment_fail_response=response_data, created_at=timezone.now()
-            )
-            paypal_data.save()
-            return True
+        # if error == "UNPROCESSABLE_ENTITY" or error == "INVALID_REQUEST":
+        #     paypal_data = PaymentFailedInfo(
+        #         user_id=user.user_id, job_id=job_id, payment_fail_response=response_data, created_at=timezone.now()
+        #     )
+        #     paypal_data.save()
+        #     return True
 
-        try:
-            status = response_data["status"]
+        # try:
+        #     status = response_data["status"]
         
-        except:
-            status = False
+        # except:
+        #     status = False
         
-        if status == "PAYER_ACTION_REQUIRED":
-            paypal_data = PaymentFailedInfo(
-                user_id=user.user_id, job_id=job_id, payment_fail_response=response_data, created_at=timezone.now()
-            )
-            paypal_data.save()
-            return True
+        # if status == "PAYER_ACTION_REQUIRED":
+        #     paypal_data = PaymentFailedInfo(
+        #         user_id=user.user_id, job_id=job_id, payment_fail_response=response_data, created_at=timezone.now()
+        #     )
+        #     paypal_data.save()
+        #     return True
         
-        # paypal_data.save()
+
         
-        # payload_data = {
-        #     "paypal_req_id" :   paypal_req_id,
-        #     "payload"       :   payload,
-        #     "access_token"  :   access_token,
-        #     "url"           :   url,
-        #     "job_id"        :   job_id,
-        #     "paypal_valut_id":paypal_data['paypal_valut_id']
-        #     }
+        payload_data = {
+            "paypal_req_id" :   paypal_req_id,
+            "payload"       :   payload,
+            "access_token"  :   access_token,
+            "url"           :   url,
+            "job_id"        :   job_id,
+            "user_id"       :   user.user_id,
+            "paypal_valut_id":paypal_data['paypal_valut_id']
+            }
         # SEND PAYLOAD TO BACKGROUND TO INITIATE PAYMENT
 
-        # PaypalPayment.background_payments(payload_data)
+        PaypalPayment.background_payments(payload_data)
 
-        data = {
-            "job_id" : job_id,
-        }
-        # # Update job after successfull payment.
-        job_record = Jobs.objects.exclude(is_delete=1).get(job_id=int(data['job_id']))   
+
+        # Working foreground flow
+        # data = {
+        #     "job_id" : job_id,
+        # }
+        # # # Update job after successfull payment.
+        # job_record = Jobs.objects.exclude(is_delete=1).get(job_id=int(data['job_id']))   
 
         
-        update_payment_status = {
-                "job_payment_id"    :      data['job_id'],
-                "job_pay_status"    :      1,
+        # update_payment_status = {
+        #         "job_payment_id"    :      data['job_id'],
+        #         "job_pay_status"    :      1,
                  
-                } 
+        #         } 
         
-        job_ser  = JobsSerializer(instance=job_record,data=update_payment_status,partial=True)
-        if job_ser.is_valid():
-            job_ser.save()
+        # job_ser  = JobsSerializer(instance=job_record,data=update_payment_status,partial=True)
+        # if job_ser.is_valid():
+        #     job_ser.save()
 
-        pay_info = SuccessPayments(
-            pay_user = login_user,
-            pay_job = job_id,
-            pay_type = "paypal",
-            pay_response = response_data,
-            create_at = timezone.now()
-        )
-        pay_info.save()
+        # pay_info = SuccessPayments(
+        #     pay_user = login_user,
+        #     pay_job = job_id,
+        #     pay_type = "paypal",
+        #     pay_response = response_data,
+        #     create_at = timezone.now()
+        # )
+        # pay_info.save()
         return True
 
 
