@@ -588,26 +588,26 @@ def add_payment_type(request):
 
         if payment_type == "stripe":
             # CREATE STRIPE CUSTOMER IN BACKGROUND  
-            create_customer.delay(user.user_id)
+            # create_customer.delay(user.user_id)
 
             # stripe code in foreground
 
-            # response_data   =  stripe.Customer.create(description="client added to stripe",
-            #                            email = user.user_email,
-            #                            name  = user.user_first_name+' '+user.user_last_name)
-            # cust_id         = response_data['id']
-            # # code to create ephemeral key to stripe
-            # update_data = {
-            #             "user_stripe_id" : cust_id, 
-            #            }    
-            # user_serializer = RegisterSerializer(instance=user,data=update_data,partial=True)
-            # if user_serializer.is_valid():
-            #     user_serializer.save()
-            #     return JsonResponse({
-            #         "success"      :   1,
-            #         "message"      :   "Payment method added successfully",
-            #         "data"         :    payment_type
-            #     }) 
+            response_data   =  stripe.Customer.create(description="client added to stripe",
+                                       email = user.user_email,
+                                       name  = user.user_first_name+' '+user.user_last_name)
+            cust_id         = response_data['id']
+            # code to create ephemeral key to stripe
+            update_data = {
+                        "user_stripe_id" : cust_id, 
+                       }    
+            user_serializer = RegisterSerializer(instance=user,data=update_data,partial=True)
+            if user_serializer.is_valid():
+                user_serializer.save()
+                return JsonResponse({
+                    "success"      :   1,
+                    "message"      :   "Payment method added successfully",
+                    "data"         :    payment_type
+                }) 
 
         if payment_type == "paypal":
             paypal_req_id   =    request.data.get('paypal_req_id')

@@ -287,6 +287,7 @@ def add_job(request):
                  
                 # '''Payment code '''
                 background_payment.delay(user_id,id)
+
     
             if payment_type=="paypal":
 
