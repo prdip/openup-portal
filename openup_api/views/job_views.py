@@ -442,15 +442,15 @@ def paypal_payment(data):
 
         payload={
             "intent": "CAPTURE",
-            "payer": {
-                "payment_method": "paypal",
-                "payer_info": {
-                    "customer_id": paypal_data['paypal_cust_id']
-                }
-            },
+            # "payer": {
+            #     "payment_method": "paypal",
+            #     "payer_info": {
+            #         "customer_id": paypal_data['paypal_cust_id']
+            #     }
+            # },
             "purchase_units": [
                 {
-                     "reference_id": "112",
+                    #  "reference_id": "112",
                     "amount": {
                         "currency_code": "USD",
                         "value": "100.00"

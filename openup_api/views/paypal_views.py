@@ -15,7 +15,7 @@ import json
 from django.http import HttpRequest
 #  Import Serializer
 from openup_app.serializers import PaymentFailedInfoSerializer,RegisterSerializer
-from openup_app.models import Registration, PaypalInfo, WebhookData,Jobs, Payment
+from openup_app.models import Registration, PaypalInfo, WebhookData,Jobs, Payment,PaymentFailedInfo
 from django.views.decorators.csrf import csrf_exempt
 
 # import Payments class 
@@ -665,6 +665,30 @@ def add_payment_type(request):
 
             resp_data = json.loads(response.text)
 
+            try:
+                error = response_data["name"]
+            except:
+                error = False
+            if error == "UNPROCESSABLE_ENTITY" or error == "INVALID_REQUEST":
+                paypal_data = PaymentFailedInfo(
+                    user_id=user.user_id,job_id="", payment_fail_response=response_data, created_at=timezone.now()
+            )
+                paypal_data.save()
+                return True
+
+            try:
+                status = response_data["status"]
+            
+            except:
+                status = False
+            
+            if status == "PAYER_ACTION_REQUIRED":
+                paypal_data = PaymentFailedInfo(
+                    user_id=user.user_id,job_id="", payment_fail_response=response_data, created_at=timezone.now()
+                )
+                paypal_data.save()
+                return True
+
 
             payment_method_id = resp_data["id"]
 
@@ -680,6 +704,41 @@ def add_payment_type(request):
 
             response = requests.post('https://api-m.sandbox.paypal.com/v3/vault/payment-tokens', headers=headers, json=payment_method_payload)
             resp_data = json.loads(response.text)
+
+            try:
+                error = resp_data["name"]
+            except:
+                error = False
+           
+            # 
+            if error == "UNPROCESSABLE_ENTITY" or error == "INVALID_REQUEST":
+                paypal_data = PaymentFailedInfo(
+                    user_id=user.user_id,job_id="", payment_fail_response=resp_data, created_at=timezone.now()
+                )
+                paypal_data.save()
+                return JsonResponse({
+                "success"      :   0,
+                "message"      :   "card type not supported",
+
+                }) 
+
+            try:
+                status = resp_data["status"]
+            
+            except:
+                status = False
+            
+            if status == "PAYER_ACTION_REQUIRED":
+                paypal_data = PaymentFailedInfo(
+                    user_id=user.user_id,job_id="", payment_fail_response=resp_data, created_at=timezone.now()
+                )
+                paypal_data.save()
+                return JsonResponse({
+                "success"      :   0,
+                "message"      :   "card type not supported",
+
+            }) 
+
 
 
             valut_id =  resp_data["id"]
