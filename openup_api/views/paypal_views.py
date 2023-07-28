@@ -541,7 +541,7 @@ def background_payment(login_user,data):
 
 # API WILL GET TYPE OF PAYMENT AND THEN SAVE IT TO THE USER TABLE IF IT IS STRIPE
 
-
+# WORKING CODE OF LIVE
 
 
 @api_view(['POST'])

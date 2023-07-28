@@ -61,6 +61,8 @@ urlpatterns = [
   path('create-customer', payment_views.create_customer,name='create_customer'),
   path('link-payment', payment_views.link_payment_method,name='link_payment'),
   path('ask-for-payment', payment_views.ask_for_payment,name='ask_for_payment'),
+
+  # Manual payment from job list
   path('manual-payment', payment_views.manual_payment,name='manual_payment'),
   path('manual-payment-success', payment_views.manual_payment_success,name='manual_payment_success'),
 

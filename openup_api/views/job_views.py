@@ -304,34 +304,29 @@ def add_job(request):
                         
                     }
                      
-                    paypal_payment(data)
+                    paypal_payment.delay(data)
 
             if job_type == "emergency":
                 
                 pay_type     = SuccessPayments.objects.filter(pay_user = user_id).order_by('pay_id').reverse()[:1] 
-                payment_type = pay_type.values('pay_type').first()['pay_type']
-                
-                if payment_type == "stripe":
+
+                payment = pay_type.values('pay_type').first()['pay_type']
+
+                if payment == "stripe":
                     
                     # '''Payment code '''
                     background_payment.delay(user_id,id)
 
-                if payment_type=="paypal":
+                if payment=="paypal":
 
-                    try: 
-                        check_job = Jobs.objects.exclude(is_delete=1).filter(user=user_rec.user_id).exists()
-                    except:
-                        check_job = False
-                    # if no job found means user is new
-                    if check_job == False:
-
+                    
                         data = {
                             "user"          :   user_id,
                             "job_id"        :   id,
                             "paypal_req_id" :   paypal_req_id,
                             
                         }
-                        paypal_payment(data)
+                        paypal_payment.delay(data)
 
             data = {
                 "job_id" : id,
@@ -349,7 +344,7 @@ def add_job(request):
                 })
               
        
-
+# WORKING CODE OF LIVE
 '''
 code for background process
 if its first payment then payment will not occured STRIPE PAYMENT
@@ -395,7 +390,7 @@ def background_payment(user_id,job_id):
 
 
 
-
+# WORKING CODE OF LIVE
 # RECURRING PAYPAL PAYMENT
 
 @shared_task()
@@ -460,7 +455,7 @@ def paypal_payment(data):
                         }
                     }
 
-        # # Send payment request
+        # # Send payment request WORKING CODE OF LIVE
         # url = 'https://api-m.sandbox.paypal.com/v2/checkout/orders'
         # headers = {'Content-Type': 'application/json','PayPal-Request-Id': paypal_req_id, 'Authorization': 'Bearer ' +access_token}
         # response = requests.post(url, headers=headers, json=payload)

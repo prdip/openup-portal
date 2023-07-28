@@ -11,7 +11,7 @@ from openup_api.views.auth_views import token_verification
 from datetime import datetime
 
 # Import Models here
-from openup_app.models import Payment,Registration,Jobs
+from openup_app.models import Payment,Registration,Jobs,PaypalInfo
 
 # Import Serializer
 from openup_app.serializers import PaymentSerializer,RegisterSerializer,JobsSerializer
@@ -22,6 +22,11 @@ from .validation import check_text,verify_card
 # import stripe
 import stripe
 from openup.create_cust import stripeCustomer
+
+# import Payments class 
+from openup.payment import Payments
+
+from openup.background_paypal import PaypalPayment
 
 
 from openup.fcm import FCM
@@ -39,6 +44,15 @@ env = environ.Env()
 environ.Env.read_env()
 
 # Api for add and edit card data
+import requests
+
+
+
+
+# SET CLIENT ID AND SECRET IN .ENV FILE
+
+client_id=env("CLIENT_ID")
+client_secret=env("CLIENT_SECRET")
 
 
 # tehatol844@iturchia.com
@@ -579,11 +593,19 @@ def manual_payment(request,*args,**kwargs):
 
 
  
+
+
+
+
+# WOKING CODE OF LIVE
+#  This API will Call for manual payments through job list
+
+
 @api_view(['POST'])
 def manual_payment_success(request):
 
-    token = request.headers['Authorization']
-    user_token = token.replace("Bearer",'')
+    token           =       request.headers['Authorization']
+    user_token      =       token.replace("Bearer",'')
     check_user      =       token_verification(user_token)
     job_id          =       request.data.get('job_id')
     payment_id      =       request.data.get('payment_id')
@@ -595,47 +617,252 @@ def manual_payment_success(request):
                 "message"     :   "Unauthorized User",
             })
     else:
-        user_id         =       check_user['session_user']
- 
-        job_record = Jobs.objects.get(job_id=int(job_id))
+        user_id         =   check_user['session_user']
+        payment_type    =   request.data.get('payment_type')
+        job_id          =   request.data.get('job_id')
+        paypal_req_id   =   request.data.get("paypal_req_id")
 
-
+        job_record =  Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
         user_record = Registration.objects.exclude(user_is_delete=1).get(user_id=job_record.user.user_id)
-       
-        if user_id != job_record.user.user_id:
-            return JsonResponse({
-            "success"    :   0,
-            "message"   :   "something went wrong",
+        
+
+        if payment_type == "stripe":
+                 
+                # '''Payment code '''
+                background_payment.delay(user_id,job_id)
+    
+        if payment_type=="paypal":
+
+            # try: 
+            #     check_job = Jobs.objects.exclude(is_delete=1).filter(user=user_rec.user_id).exists()
+            # except:
+            #     check_job = False
+            # # # if no job found means user is new
+            # if check_job == False:
+
+                data = {
+                    "user"          :   user_id,
+                    "job_id"        :   job_id,
+                    "paypal_req_id" :   paypal_req_id,
+                    
+                }
+                    
+                paypal_payment.delay(data)
+
+
+
+        # update_date = {
+        #     "job_pay_status"     :      1,
+        #     "job_payment_id"     :      payment_id
+        # }  
+
+        # response_data = stripe.PaymentMethod.list(
+        #     customer=user_record.user_stripe_id,
+        #     type="card",
+        # ) 
+        # data = {
+        #         "user_payment_id" : response_data["data"][0]['id'], 
+        # }
+
+        # '''code for payment intent'''
+        # job_serializer  =   JobsSerializer(instance=job_record,data=update_date,partial=True)
+        # user_ser        =   RegisterSerializer(instance=user_record,data=data,partial=True)
+        # if job_serializer.is_valid():
+        #     job_serializer.save()
+
+        # if user_ser.is_valid():
+        #     user_ser.save()  
+        return JsonResponse({
+            "success"    :   1,
+            "message"   :   "payment added successfully",
         })
-             
-        update_date = {
-            "job_pay_status"     :      1,
-            "job_payment_id"     :      payment_id
-        }  
+    
 
-        response_data = stripe.PaymentMethod.list(
-            customer=user_record.user_stripe_id,
-            type="card",
-        ) 
-        data = {
-                "user_payment_id" : response_data["data"][0]['id'], 
+
+
+
+
+'''
+code for background process
+if its first payment then payment will not occured STRIPE PAYMENT
+'''
+@shared_task()
+def background_payment(user_id,job_id):
+    
+    try:
+        payment_id  =   Payment.objects.filter(user=int(user_id)).values("payment_id").first()["payment_id"]  
+    except:
+        pass
+
+    try:
+        payment     =   Payment.objects.get(payment_id=payment_id)
+    
+    except:
+        pass
+   
+    try:
+        user = Registration.objects.exclude(user_is_delete=1).get(user_id=int(user_id))
+
+    except:
+        pass
+    
+    data = {
+        "amount"            :     500*100,
+        "currency"          :    "inr",
+        "customer"          :     user.user_stripe_id,
+        "payment_method_id" :     user.user_payment_id,
+        "job_id"            :     job_id,
+        "user_id"           :     user_id,
+         "metadata"         :      {   
+        "name"              :   user.user_first_name+' '+user.user_last_name
+          }
         }
+   
+    '''background payment method in payment.py'''
+ 
+    Payments.background_payments(data)
+    return True
 
-        '''code for payment intent'''
-        job_serializer  =   JobsSerializer(instance=job_record,data=update_date,partial=True)
-        user_ser        =   RegisterSerializer(instance=user_record,data=data,partial=True)
-        if job_serializer.is_valid():
-            job_serializer.save()
 
-        if user_ser.is_valid():
-            user_ser.save()  
-            return JsonResponse({
-                "success"    :   1,
-                "message"   :   "payment added successfully",
-            })
-        else:
-             return JsonResponse({
-                "success"    :   0,
-                "message"   :   "something went wrong",
 
-            })
+
+
+
+# RECURRING PAYPAL PAYMENT
+
+@shared_task()
+def paypal_payment(data):
+        
+
+        job_id           =   data['job_id']
+        paypal_req_id   =   data['paypal_req_id']  # random text 
+        login_user      =   data['user']
+        paypal_data     =   PaypalInfo.objects.filter(paypal_user=login_user).values().first()
+        user            =   Registration.objects.get(user_id=login_user)
+        # get access token
+        url             =   'https://api-m.sandbox.paypal.com/v1/oauth2/token'
+        headers         =   {'Accept': 'application/json', 'Accept-Language': 'en_US', 'PayPal-Request-Id': paypal_req_id,}
+        data            =   {'grant_type': 'client_credentials'}
+        auth            =   (client_id, client_secret)
+        response        =   requests.post(url, headers=headers, data=data, auth=auth)
+        access_token    =   response.json()['access_token']
+ 
+        # # Create payment payload
+        # payload = {
+        #     "intent": "CAPTURE",
+        #     "payer": {
+        #         "payment_method": "paypal",
+        #         "payer_info": {
+        #             "customer_id": paypal_data['paypal_cust_id']
+        #         }
+        #     },
+        #      "purchase_units": [
+        #     {
+        #     "reference_id": "111",    #Change id on each request
+        #     "amount": {
+        #         "currency_code": "USD",
+        #         "value": "110.00"
+        #     }
+        #     }
+        # ],
+        #     "payee": {
+        #         "merchant_id": paypal_data['paypal_valut_id'] 
+        #     }
+        # }
+
+        # FUTURE PAYMENTS WILL BE CREATED BY USING VALUT ID 
+
+        payload={
+            "intent": "CAPTURE",
+          
+            "purchase_units": [
+                {
+                     "reference_id": "1123",
+                    "amount": {
+                        "currency_code": "USD",
+                        "value": "100.00"
+                    },
+           
+                }
+            ],
+            "payment_source": {
+                "card": {
+                    "vault_id":paypal_data['paypal_valut_id'] 
+                            }          
+                        }
+                    }
+
+        # # Send payment request
+        # url = 'https://api-m.sandbox.paypal.com/v2/checkout/orders'
+        # headers = {'Content-Type': 'application/json','PayPal-Request-Id': paypal_req_id, 'Authorization': 'Bearer ' +access_token}
+        # response = requests.post(url, headers=headers, json=payload)
+        # response_data = json.loads(response.text)
+
+        # try:
+        #     error = response_data["name"]
+        # except:
+        #     error = False
+
+        # if error == "UNPROCESSABLE_ENTITY" or error == "INVALID_REQUEST":
+        #     paypal_data = PaymentFailedInfo(
+        #         user_id=user.user_id, job_id=job_id, payment_fail_response=response_data, created_at=timezone.now()
+        #     )
+        #     paypal_data.save()
+        #     return True
+
+        # try:
+        #     status = response_data["status"]
+        
+        # except:
+        #     status = False
+        
+        # if status == "PAYER_ACTION_REQUIRED":
+        #     paypal_data = PaymentFailedInfo(
+        #         user_id=user.user_id, job_id=job_id, payment_fail_response=response_data, created_at=timezone.now()
+        #     )
+        #     paypal_data.save()
+        #     return True
+        
+
+        
+        payload_data = {
+            "paypal_req_id" :   paypal_req_id,
+            "payload"       :   payload,
+            "access_token"  :   access_token,
+            "url"           :   url,
+            "job_id"        :   job_id,
+            "user_id"       :   user.user_id,
+            "paypal_valut_id":paypal_data['paypal_valut_id']
+            }
+        # SEND PAYLOAD TO BACKGROUND TO INITIATE PAYMENT
+
+        PaypalPayment.background_payments(payload_data)
+
+
+        # Working foreground flow
+        # data = {
+        #     "job_id" : job_id,
+        # }
+        # # # Update job after successfull payment.
+        # job_record = Jobs.objects.exclude(is_delete=1).get(job_id=int(data['job_id']))   
+
+        
+        # update_payment_status = {
+        #         "job_payment_id"    :      data['job_id'],
+        #         "job_pay_status"    :      1,
+                 
+        #         } 
+        
+        # job_ser  = JobsSerializer(instance=job_record,data=update_payment_status,partial=True)
+        # if job_ser.is_valid():
+        #     job_ser.save()
+
+        # pay_info = SuccessPayments(
+        #     pay_user = login_user,
+        #     pay_job = job_id,
+        #     pay_type = "paypal",
+        #     pay_response = response_data,
+        #     create_at = timezone.now()
+        # )
+        # pay_info.save()
+        return True
