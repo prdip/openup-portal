@@ -303,7 +303,7 @@ def add_job(request):
                         "paypal_req_id" :   paypal_req_id,
                         
                     }
-                    print(data)
+                     
                     paypal_payment(data)
 
             if job_type == "emergency":
@@ -470,7 +470,7 @@ def paypal_payment(data):
         headers = {'Content-Type': 'application/json','PayPal-Request-Id': paypal_req_id, 'Authorization': 'Bearer ' +access_token}
         response = requests.post(url, headers=headers, json=payload)
         response_data = json.loads(response.text)
-        print(response_data)
+
         try:
             error = response_data["name"]
         except:
