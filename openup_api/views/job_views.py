@@ -922,7 +922,7 @@ def accept_job_notification(job_id):
     data = { 
             'title'                             :   'job acepted',
             'notificationScreenType'            :   "acceptjob",
-            'message'                           :   'Your job acepted',
+            'message'                           :   'Your job accepted',
             'job_id'                            :    job_id
         }
     # SEND NOTIFICATIONS 
