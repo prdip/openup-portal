@@ -32,6 +32,7 @@ class SendEmail:
 
             } 
         myemail     =       render_to_string(text_template,email_data)  # Converts text file to string 
-        email       =       EmailMessage(Subject, myemail, to=[ data_dict['to']])  #Formats Email message       
+        email       =       EmailMessage(Subject, myemail,from_email=data_dict['email'], to=[ data_dict['to']])  #Formats Email message       
         email.send()
+        print("send")
         return True

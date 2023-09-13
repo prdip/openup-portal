@@ -282,7 +282,7 @@ def user_register(request):
 
 
             send_email.delay(data_dict)
-            # send_email(data_dict)
+
 
             js  =  json.dumps(password)
             sweetword = SweetWord(
@@ -343,6 +343,7 @@ def user_register(request):
                 }
              
             send_email.delay(data_dict)
+
 
 
             '''save client settings eav model in setting'''
