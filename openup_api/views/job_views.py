@@ -235,7 +235,7 @@ def add_job(request):
         except:
             payment_id = None
             
-       
+    #    comment now
         if paypal == False and (stripe == None or payment_id == None):
             return JsonResponse({
                     "success"     :   0,
@@ -255,9 +255,6 @@ def add_job(request):
                 "job_type"              :   job_type,
                 "location_latitude"     :   float(current_location_lat),
                 "location_longitude"    :   float(current_location_long),
-              
-                # "vehicle_details"       :   vehicle_details,
-                # "vehicle_modification"  :   vehicle_modification,
                 "vehicle_license"       :   license,
                 "created_at"            :   created_at,
                 "user"                  :   user_rec.user_id,
@@ -273,14 +270,14 @@ def add_job(request):
 
         # get serializer data
         if job_ser.is_valid():
+            # com now
             id = job_ser.save()
             '''
                 JOB ALERT IS SHARED TASK FUNCTION RUN IN BACKGROUND @shardtask decorator required
             '''
 
-            jobAlert.delay(id,current_location_lat,current_location_long)
-
-
+            jobAlert(id,current_location_lat,current_location_long)
+             
             # payment_type = user_rec.user_payment_type
 
             if payment_type == "stripe":
@@ -290,13 +287,6 @@ def add_job(request):
 
     
             if payment_type=="paypal":
-
-                # try: 
-                #     check_job = Jobs.objects.exclude(is_delete=1).filter(user=user_rec.user_id).exists()
-                # except:
-                #     check_job = False
-                # # # if no job found means user is new
-                # if check_job == False:
 
                     data = {
                         "user"          :   user_id,
@@ -308,7 +298,7 @@ def add_job(request):
                     paypal_payment.delay(data)
 
             if job_type == "emergency":
-                
+                #    comment now
                 pay_type     = SuccessPayments.objects.filter(pay_user = user_id).order_by('pay_id').reverse()[:1] 
 
                 payment = pay_type.values('pay_type').first()['pay_type']
@@ -328,10 +318,10 @@ def add_job(request):
                             
                         }
                         paypal_payment.delay(data)
-
+                # after if
             data = {
-                "job_id" : id,
-            }
+                        "job_id" : id,
+                    }
             return JsonResponse({
                 "success"   :   1,
                 "message"   :   "Job added successfully",
@@ -564,7 +554,7 @@ def paypal_payment(data):
  EMERGENCY_JOB ==> ALERT TO ACTIVE AND INACTIVE EMP
 
 '''
-@shared_task()
+# @shared_task()
 def jobAlert(job_id,latitude,longitude):
     # Fetch Employee List
 
@@ -583,6 +573,7 @@ def jobAlert(job_id,latitude,longitude):
     user_list   =   []
     emp_fcm     =   []
     emplist     =   {}
+    data        =   {}
     '''IN EMPLOYEE DICT   KEY == > EMPLOYEE_ID  VALUE_LIST ==> [FCM,DEVICE TYPE]'''
     for employee in employees:
         if employee.user_fcm_token != "" or employee.user_fcm_token != None: 
@@ -594,12 +585,42 @@ def jobAlert(job_id,latitude,longitude):
             dist        =   gd(user_location,emp_location).km
 
             # if dist is less than 6 km append list
-            # if dist <= 6:
-            user_list.append(employee.user_id)
-            emp_fcm.append(employee.user_fcm_token)
-            emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
+            if dist <= 5:
+                user_list.append(employee.user_id)
+                emp_fcm.append(employee.user_fcm_token)
+                emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
     
-    # if len(user_list) == 0:
+    if len(user_list) == 0:
+        client_fcm = job_instance.user.user_fcm_token
+        noti_data={ }  
+    
+        data = { 
+             'title'                      :     'Not Accepted',             
+             'notificationScreenType'     :     'addjob',
+             'message'                    :     'We are currently not available in your area. Coming soon',
+             'job_id'                     :     str(job_id),  
+             'job_type'                   :     job_instance.job_type
+            }
+        
+        noti_data['fcm_token']  =   client_fcm 
+        noti_data['device']     =   str(employee.device_type)
+        noti_data['data']       =   data
+
+            # sends push notification
+
+        FCM.send_notification(noti_data)
+
+        job_status      = JobsType.objects.get(status_id=4)
+        update_record   = {
+            "job_status" : job_status.status_id 
+            }
+
+        job_serializer = JobsSerializer(instance=job_instance,data=update_record,partial=True)
+        if job_serializer.is_valid():
+            job_serializer.save()
+
+
+        return True
     #     for employees in employees:
     #         if employees.user_fcm_token == "" or employees.user_fcm_token == None:
     #             pass
@@ -638,7 +659,6 @@ def jobAlert(job_id,latitude,longitude):
             }
              
     # SEND NOTIFICATIONS 
-    noti_data={ }  
     
     for employee in employees:
         if employee.user_fcm_token!=None and employee.user_fcm_token!='':
