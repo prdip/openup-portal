@@ -755,6 +755,8 @@ def job_details(request):
         if job_serializer['job_status'] == "3":
             job_serializer['job_status']="completed"
 
+        if job_serializer['job_status'] == "4":
+            job_serializer['job_status']="not accepted"
 
         if job_serializer['any_mod'] == True:
              job_serializer['any_mod'] = "1"
@@ -1226,6 +1228,9 @@ def client_joblist(request):
 
             elif job['job_status'] == 3:
                 job['job_status'] = "completed"
+            
+            elif job['job_status'] == 4:
+                job['job_status'] = "Not accepted"
             
             else:
                 job['job_status'] = "cancelled"
