@@ -610,7 +610,7 @@ def jobAlert(job_id,latitude,longitude):
 
         FCM.send_notification(noti_data)
 
-        job_status      = JobsType.objects.get(status_id=4)
+        job_status      = JobsType.objects.get(status_id=5)
         update_record   = {
             "job_status" : job_status.status_id 
             }

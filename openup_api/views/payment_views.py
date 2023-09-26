@@ -407,6 +407,8 @@ def link_payment_method(request):
             customer=cus_id,
             type="card",
         ) 
+
+
         update_data = {
                 "user_payment_id" : response_data["data"][0]['id'], 
         }
