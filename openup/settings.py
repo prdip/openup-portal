@@ -36,7 +36,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 SECRET_KEY      =   'django-insecure-1g*)i!^u31(^hla+6a47dyhm#_vkz)xlv$c%%%_^vq%fe=y^lv'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG           =   True
+DEBUG           =   False
 ADMIN_ENABLED   =   False
 # ALLOWED ALL HOST
 
@@ -127,7 +127,7 @@ EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
 EMAIL_PORT          = env('EMAIL_PORT')
 
 
-print(EMAIL_HOST,EMAIL_HOST_USER)
+
 
 
 
