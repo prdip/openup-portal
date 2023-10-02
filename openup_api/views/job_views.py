@@ -648,6 +648,7 @@ def jobAlert(job_id,latitude,longitude):
                              alert_messages=alert_messages,
                             created_at=created_at) 
     data.save() 
+    noti_data={ }  
 
     # pass dictionary data to send notification
     not_data = { 
