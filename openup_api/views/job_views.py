@@ -647,10 +647,10 @@ def jobAlert(job_id,latitude,longitude):
     data            =   Alerts(alert_job=job_instance, alert_users=emp_lis,alert_title=alert_title,
                              alert_messages=alert_messages,
                             created_at=created_at) 
-    # data.save() 
+    data.save() 
 
     # pass dictionary data to send notification
-    data = { 
+    not_data = { 
              'title'                      :     'New job request',             
              'notificationScreenType'     :     'addjob',
              'message'                    :     'Please acccept this asap',
@@ -662,7 +662,7 @@ def jobAlert(job_id,latitude,longitude):
     
     for employee in employees:
         if employee.user_fcm_token!=None and employee.user_fcm_token!='':
-            noti_data['data']       =   data
+            noti_data['data']       =   not_data
             noti_data['fcm_token']  =   employee.user_fcm_token 
             noti_data['device']     =   str(employee.device_type)
             # sends push notification
