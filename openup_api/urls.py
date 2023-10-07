@@ -111,6 +111,14 @@ urlpatterns = [
 
   path('paypal-payment-token-receiver', paypal_views.paypal_payment_token_receiver,name='paypal_payment_token_receiver'),
   
+
+
+  path('apple-pay', payment_views.apple_pay,name='apple_pay'),
+  
+
+
+
+
   # webhook urls  
   path('create-webhook', paypal_views.create_webhook,name='create_webhook'),
   path('webhook-data', paypal_views.receive_webhook_data, name='webhook_data'),
