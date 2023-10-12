@@ -563,10 +563,11 @@ def jobAlert(job_id,latitude,longitude):
     if job_instance.job_type == "emergency":
         
         employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
+        message     =  "EMERGENCY!!! PLEASE ACCEPT THIS JOB ASAP!!!"
 
     else:
         employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(employee_status=1).filter(user_role_id=1)
-
+        message     =  "PLEASE ACCEPT THIS JOB ASAP!!!"
     # employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
 
     # get employee list
@@ -654,7 +655,7 @@ def jobAlert(job_id,latitude,longitude):
     not_data = { 
              'title'                      :     'New job request',             
              'notificationScreenType'     :     'addjob',
-             'message'                    :     'Please acccept this asap',
+             'message'                    :     message,
              'job_id'                     :     str(job_id),  
              'job_type'                   :     job_instance.job_type
             }
