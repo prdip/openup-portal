@@ -1155,7 +1155,6 @@ def cancel_job(request):
                 "message"     :   "job is already canceled",
                 })
 
-    
         update_data = {
             "job_status" : 4
         }
@@ -1164,6 +1163,10 @@ def cancel_job(request):
 
         if job_ser.is_valid():
             job_ser.save()
+
+            cancel_job_notification.delay(job_id)
+
+
             return JsonResponse({
                     "success"     :   1,
                     "message"     :   "Your job is cancelled",
@@ -1176,6 +1179,66 @@ def cancel_job(request):
 
     
     
+
+
+'''Notify all employees that the job has been cancelled'''
+@shared_task()
+def cancel_job_notification(job_id):
+     # Fetch Employee List
+
+    job_instance    =    Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
+
+    if job_instance.job_type == "emergency":
+        
+        employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
+    else:
+        employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(employee_status=1).filter(user_role_id=1)
+
+    # employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
+
+    # get employee list
+    user_list   =   []
+    emp_fcm     =   []
+    emplist     =   {}
+    data        =   {}
+    '''IN EMPLOYEE DICT   KEY == > EMPLOYEE_ID  VALUE_LIST ==> [FCM,DEVICE TYPE]'''
+    for employee in employees:
+        if employee.user_fcm_token != "" or employee.user_fcm_token != None: 
+            # user location 
+            user_list.append(employee.user_id)
+            emp_fcm.append(employee.user_fcm_token)
+            emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
+  
+ 
+    noti_data={ }  
+
+    # pass dictionary data to send notification
+    not_data = { 
+             'title'                      :     'Cancel Job',             
+             'notificationScreenType'     :     'cancel_job',
+             'message'                    :     'The job has been cancelled',
+             'job_id'                     :     str(job_id),  
+             'job_type'                   :     job_instance.job_type
+            }
+             
+    # SEND NOTIFICATIONS 
+    
+    for employee in employees:
+        if employee.user_fcm_token!=None and employee.user_fcm_token!='':
+            noti_data['data']       =   not_data
+            noti_data['fcm_token']  =   employee.user_fcm_token 
+            noti_data['device']     =   str(employee.device_type)
+            # sends push notification
+            FCM.send_notification(noti_data)
+     
+    return True
+
+
+
+
+
+
+
 
 
 '''API for GET client job list'''
