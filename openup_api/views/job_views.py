@@ -1235,6 +1235,189 @@ def cancel_job_notification(job_id):
 
 
 
+'''API FOR CANCEL JOB by employee'''
+@api_view(['POST'])
+
+def cancel_job_by_employee(request):
+    token       = request.headers['Authorization']
+    user_token  = token.replace("Bearer",'')  
+    check_user  = token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+                })
+    
+    # if token verified
+    else:
+        job_id  = request.data.get('job_id')
+        user_id = check_user['session_user']
+        try:
+            job_record  =   Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
+        except:
+            job_record = None
+
+
+        if job_record == None:
+             return JsonResponse({
+                "success"     :   0,
+                "message"     :   "no job found",
+                })
+         
+        if job_record.job_status.status_id==4:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "job is already canceled",
+                })
+
+        update_data = {
+            "job_status" : 1
+        }
+
+        job_ser = JobsSerializer(instance=job_record,data=update_data,partial=True)
+
+        if job_ser.is_valid():
+            job_ser.save()
+
+            notify_client.delay(job_id,user_id)
+            # alert employee that job is active
+            jobAlert(job_id,job_record.user.location_latitude,job_record.user.location_longitude)
+            return JsonResponse({
+                    "success"     :   1,
+                    "message"     :   "Your job is cancelled by employee",
+                    })
+        else:
+            return JsonResponse({
+                    "success"     :   0,
+                    "message"     :   "some error occured",
+                    })
+
+    
+
+
+'''Notify all employees that the job has been active again'''
+@shared_task()
+def notify_client(job_id,user_id):
+    job_instance    =    Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
+
+
+    client_fcm = job_instance.user.user_fcm_token
+    noti_data={ }  
+
+    data = { 
+            'title'                      :     'Job Cancelled by Employee. This job is active now',             
+            'notificationScreenType'     :     'cancel job',
+            'message'                    :     'This job has been cancelled by the employee.Your job is active now',
+            'job_id'                     :     str(job_id),  
+            'job_type'                   :     job_instance.job_type
+        }
+    
+    noti_data['fcm_token']  =   client_fcm 
+    noti_data['device']     =   str(job_instance.user.device_type)
+    noti_data['data']       =   data
+
+    # sends push notification
+
+    FCM.send_notification(noti_data)
+
+
+    if job_instance.job_type == "emergency":
+        
+        employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(user_id=user_id).filter(user_role_id=1)
+        message     =  "EMERGENCY!!! PLEASE ACCEPT THIS JOB ASAP!!!"
+
+    else:
+        employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(user_id=user_id).filter(employee_status=1).filter(user_role_id=1)
+        message     =  "PLEASE ACCEPT THIS JOB ASAP!!!"
+    # employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
+
+    # get employee list
+    user_list   =   []
+    emp_fcm     =   []
+    emplist     =   {}
+    data        =   {}
+    '''IN EMPLOYEE DICT   KEY == > EMPLOYEE_ID  VALUE_LIST ==> [FCM,DEVICE TYPE]'''
+    for employee in employees:
+        if employee.user_fcm_token != "" or employee.user_fcm_token != None: 
+            # user location
+            user_location = (job_instance.location_latitude,job_instance.location_longitude)
+            # employee location
+            emp_location =  (employee.location_latitude,employee.location_longitude)
+            # calculate distance between two point 
+            dist        =   gd(user_location,emp_location).km
+
+            # if dist is less than 6 km append list
+            if dist <= 5:
+                user_list.append(employee.user_id)
+                emp_fcm.append(employee.user_fcm_token)
+                emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
+    
+    if len(user_list) == 0:
+        client_fcm = job_instance.user.user_fcm_token
+        noti_data={ }  
+    
+        data = { 
+             'title'                      :     'Not Accepted',             
+             'notificationScreenType'     :     'addjob',
+             'message'                    :     'We are currently not available in your area. Coming soon',
+             'job_id'                     :     str(job_id),  
+             'job_type'                   :     job_instance.job_type
+            }
+        
+        noti_data['fcm_token']  =   client_fcm 
+        noti_data['device']     =   str(employee.device_type)
+        noti_data['data']       =   data
+
+            # sends push notification
+
+        FCM.send_notification(noti_data)
+
+        job_status      = JobsType.objects.get(status_id=5)
+        update_record   = {
+            "job_status" : job_status.status_id 
+            }
+
+        job_serializer = JobsSerializer(instance=job_instance,data=update_record,partial=True)
+        if job_serializer.is_valid():
+            job_serializer.save()
+            
+        return True
+    
+    
+    emp_lis         =   ','.join(str(i) for i in user_list)
+    alert_title     =    "new job added"
+    alert_messages  =    "job generated"
+    created_at      =     datetime.datetime.now()
+    
+    # Alert Table Save entry
+    data            =   Alerts(alert_job=job_instance, alert_users=emp_lis,alert_title=alert_title,
+                             alert_messages=alert_messages,
+                            created_at=created_at) 
+    data.save() 
+    noti_data={ }  
+
+    # pass dictionary data to send notification
+    not_data = { 
+             'title'                      :     'New job request',             
+             'notificationScreenType'     :     'addjob',
+             'message'                    :     message,
+             'job_id'                     :     str(job_id),  
+             'job_type'                   :     job_instance.job_type
+            }
+             
+    # SEND NOTIFICATIONS 
+    
+    for employee in employees:
+        if employee.user_fcm_token!=None and employee.user_fcm_token!='':
+            noti_data['data']       =   not_data
+            noti_data['fcm_token']  =   employee.user_fcm_token 
+            noti_data['device']     =   str(employee.device_type)
+            # sends push notification
+            FCM.send_notification(noti_data)
+     
+    return True
+
 
 
 
@@ -1245,9 +1428,9 @@ def cancel_job_notification(job_id):
 @api_view(['POST'])
 def client_joblist(request):
     
-    token = request.headers['Authorization']
-    user_token = token.replace("Bearer",'')  
-    check_user      =       token_verification(user_token)
+    token       = request.headers['Authorization']
+    user_token  = token.replace("Bearer",'')  
+    check_user  = token_verification(user_token)
 
     if check_user is None:
         return JsonResponse({

@@ -82,6 +82,9 @@ urlpatterns = [
   path('reject_job', job_views.reject_job,name='reject_job'),
   path('cancel-job', job_views.cancel_job,name='cancel_job'),
 
+  path('cancel-job-by-emp', job_views.cancel_job_by_employee,name='cancel_job_by_employee'),
+
+
 
 # Job list of client
   path('client-joblist', job_views.client_joblist,name='client_joblist'),
