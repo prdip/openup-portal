@@ -1265,10 +1265,10 @@ def cancel_job_by_employee(request):
                 "message"     :   "no job found",
                 })
          
-        if job_record.job_status.status_id==4:
+        if job_record.job_status.status_id==1:
             return JsonResponse({
                 "success"     :   0,
-                "message"     :   "job is already canceled",
+                "message"     :   "job is already canceled by you",
                 })
 
         update_data = {
@@ -1307,7 +1307,7 @@ def notify_client(job_id,user_id):
 
     data = { 
             'title'                      :     'Job Cancelled by Employee. This job is active now',             
-            'notificationScreenType'     :     'cancel job',
+            'notificationScreenType'     :     'cancel_job',
             'message'                    :     'This job has been cancelled by the employee.Your job is active now',
             'job_id'                     :     str(job_id),  
             'job_type'                   :     job_instance.job_type
@@ -1381,7 +1381,7 @@ def notify_client(job_id,user_id):
         job_serializer = JobsSerializer(instance=job_instance,data=update_record,partial=True)
         if job_serializer.is_valid():
             job_serializer.save()
-            
+
         return True
     
     
