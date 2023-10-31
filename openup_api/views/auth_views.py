@@ -274,12 +274,13 @@ def user_register(request):
                 "Subject"             :     "Request for Acount Activation",
                 "text_template"       :     "email/confirm_user.txt",
                 # "email"               :     email_id.mail_from_address,
-                "email"               :      'open.up@opnup.net',
-                "to"                  :     'open.up@opnup.net',
-                "user_type"          :      user_type
+                "email"               :     'open.up@opnup.net',
+                "to"                  :     'open.up@opnup.net', 
+                "user_type"          :      user_type,
+                "user_email"         :      email
             }
 
-            send_email.delay(data_dict)
+            send_empemail.delay(data_dict)
 
             email_dict = {
                 "Subject"            :   "Please Verify Your email to start using Openup emergency service",
@@ -287,7 +288,7 @@ def user_register(request):
                 # "email":               email_id.mail_from_address,
                 "email"              :  'open.up@opnup.net',
                 "to"                 :    email,
-                "user_type"          :    user_type
+                "user_type"          :    user_type,
             }
             send_email.delay(email_dict)
 
@@ -423,6 +424,27 @@ def send_email(data_dict):
     link.save()
     data_dict['token']  =   link_tokan
     SendEmail.send_email(data_dict)
+
+
+@shared_task()
+def send_empemail(data_dict):
+    '''call send_email function'''
+
+    email       =   data_dict['user_email']
+    
+    role        =   UserRole.objects.filter(role_name=data_dict['user_type']).values('role_id').first()['role_id']
+    user_id     =   Registration.objects.exclude(user_is_delete=1).filter(Q(user_email=email)).filter(Q(user_role = role)).values('user_id').first()['user_id']   
+     
+    link_tokan  =   secrets.token_hex() 
+    created_at  =   datetime.datetime.now()
+    link        =   AccountVerification(user_id=user_id,
+                                        link_token=link_tokan,
+                                        created_at=created_at,
+                                        link_user_email=email)
+    link.save()
+    data_dict['token']  =   link_tokan
+    SendEmail.send_email(data_dict)
+
 
 
 '''
