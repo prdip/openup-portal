@@ -274,15 +274,22 @@ def user_register(request):
                 "Subject"             :     "Request for Acount Activation",
                 "text_template"       :     "email/confirm_user.txt",
                 # "email"               :     email_id.mail_from_address,
-                "email"              :  'open.up@opnup.net',
-                "to"                  :     email,
+                "email"               :      'open.up@opnup.net',
+                "to"                  :     'open.up@opnup.net',
                 "user_type"          :      user_type
             }
 
-
-
             send_email.delay(data_dict)
 
+            email_dict = {
+                "Subject"            :   "Please Verify Your email to start using Openup emergency service",
+                "text_template"      :   "email/verify_user.txt",
+                # "email":               email_id.mail_from_address,
+                "email"              :  'open.up@opnup.net',
+                "to"                 :    email,
+                "user_type"          :    user_type
+            }
+            send_email.delay(email_dict)
 
             js  =  json.dumps(password)
             sweetword = SweetWord(
