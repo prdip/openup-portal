@@ -244,7 +244,7 @@ LOGGING = {
             
             'level': 'INFO',
             'class':'logging.handlers.TimedRotatingFileHandler',
-            'filename': os.path.join(BASE_DIR,'debug_logs'),
+            'filename': os.path.join(BASE_DIR,'debug_logs.log'),
             'formatter':'custom_format',
            
         },
