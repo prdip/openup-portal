@@ -281,14 +281,14 @@ def employee_location(request):
         # required data
         latitude     =    request.data.get('latitude',None)
         longitude    =    request.data.get('longitude',None)
-        print(latitude,longitude)
-        if latitude is None:
+        print(longitude is None or latitude == '')
+        if latitude is None or latitude == '':
             return JsonResponse({
                             "success"        :       0,
                             "message"        :      "Please provide lattitude"
             })
 
-        if longitude is None:
+        if longitude is None or latitude == '':
             return JsonResponse({
                             "success"        :       0,
                             "message"        :      "Please provide lattitude"
