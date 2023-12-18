@@ -232,41 +232,41 @@ USE_TZ = True
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-import logging
-# ERROR LOG FOR WARNIN 
+# import logging
+# # ERROR LOG FOR WARNIN 
  
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
+# LOGGING = {
+#     'version': 1,
+#     'disable_existing_loggers': False,
   
-    'handlers': {
-        'file':{
+#     'handlers': {
+#         'file':{
             
-            'level': 'INFO',
-            'class':'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR,'debug_logs.log'),
-            'formatter':'custom_format',
+#             'level': 'INFO',
+#             'class':'logging.FileHandler',
+#             'filename': os.path.join(BASE_DIR,'debug_logs.log'),
+#             'formatter':'custom_format',
            
-        },
+#         },
               
 
-    },
-    'loggers': {
+#     },
+#     'loggers': {
     
-            'django.request':{
-                'handlers': ['file'],
-                'level': 'DEBUG',  
-                'propagate' : True
-            },
-    },
-     'formatters':{
-        'custom_format':{
-            'format': '{levelname} {asctime} {message} ',
-            'style' :'{',
-        }
+#             'django.request':{
+#                 'handlers': ['file'],
+#                 'level': 'DEBUG',  
+#                 'propagate' : True
+#             },
+#     },
+#      'formatters':{
+#         'custom_format':{
+#             'format': '{levelname} {asctime} {message} ',
+#             'style' :'{',
+#         }
 
-    },
-}
+#     },
+# }
 
 
 CSRF_TRUSTED_ORIGINS = ['https://app.opnup.net']
