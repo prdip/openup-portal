@@ -70,6 +70,8 @@ urlpatterns = [
   path('update_location', location_views.update_location,name='update_location'),
   path('service_available', location_views.service_available,name='service_available'),
   path('distance-calculation', location_views.dist_calculation,name='distance_calculation'),
+  path('employee-location', location_views.employee_location,name='employee-location'),
+  
   
 
 

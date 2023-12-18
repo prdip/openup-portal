@@ -262,3 +262,61 @@ def service_available(request):
 
 
 
+@api_view(['POST'])
+
+def employee_location(request):
+       # CHECK TOKEN VALUE
+   
+    token       =   request.headers['Authorization']
+    user_token  =   token.replace("Bearer",'')  
+    check_user  =   token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+        }) 
+    
+    else:
+        # required data
+        latitude     =    request.data.get('latitude',None)
+        longitude    =    request.data.get('longitude',None)
+
+        if latitude is None or latitude == '':
+            return JsonResponse({
+                            "success"        :       0,
+                            "message"        :      "Please provide lattitude"
+            })
+
+        if longitude is None or latitude == '':
+            return JsonResponse({
+                            "success"        :       0,
+                            "message"        :      "Please provide lattitude"
+            })     
+        
+    
+        user_id = check_user['session_user']
+        
+        # update data
+        location_details = {
+                    "location_latitude"   :     latitude,
+                    "location_longitude"  :     longitude,
+        }
+
+        # #instance of  user recored
+        user_rec    =       Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
+        # user serializer
+        user_ser    =       RegisterSerializer(instance=user_rec,data=location_details,partial=True)
+
+        if user_ser.is_valid():
+            user_ser.save()
+
+            return JsonResponse({
+                            "success"        :       1,
+                            "message"        :      "User location updated succesfully"
+            })
+        else:
+            return JsonResponse({
+                            "success"        :       0,
+                            "message"        :      "something went wrong"
+            })
