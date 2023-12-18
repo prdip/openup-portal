@@ -243,7 +243,7 @@ LOGGING = {
         'file':{
             
             'level': 'INFO',
-            'class':'logging.handlers.TimedRotatingFileHandler',
+            'class':'logging.FileHandler',
             'filename': os.path.join(BASE_DIR,'debug_logs.log'),
             'formatter':'custom_format',
            
@@ -256,7 +256,7 @@ LOGGING = {
             'django.request':{
                 'handlers': ['file'],
                 'level': 'DEBUG',  
-                'propagate' : False
+                'propagate' : True
             },
     },
      'formatters':{
