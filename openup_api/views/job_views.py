@@ -586,7 +586,7 @@ def jobAlert(job_id,latitude,longitude):
             dist        =   gd(user_location,emp_location).km
 
             # if dist is less than 6 km append list
-            if dist <= 5:
+            if dist <= 21:
                 user_list.append(employee.user_id)
                 emp_fcm.append(employee.user_fcm_token)
                 emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
