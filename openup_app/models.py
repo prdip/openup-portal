@@ -281,6 +281,30 @@ class Jobs(models.Model):
 
 
 
+class JobLogs(models.Model):
+    log_id      =   models.AutoField(primary_key=True)
+    job         =   models.CharField(max_length=100,null=True)
+    log_msg     =   models.CharField(max_length=200,null=True)
+    cancel_by   =   models.CharField(max_length=200,null=True)
+    created_at  =   models.DateTimeField()
+    updated_at   =   models.DateTimeField(null=True)
+    is_delete   =   models.BooleanField(default=0)
+
+    def update(self,*args, **kwargs):
+        for name,values in kwargs.items():
+            try:
+                setattr(self,name,values)
+            except KeyError:
+                pass
+        self.save()
+
+
+    class Meta:
+        db_table = 'job_log'
+
+
+
+
 # SETTING MODEL EAV STRUCTURE
 class Settings(models.Model):
 

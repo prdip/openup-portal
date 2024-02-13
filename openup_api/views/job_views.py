@@ -27,7 +27,7 @@ from django.http.response import JsonResponse
 from openup_api.views.auth_views import token_verification
 
 # Import Models here
-from openup_app.models import Registration,JobsType,Jobs,Alerts,VehicleDetails,Payment,PaypalInfo,PaymentFailedInfo,SuccessPayments
+from openup_app.models import Registration,JobsType,Jobs,Alerts,VehicleDetails,Payment,PaypalInfo,PaymentFailedInfo,SuccessPayments, JobLogs
 
 # Import Serializer
 from openup_app.serializers import JobsSerializer
@@ -275,7 +275,7 @@ def add_job(request):
             '''
                 JOB ALERT IS SHARED TASK FUNCTION RUN IN BACKGROUND @shardtask decorator required
             '''
-
+            accepted_by = ''
             jobAlert(id,current_location_lat,current_location_long)
              
             # payment_type = user_rec.user_payment_type
@@ -555,19 +555,30 @@ def paypal_payment(data):
 
 '''
 # @shared_task()
-def jobAlert(job_id,latitude,longitude):
+def jobAlert(job_id,latitude,longitude,accepted_by):
     # Fetch Employee List
 
     job_instance    =    Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
+    if accepted_by == '':
+        if job_instance.job_type == "emergency":
+            
+            employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
+            message     =  "EMERGENCY!!! PLEASE ACCEPT THIS JOB ASAP!!!"
 
-    if job_instance.job_type == "emergency":
-        
-        employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
-        message     =  "EMERGENCY!!! PLEASE ACCEPT THIS JOB ASAP!!!"
-
+        else:
+            employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(employee_status=1).filter(user_role_id=1)
+            message     =  "PLEASE ACCEPT THIS JOB ASAP!!!"
     else:
-        employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(employee_status=1).filter(user_role_id=1)
-        message     =  "PLEASE ACCEPT THIS JOB ASAP!!!"
+        if job_instance.job_type == "emergency":
+        
+            employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(job_accepted_by=accepted_by).filter(user_role_id=1)
+            message     =  "EMERGENCY!!! PLEASE ACCEPT THIS JOB ASAP!!!"
+
+        else:
+            employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(job_accepted_by=accepted_by).filter(employee_status=1).filter(user_role_id=1)
+            message     =  "PLEASE ACCEPT THIS JOB ASAP!!!"
+
+
     # employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
 
     # get employee list
@@ -611,15 +622,10 @@ def jobAlert(job_id,latitude,longitude):
              'job_id'                     :     str(job_id),  
              'job_type'                   :     job_instance.job_type
             }
-        
         noti_data['fcm_token']  =   client_fcm 
         noti_data['device']     =   str(employee.device_type)
         noti_data['data']       =   data
-
-            # sends push notification
-
-        FCM.send_notification(noti_data)
-
+        
         job_status      = JobsType.objects.get(status_id=5)
         update_record   = {
             "job_status" : job_status.status_id 
@@ -627,27 +633,13 @@ def jobAlert(job_id,latitude,longitude):
 
         job_serializer = JobsSerializer(instance=job_instance,data=update_record,partial=True)
         if job_serializer.is_valid():
+           
             job_serializer.save()
-
-
+    
+        # sends push notification
+        FCM.send_notification(noti_data)
         return True
-    #     for employees in employees:
-    #         if employees.user_fcm_token == "" or employees.user_fcm_token == None:
-    #             pass
-    #         else:
-    #             dist_list = []
-
-    #             user_location       =   (latitude,longitude)
-    #             emp_location        =   (employees.location_latitude,employees.location_longitude)
-    #             # calculate distance between two point 
-    #             dist                =   gd(user_location,emp_location).km
-
-    #             # if dist is less than 6 km append list
-    #             if dist <= 10:
-    #                 user_list.append(employees.user_id)
-    #                 emp_fcm.append(employees.user_fcm_token)
-    #                 emplist[str(employees.user_fcm_token)] = list((str(employees.user_id),str(employees.device_type))) 
-
+    
     emp_lis         =   ','.join(str(i) for i in user_list)
     alert_title     =    "new job added"
     alert_messages  =    "job generated"
@@ -1286,28 +1278,116 @@ def cancel_job_by_employee(request):
                 "message"     :   "job is already canceled by you",
                 })
 
+        accepted_by = job_record.job_accepted_by
         update_data = {
-            "job_status" : 1
+            "job_status" : 1,
+            "job_accepted_by" : None
         }
-
+        job_log = JobLogs(
+            job=job_record.job_id,
+            log_msg="Job caceled by employee",
+            cancel_by=accepted_by,
+            created_at=timezone.now()
+        ) 
+        job_log.save()
+        
         job_ser = JobsSerializer(instance=job_record,data=update_data,partial=True)
 
         if job_ser.is_valid():
             job_ser.save()
-
+           
             notify_client.delay(job_id,user_id)
             # alert employee that job is active
-            jobAlert(job_id,job_record.user.location_latitude,job_record.user.location_longitude)
+
+            jobAlert(job_id,job_record.user.location_latitude,job_record.user.location_longitude,accepted_by)
             return JsonResponse({
                     "success"     :   1,
                     "message"     :   "Your job is cancelled by employee",
                     })
         else:
+            
             return JsonResponse({
                     "success"     :   0,
                     "message"     :   "some error occured",
                     })
 
+    
+
+@shared_task()
+def job_alert_after_cancel(job_id,latitude,longitude,accepted_by):
+    job_instance    =    Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
+     
+    if job_instance.job_type == "emergency":
+        
+        employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(job_accepted_by=accepted_by).filter(user_role_id=1)
+        message     =  "EMERGENCY!!! PLEASE ACCEPT THIS JOB ASAP!!!"
+
+    else:
+        employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(job_accepted_by=accepted_by).filter(employee_status=1).filter(user_role_id=1)
+        message     =  "PLEASE ACCEPT THIS JOB ASAP!!!"
+    # employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
+
+    # get employee list
+    user_list   =   []
+    emp_fcm     =   []
+    emplist     =   {}
+    data        =   {}
+    '''IN EMPLOYEE DICT   KEY == > EMPLOYEE_ID  VALUE_LIST ==> [FCM,DEVICE TYPE]'''
+    for employee in employees:
+        if employee.user_fcm_token != "" or employee.user_fcm_token != None: 
+            # user location
+            user_location = (latitude,longitude)
+            # employee location
+            emp_location =  (employee.location_latitude,employee.location_longitude)
+            # calculate distance between two point 
+            # dist        =   gd(user_location,emp_location).km
+            api_key  =  'AIzaSyC2o6UvDF6qUUQM3KCwR6dwoV5qCfj8MGs'
+            url      =  f"https://maps.googleapis.com/maps/api/distancematrix/json?origins={latitude},{longitude}&destinations={employee.location_latitude},{employee.location_longitude}&key={api_key}"
+            response =  requests.get(url)
+            data     =  response.json()
+             
+            try:
+                duration_seconds = data['rows'][0]['elements'][0]['duration']['value']
+            except KeyError:
+                duration_seconds =''
+            # if dist is less than 6 km append list 
+
+            if duration_seconds <= 1260 and duration_seconds != '':
+                user_list.append(employee.user_id)
+                emp_fcm.append(employee.user_fcm_token)
+                emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
+
+    if len(user_list) == 0:
+        client_fcm = job_instance.user.user_fcm_token
+        noti_data={ }  
+    
+        data = { 
+             'title'                      :     'Not Accepted',             
+             'notificationScreenType'     :     'addjob',
+             'message'                    :     'We are currently not available in your area. Coming soon',
+             'job_id'                     :     str(job_id),  
+             'job_type'                   :     job_instance.job_type
+            }
+        
+        noti_data['fcm_token']  =   client_fcm 
+        noti_data['device']     =   str(employee.device_type)
+        noti_data['data']       =   data
+
+            # sends push notification
+
+        FCM.send_notification(noti_data)
+
+        job_status      = JobsType.objects.get(status_id=5)
+        update_record   = {
+            "job_status" : job_status.status_id 
+            }
+
+        job_serializer = JobsSerializer(instance=job_instance,data=update_record,partial=True)
+        if job_serializer.is_valid():
+            job_serializer.save()
+
+
+        return True
     
 
 
