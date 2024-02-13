@@ -717,6 +717,7 @@ def job_details(request):
     # if token verified m
     else:
         # required data
+        user_id     =       check_user['session_user']
         job_id      =       request.data.get('job_id',None)
         # check if jon id is blank
         if job_id is None or job_id == "":
@@ -736,7 +737,12 @@ def job_details(request):
                     "success"     :   0,
                     "message"     :   "Please provide job id",
             })
-        
+        if job_data.job_accepted_by != user_id:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "This job is accepted by another employee"
+            })
+
         # send instance to serializer 
         job_serializer  =   JobsSerializer(job_data).data 
         # remove field from dict
