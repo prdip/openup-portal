@@ -711,6 +711,7 @@ def job_details(request):
         # required data
         user_id     =       check_user['session_user']
         job_id      =       request.data.get('job_id',None)
+        
         # check if jon id is blank
         if job_id is None or job_id == "":
             return JsonResponse({
@@ -729,11 +730,13 @@ def job_details(request):
                     "success"     :   0,
                     "message"     :   "Please provide job id",
             })
-        if job_data.job_accepted_by != user_id:
-            return JsonResponse({
-                "success"     :   0,
-                "message"     :   "This job is accepted by another employee"
-            })
+
+        if job_data.job_accepted_by != None: 
+            if int(job_data.job_accepted_by) != int(user_id):
+                return JsonResponse({
+                    "success"     :   0,
+                    "message"     :   "This job is accepted by another employee"
+                })
 
         # send instance to serializer 
         job_serializer  =   JobsSerializer(job_data).data 
@@ -744,11 +747,11 @@ def job_details(request):
         # create image url 
        
         if job_serializer['vehicle_license'] != None:     
-                domain      =      env('BASE_URL')
-                obj         =       job_serializer['vehicle_license']
-                url         =       '{domain}{path}'.format(domain=domain, path=obj)
+            domain      =      env('BASE_URL')
+            obj         =       job_serializer['vehicle_license']
+            url         =       '{domain}{path}'.format(domain=domain, path=obj)
 
-                job_serializer['vehicle_license_url'] = url
+            job_serializer['vehicle_license_url'] = url
 
         if job_serializer['job_pay_status'] == True:
             job_serializer['job_pay_status'] = "1"
@@ -790,6 +793,35 @@ def job_details(request):
                 '''to get employee name '''            
                 job_serializer['employee_name'] = user_record.user_first_name+' '+user_record.user_last_name
 
+        domain =  env('BASE_URL')
+        images = Images.objects.exclude(is_delete=1).filter(job=int(job_id)).exists()
+        if images:
+             
+            img_id_list = Images.objects.exclude(is_delete=1).filter(job=job_id)
+
+            imges_list  = []
+        
+            for image in img_id_list:
+                img_dict   = {}
+                if image.img_type == 1:
+                    img_dict['type'] = "Before"
+                else:
+
+                    img_dict['type'] = "After"
+                
+                files  = File.objects.exclude(is_delete=1).filter(file_img=image.img_id).exists()
+
+                if files:
+                    files_list = File.objects.exclude(is_delete=1).filter(file_img=image.img_id)
+
+                    img_list   = []
+                    for file in files_list:
+
+                        image = domain + file.file.url
+                        img_list.append(image)
+                        img_dict['images'] = img_list
+                    imges_list.append(img_dict)
+            job_serializer['images'] = imges_list
         job_serializer.pop('vehicle_license')
 
         data = {
