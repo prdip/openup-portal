@@ -27,7 +27,7 @@ from django.http.response import JsonResponse
 from openup_api.views.auth_views import token_verification
 
 # Import Models here
-from openup_app.models import Registration,JobsType,Jobs,Alerts,VehicleDetails,Payment,PaypalInfo,PaymentFailedInfo,SuccessPayments, JobLogs
+from openup_app.models import Registration,JobsType,Jobs,Alerts,VehicleDetails,Payment,PaypalInfo,PaymentFailedInfo,SuccessPayments, JobLogs, Images, File
 
 # Import Serializer
 from openup_app.serializers import JobsSerializer
@@ -1679,6 +1679,191 @@ def employee_joblist(request):
                 "data"        :    data
                 })
     
+import os
+@api_view(['POST'])
+def upload_images(request):
+
+    token       = request.headers['Authorization']
+    user_token  = token.replace("Bearer",'')  
+    check_user  = token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+                })
+    
+    # if token verified
+    else:
+        job_id   =  request.data.get("job_id")
+        img_type =  request.data.get("img_type")
+        image_list  =  request.FILES.getlist('image')
+
+        if job_id == '' or job_id == None:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Please provide a job id"
+            })
+
+        if img_type == '' or img_type == None:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Please provide a image type"
+            })
+        if image_list == '' or image_list == None:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Please provide a image type"
+            })
+        
+        job_check = Jobs.objects.exclude(is_delete=1).filter(job_id=job_id).exists()
+        if job_check ==False:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Job does not exist"
+            })
+        if img_type != "before" and img_type != "after":
+             return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Please provide a image type before or after"
+            })
+        for image in image_list: 
+            try:
+                im = Image.open(image)
+                im.verify()
+            except:
+                im = None
+
+            if im is None: 
+                return JsonResponse({
+                    "success"     :   0,
+                    "message"     :   "please provide valid image",
+                })
+
+        job_rec  = Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
+        if img_type == 'before':
+            img_type = 1
+        else:
+            img_type = 2
+
+        img_data =      Images(
+            job        = job_rec,
+            
+            img_type   = img_type,
+            created_at = timezone.now(),
+            is_delete  = 0
+        )
+        img_data.save()
+        # img_id = img_data.img_id 
+
+        for image in image_list:
+
+        
+            filename = os.path.basename(image.name)
+            ext     =   filename.split('.')[-1]
+            name    =   filename.split('.')[0]
+            count   =   0
+
+            for i in range(0, len(filename)):  
+                if(filename[i] != ' '):  
+                    count = count + 1
+
+                if count >=12:
+                    name = str(filename)[0:12]
+
+                time     =   (timezone.now()).strftime("%Y-%m-%d %H:%M:%S")
+                filename =   "%s%s.%s" % (name,str(time),ext)
+                # original_string = 'Jonaten_bann2023-07-27 20:12:10.png'
+                modified_string = filename.replace(' ', '_').replace(':', '') 
+                file_path_name = os.path.join('attachments/',modified_string)
+                # apirequest.png
+            file = File(file            = image,
+                        file_name       = image,
+                        file_path       = "media/attachments",
+                        file_system_name= file_path_name ,
+                        file_img        = img_data
+                        )
+            file.save()
+    
+        return JsonResponse({
+                "success"     :   1,
+                "message"     :   "Images uploaded successfully"
+            })
+
+@api_view(['POST'])
+
+def getuploaded_image(request):
+    
+    token       = request.headers['Authorization']
+    user_token  = token.replace("Bearer",'')  
+    check_user  = token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+                })
+    
+    # if token verified
+    else:
+        job_id   =  request.data.get("job_id")
+
+        if job_id == '' or job_id == None:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Please provide a job id"
+            })
+
+        job_check = Jobs.objects.exclude(is_delete=1).filter(job_id=job_id).exists()
+        if job_check ==False:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Job does not exist"
+            })
+        
+        domain =  env('BASE_URL')
+        images = Images.objects.exclude(is_delete=1).filter(job=int(job_id)).exists()
+        if images == False:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Images does not exist"
+            })
+        
+        img_id_list = Images.objects.exclude(is_delete=1).filter(job=job_id)
+
+        imges_list = []
+       
+        for image in img_id_list:
+            img_dict   = {}
+            if image.img_type == 1:
+                img_dict['type'] = "Before"
+            else:
+
+                img_dict['type'] = "After"
+            
+            files  = File.objects.exclude(is_delete=1).filter(file_img=image.img_id).exists()
+
+            if files:
+                files_list = File.objects.exclude(is_delete=1).filter(file_img=image.img_id)
+
+                img_list   = []
+                for file in files_list:
+
+                    image = domain + file.file.url
+                    img_list.append(image)
+                    img_dict['images'] = img_list
+                imges_list.append(img_dict)
+        return JsonResponse({
+            "success"     :   1,
+            "message"     :   "Images get successfully",
+            "data"        : imges_list
+        })
+
+
+
+
+
+
 
 
 

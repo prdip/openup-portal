@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 #IMPORT MODELS FROM SGSP APPLICATION
 
-from .models import Registration,Session,ForgotPassword,UserRole,VehicleDetails,Payment,Jobs,JobsType,Settings,Feedback,PaymentFailedInfo
+from .models import Registration,Session,ForgotPassword,UserRole,VehicleDetails,Payment,Jobs,JobsType,Settings,Feedback,PaymentFailedInfo, Images,File
 
 
 
@@ -302,4 +302,15 @@ class PaymentFailedInfoSerializer(serializers.ModelSerializer):
     
     
 
+class FileSer(serializers.ModelSerializer):
+    class Meta:
+        model = File
+        fields = '__all__'
+
+
+class ImagesSer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Images
+        fields = '__all__'
 

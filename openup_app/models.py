@@ -515,3 +515,49 @@ class SuccessPayments(models.Model):
 
     class Meta:
         db_table = 'sucess_payments'
+
+
+
+class Images(models.Model):
+    img_id      =   models.AutoField(primary_key=True)
+    img_type    =   models.IntegerField(null=True)  #1-> before 2->After
+    job         =   models.ForeignKey(Jobs,on_delete=models.CASCADE,null=True)
+    is_delete   =   models.BooleanField()
+    created_at  =   models.DateTimeField()
+    update_at   =   models.DateTimeField(null=True)
+
+    class Meta:
+        db_table = 'images'
+
+
+
+
+
+class File(models.Model):
+
+    file_id         =   models.AutoField(primary_key=True)
+    file            =   models.FileField(upload_to='attachments',null=True)
+    file_name       =   models.CharField(max_length=200)
+    file_path       =   models.TextField(null=True)
+    file_system_name=   models.TextField(null=True)
+    file_s3_path    =   models.TextField(null=True)
+    file_size       =   models.IntegerField(null=True)
+    file_status     =   models.IntegerField(default=1)
+    file_img        =   models.ForeignKey(Images,on_delete=models.CASCADE,null=True)
+    deleted_at      =   models.DateTimeField(null=True)
+    created_at      =   models.DateTimeField(auto_now_add=True)
+    udated_at       =   models.DateTimeField(null=True)
+    is_delete       =   models.BooleanField(default=0)
+    class Meta:        
+        db_table = 'file'
+
+
+    def update(self,*args, **kwargs):
+        for name,values in kwargs.items():
+            try:
+                setattr(self,name,values)
+            except KeyError:
+                pass
+        self.save()
+
+

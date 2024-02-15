@@ -83,6 +83,10 @@ urlpatterns = [
   path('complete_job', job_views.complete_job,name='complete_job'),
   path('reject_job', job_views.reject_job,name='reject_job'),
   path('cancel-job', job_views.cancel_job,name='cancel_job'),
+  path('upload-images', job_views.upload_images,name='upload-images'),
+  path('get-upload-images', job_views.getuploaded_image,name='get-upload-images'),
+
+
 
   path('cancel-job-by-emp', job_views.cancel_job_by_employee,name='cancel_job_by_employee'),
 
