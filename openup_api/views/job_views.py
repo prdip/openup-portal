@@ -276,7 +276,7 @@ def add_job(request):
                 JOB ALERT IS SHARED TASK FUNCTION RUN IN BACKGROUND @shardtask decorator required
             '''
             accepted_by = ''
-            jobAlert(id,current_location_lat,current_location_long)
+            jobAlert(id,current_location_lat,current_location_long,accepted_by)
              
             # payment_type = user_rec.user_payment_type
 
@@ -1331,7 +1331,7 @@ def cancel_job_by_employee(request):
            
             notify_client.delay(job_id,user_id)
             # alert employee that job is active
-            accepted_by = ''
+            
             jobAlert(job_id,job_record.user.location_latitude,job_record.user.location_longitude,accepted_by)
             return JsonResponse({
                     "success"     :   1,
