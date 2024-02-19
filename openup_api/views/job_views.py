@@ -608,6 +608,7 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
 
             if duration_seconds <= 1260 and duration_seconds != '':
                 user_list.append(employee.user_id)
+                print("Users ",user_list)
                 emp_fcm.append(employee.user_fcm_token)
                 emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
 
@@ -662,7 +663,7 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
             }
              
     # SEND NOTIFICATIONS 
-    
+    print("",emplist)
     for employee in employees:
         if employee.user_fcm_token!=None and employee.user_fcm_token!='':
             noti_data['data']       =   not_data
