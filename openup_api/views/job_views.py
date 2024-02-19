@@ -1331,7 +1331,7 @@ def cancel_job_by_employee(request):
            
             notify_client.delay(job_id,user_id)
             # alert employee that job is active
-
+            accepted_by = ''
             jobAlert(job_id,job_record.user.location_latitude,job_record.user.location_longitude,accepted_by)
             return JsonResponse({
                     "success"     :   1,
