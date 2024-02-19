@@ -611,7 +611,7 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
             if duration_seconds != '':
                 if int(duration_seconds) <= 1260:
                     user_list.append(employee.user_id)
-                    print("Users ",user_list)
+
                     emp_fcm.append(employee.user_fcm_token)
                     emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
 
@@ -647,7 +647,7 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
     emp_lis         =   ','.join(str(i) for i in user_list)
     alert_title     =    "new job added"
     alert_messages  =    "job generated"
-    created_at      =     datetime.datetime.now()
+    created_at      =     timezone.now()
     
     # Alert Table Save entry
     data            =   Alerts(alert_job=job_instance, alert_users=emp_lis,alert_title=alert_title,
