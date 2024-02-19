@@ -300,8 +300,11 @@ def add_job(request):
             if job_type == "emergency":
                 #    comment now
                 pay_type     = SuccessPayments.objects.filter(pay_user = user_id).order_by('pay_id').reverse()[:1] 
+                try:
+                    payment = pay_type.values('pay_type').first()['pay_type']
 
-                payment = pay_type.values('pay_type').first()['pay_type']
+                except:
+                    payment = None
 
                 if payment == "stripe":
                     
