@@ -605,12 +605,12 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
             except KeyError:
                 duration_seconds =''
             # if dist is less than 6 km append list 
-
-            if duration_seconds <= 1260 and duration_seconds != '':
-                user_list.append(employee.user_id)
-                print("Users ",user_list)
-                emp_fcm.append(employee.user_fcm_token)
-                emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
+            if duration_seconds != '':
+                if int(duration_seconds) <= 1260:
+                    user_list.append(employee.user_id)
+                    print("Users ",user_list)
+                    emp_fcm.append(employee.user_fcm_token)
+                    emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
 
     if len(user_list) == 0:
         client_fcm = job_instance.user.user_fcm_token
