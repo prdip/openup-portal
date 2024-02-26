@@ -1736,7 +1736,7 @@ def upload_images(request):
         job_id   =  request.data.get("job_id")
         img_type =  request.data.get("img_type")
         image_list  =  request.FILES.getlist('image')
-
+        print(image_list)
         if job_id == '' or job_id == None:
             return JsonResponse({
                 "success"     :   0,
@@ -1798,22 +1798,26 @@ def upload_images(request):
 
         
             filename = os.path.basename(image.name)
-            ext     =   filename.split('.')[-1]
-            name    =   filename.split('.')[0]
+            # ext     =   filename.split('.')[-1]
+            # name    =   filename.split('.')[0]
             count   =   0
+            name, ext = os.path.splitext(filename)
+    
+            if len(name) > 12:
+                name = name[:12]
+            
+            # for i in range(0, len(filename)):  
+            #     if(filename[i] != ' '):  
+            #         count = count + 1
 
-            for i in range(0, len(filename)):  
-                if(filename[i] != ' '):  
-                    count = count + 1
+            #     if count >=12:
+            #         name = str(filename)[0:12]
 
-                if count >=12:
-                    name = str(filename)[0:12]
-
-                time     =   (timezone.now()).strftime("%Y-%m-%d %H:%M:%S")
-                filename =   "%s%s.%s" % (name,str(time),ext)
-                # original_string = 'Jonaten_bann2023-07-27 20:12:10.png'
-                modified_string = filename.replace(' ', '_').replace(':', '') 
-                file_path_name = os.path.join('attachments/',modified_string)
+            time     =   (timezone.now()).strftime("%Y-%m-%d %H:%M:%S")
+            filename =   "%s%s.%s" % (name,str(time),ext)
+            # original_string = 'Jonaten_bann2023-07-27 20:12:10.png'
+            modified_string = filename.replace(' ', '_').replace(':', '') 
+            file_path_name = os.path.join('attachments/',modified_string)
                 # apirequest.png
             file = File(file            = image,
                         file_name       = image,
