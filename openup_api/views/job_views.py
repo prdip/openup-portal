@@ -666,7 +666,7 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
             }
              
     # SEND NOTIFICATIONS 
-    print("",emplist)
+
     for employee in employees:
         if employee.user_fcm_token!=None and employee.user_fcm_token!='':
             noti_data['data']       =   not_data
