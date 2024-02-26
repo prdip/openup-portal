@@ -808,6 +808,8 @@ def job_details(request):
             imges_list  = []
         
             for image in img_id_list:
+                
+                img_list   = []
                 img_dict   = {}
                 if image.img_type == 1:
                     img_dict['type'] = "Before"
@@ -820,13 +822,12 @@ def job_details(request):
                 if files:
                     files_list = File.objects.exclude(is_delete=1).filter(file_img=image.img_id)
 
-                    img_list   = []
                     for file in files_list:
 
                         image = domain + file.file.url
                         img_list.append(image)
-                        img_dict['images'] = img_list
-                    imges_list.append(img_dict)
+                    img_dict['images'] = img_list
+                imges_list.append(img_dict)
             job_serializer['images'] = imges_list
         job_serializer.pop('vehicle_license')
 
