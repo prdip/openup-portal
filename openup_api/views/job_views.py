@@ -806,28 +806,45 @@ def job_details(request):
             img_id_list = Images.objects.exclude(is_delete=1).filter(job=job_id)
 
             imges_list  = []
-        
+            before_list = []
+            after_list = []
+            img_dict   = {}
             for image in img_id_list:
                 
-                img_list   = []
-                img_dict   = {}
+            #     img_list   = []
                 if image.img_type == 1:
-                    img_dict['type'] = "Before"
-                else:
+                   
+                    files  = File.objects.exclude(is_delete=1).filter(file_img=image.img_id).exists()
 
-                    img_dict['type'] = "After"
+                    if files:
+                        files_list = File.objects.exclude(is_delete=1).filter(file_img=image.img_id)
+
+                        for file in files_list:
+
+                            image = domain + file.file.url
+                            before_list.append(image)
+                else: 
                 
-                files  = File.objects.exclude(is_delete=1).filter(file_img=image.img_id).exists()
+                    files  = File.objects.exclude(is_delete=1).filter(file_img=image.img_id).exists()
 
-                if files:
-                    files_list = File.objects.exclude(is_delete=1).filter(file_img=image.img_id)
+                    if files:
+                        files_list = File.objects.exclude(is_delete=1).filter(file_img=image.img_id)
 
-                    for file in files_list:
+                        for file in files_list:
 
-                        image = domain + file.file.url
-                        img_list.append(image)
-                    img_dict['images'] = img_list
-                imges_list.append(img_dict)
+                            image = domain + file.file.url
+                            after_list.append(image)
+            
+
+            #             img_list.append(image)
+            #         img_dict['images'] = img_list
+            img_dict['type']   = 'Before'
+            img_dict['images'] = before_list
+            imges_list.append(img_dict)
+            img_dict['type']   = 'After '
+            
+            img_dict['images']  = after_list
+            imges_list.append(img_dict)
             job_serializer['images'] = imges_list
         job_serializer.pop('vehicle_license')
 
