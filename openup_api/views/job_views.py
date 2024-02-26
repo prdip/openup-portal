@@ -668,7 +668,7 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
     # SEND NOTIFICATIONS 
 
     for employee in user_list:
-        print("send notification",employee)
+
         employee = Registration.objects.exclude(Q(user_is_delete=1)).get(user_id=employee)
         if employee.user_fcm_token!=None and employee.user_fcm_token!='':
             noti_data['data']       =   not_data
@@ -1736,7 +1736,7 @@ def upload_images(request):
         job_id   =  request.data.get("job_id")
         img_type =  request.data.get("img_type")
         image_list  =  request.FILES.getlist('image')
-        print(image_list)
+
         if job_id == '' or job_id == None:
             return JsonResponse({
                 "success"     :   0,
