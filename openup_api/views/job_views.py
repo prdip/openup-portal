@@ -667,7 +667,7 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
              
     # SEND NOTIFICATIONS 
 
-    for employee in emp_lis:
+    for employee in user_list:
         print("send notification",employee)
         employee = Registration.objects.exclude(Q(user_is_delete=1)).get(user_id=employee)
         if employee.user_fcm_token!=None and employee.user_fcm_token!='':
