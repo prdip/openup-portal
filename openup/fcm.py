@@ -42,6 +42,7 @@ class FCM:
                 }  
                         
             }
+        print(dataDict,"Notification function")
         if dataDict['device'] and dataDict['device']=='1':
 
             body = {    
