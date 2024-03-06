@@ -838,13 +838,15 @@ def job_details(request):
 
             #             img_list.append(image)
             #         img_dict['images'] = img_list
+          
             img_dict['type']   = 'Before'
             img_dict['images'] = before_list
             imges_list.append(img_dict)
-            img_dict['type']   = 'After '
+            img_dict1 ={}
+            img_dict1['type']   = 'After '
             
-            img_dict['images']  = after_list
-            imges_list.append(img_dict)
+            img_dict1['images']  = after_list
+            imges_list.append(img_dict1)
             job_serializer['images'] = imges_list
         job_serializer.pop('vehicle_license')
 
