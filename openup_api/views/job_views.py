@@ -325,7 +325,7 @@ def add_job(request):
             data = {
                         "job_id" : id,
                     }
-            print("job_add",data)
+             
             return JsonResponse({
                 "success"   :   1,
                 "message"   :   "Job added successfully",
@@ -669,7 +669,7 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
     # SEND NOTIFICATIONS 
 
     for employee in user_list:
-        print(employee)
+
         employee = Registration.objects.exclude(Q(user_is_delete=1)).get(user_id=employee)
         if employee.user_fcm_token!=None and employee.user_fcm_token!='':
             noti_data['data']       =   not_data
