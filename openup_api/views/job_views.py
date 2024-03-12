@@ -608,6 +608,8 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
                 duration_seconds = data['rows'][0]['elements'][0]['duration']['value']
             except KeyError:
                 duration_seconds =''
+            print(employee.user_id, duration_seconds)
+            
             # if dist is less than 6 km append list 
             if duration_seconds != '':
                 if int(duration_seconds) <= 1260:
