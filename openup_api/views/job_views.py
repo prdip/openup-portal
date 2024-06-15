@@ -575,11 +575,11 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
     else:
         if job_instance.job_type == "emergency":
         
-            employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(job_accepted_by=accepted_by).filter(user_role_id=1)
+            employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(user_id=accepted_by).filter(user_role_id=1)
             message     =  "EMERGENCY!!! PLEASE ACCEPT THIS JOB ASAP!!!"
 
         else:
-            employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(job_accepted_by=accepted_by).filter(employee_status=1).filter(user_role_id=1)
+            employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(user_id=accepted_by).filter(employee_status=1).filter(user_role_id=1)
             message     =  "PLEASE ACCEPT THIS JOB ASAP!!!"
 
 
@@ -1339,9 +1339,10 @@ def cancel_job_by_employee(request):
                 "message"     :   "job is already canceled by you",
                 })
 
+
         accepted_by = job_record.job_accepted_by
         update_data = {
-            "job_status" : 1,
+            "job_status_id" : 1,
             "job_accepted_by" : None
         }
         job_log = JobLogs(
@@ -1370,6 +1371,7 @@ def cancel_job_by_employee(request):
             return JsonResponse({
                     "success"     :   0,
                     "message"     :   "some error occured",
+                    "error"       :   job_ser.errors
                     })
 
     

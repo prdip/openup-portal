@@ -180,7 +180,7 @@ class JobsSerializer(serializers.Serializer):
     user                     =   serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all(),allow_null=True)
     location_latitude        =   serializers.FloatField(required=False)
     location_longitude       =   serializers.FloatField(required=False)
-    job_accepted_by          =   serializers.CharField(required=False)
+    job_accepted_by          =   serializers.CharField(required=False,allow_null=True)
     # vehicle_details          =   serializers.CharField()
     # vehicle_modification     =   serializers.CharField()
 
