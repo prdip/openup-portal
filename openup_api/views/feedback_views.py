@@ -49,7 +49,7 @@ def add_feedback(request):
         job_id              =   request.data.get('job_id',None)
         feedback_star       =   request.data.get('feedback_star',None)
         feedback_comment    =   request.data.get('feedback_comment',None)
-
+        print("job",job_id)
         try:
             check_feedback  =   Feedback.objects.filter(feedback_job=job_id).exists()
         except:
@@ -72,7 +72,7 @@ def add_feedback(request):
 
         # try to found job id found 
         try:
-            job_record      =       Jobs.objects.exclude(Q(is_delete=1) and Q(job_status_id=1)).get(job_id=job_id)
+            job_record      =       Jobs.objects.exclude(Q(is_delete=1)).exclude(Q(job_status=1)).get(job_id=job_id)
         except:
             job_record      =       None
 
