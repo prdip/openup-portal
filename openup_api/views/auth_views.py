@@ -281,7 +281,7 @@ def user_register(request):
             }
 
             send_empemail.delay(data_dict)
-
+            # send_empemail(data_dict)
             email_dict = {
                 "Subject"            :   "Please Verify Your email to start using Openup emergency service",
                 "text_template"      :   "email/verify_user.txt",
@@ -291,6 +291,7 @@ def user_register(request):
                 "user_type"          :    user_type,
             }
             send_email.delay(email_dict)
+            # send_email(email_dict)
 
             js  =  json.dumps(password)
             sweetword = SweetWord(
@@ -351,6 +352,7 @@ def user_register(request):
                 }
              
             send_email.delay(data_dict)
+            # send_email(data_dict)
 
 
 
