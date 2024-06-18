@@ -280,8 +280,8 @@ def user_register(request):
                 "user_email"         :      email
             }
 
-            send_empemail.delay(data_dict)
-            # send_empemail(data_dict)
+            # send_empemail.delay(data_dict)
+            send_empemail(data_dict)
             email_dict = {
                 "Subject"            :   "Please Verify Your email to start using Openup emergency service",
                 "text_template"      :   "email/verify_user.txt",
@@ -428,11 +428,11 @@ def send_email(data_dict):
     SendEmail.send_email(data_dict)
 
 
-@shared_task()
+# @shared_task()
 def send_empemail(data_dict):
     '''call send_email function'''
 
-    # email       =   data_dict['user_email']
+    email       =   data_dict['user_email']
     
     role        =   UserRole.objects.filter(role_name=data_dict['user_type']).values('role_id').first()['role_id']
     user_id     =   Registration.objects.exclude(user_is_delete=1).filter(Q(user_email=email)).filter(Q(user_role = role)).values('user_id').first()['user_id']   
