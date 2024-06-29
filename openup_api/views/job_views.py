@@ -869,9 +869,9 @@ def job_details(request):
 @api_view(['POST'])
 def remove_job(request):
 
-    token = request.headers['Authorization']
-    user_token = token.replace("Bearer",'')  
-    check_user      =       token_verification(user_token)
+    token       = request.headers['Authorization']
+    user_token  = token.replace("Bearer",'')  
+    check_user  = token_verification(user_token)
 
     if check_user is None:
         return JsonResponse({
@@ -1150,22 +1150,23 @@ def complete_job(request):
 def complete_job_notification(job_id):
 
     try:
-        client_id       =       Jobs.objects.exclude(Q(job_status=1) and Q(job_status=3) and Q(job_status=4)).filter(job_id=job_id).values('user_id').first()['user_id']
+        client_id   =   Jobs.objects.exclude(Q(job_status=1) and Q(job_status=3) and Q(job_status=4)).filter(job_id=job_id).values('user_id').first()['user_id']
 
     except:
 
         client_id   =   None
 
     
-    client_record   =       Registration.objects.exclude(user_is_delete=1).get(user_id=client_id)
+    client_record   =   Registration.objects.exclude(user_is_delete=1).get(user_id=client_id)
     
     # User information dictionary
 
-    data = { 'title'                    :   'job completed',
+    data = { 
+            'title'                    :   'job completed',
             'notificationScreenType'    :   "completejob",
-            'message'                   :   'Your job completed',
+            'message'                   :   'Your job completed. Please add review about your job',
             'job_id'                    :   job_id
-            }
+        }
         
     
     # SEND NOTIFICATIONS 
@@ -1173,7 +1174,7 @@ def complete_job_notification(job_id):
     noti_data={ }  
     noti_data['data'] = data
     noti_data['fcm_token']  =  (str(client_record.user_fcm_token))
-    noti_data['device']     =   str(client_record.device_type)
+    noti_data['device']     =  str(client_record.device_type)
     
     FCM.send_notification(noti_data)
     return True
