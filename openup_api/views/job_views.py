@@ -846,7 +846,7 @@ def job_details(request):
             img_dict['images'] = before_list
             imges_list.append(img_dict)
             img_dict1 ={}
-            img_dict1['type']   = 'After '
+            img_dict1['type']   = 'After'
             
             img_dict1['images']  = after_list
             imges_list.append(img_dict1)
