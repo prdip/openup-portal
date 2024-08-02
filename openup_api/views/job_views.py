@@ -1226,7 +1226,7 @@ def cancel_job(request):
                 })
 
         update_data = {
-            "job_status" : 4
+            "job_status_id" : 4
         }
 
         job_ser = JobsSerializer(instance=job_record,data=update_data,partial=True)
@@ -1438,11 +1438,11 @@ def job_alert_after_cancel(job_id,latitude,longitude,accepted_by):
         noti_data['device']     =   str(employee.device_type)
         noti_data['data']       =   data
 
-            # sends push notification
+        # sends push notification
 
         FCM.send_notification(noti_data)
 
-        job_status      = JobsType.objects.get(status_id=5)
+        job_status      = JobsType.objects.get(status_id=1)
         update_record   = {
             "job_status" : job_status.status_id 
             }
