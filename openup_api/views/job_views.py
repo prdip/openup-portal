@@ -680,6 +680,7 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
             # sends push notification
             FCM.send_notification(noti_data)
      
+
     return True
     
 
@@ -1507,12 +1508,31 @@ def notify_client(job_id,user_id):
             dist        =   gd(user_location,emp_location).km
 
             # if dist is less than 6 km append list
-            if dist <= 5:
-                user_list.append(employee.user_id)
-                emp_fcm.append(employee.user_fcm_token)
-                emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
-    
-    if len(user_list) == 0:
+            # if dist <= 5:
+            #     user_list.append(employee.user_id)
+            #     emp_fcm.append(employee.user_fcm_token)
+            #     emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
+
+            api_key  =  'AIzaSyC2o6UvDF6qUUQM3KCwR6dwoV5qCfj8MGs'
+            url      =  f"https://maps.googleapis.com/maps/api/distancematrix/json?origins={job_instance.location_latitude},{job_instance.location_longitude}&destinations={employee.location_latitude},{employee.location_longitude}&key={api_key}"
+            response =  requests.get(url)
+            data     =  response.json()
+
+            try:
+                duration_seconds = data['rows'][0]['elements'][0]['duration']['value']
+            except KeyError:
+                duration_seconds =''
+
+
+            # if dist is less than 6 km append list 
+            if duration_seconds != '':
+                if int(duration_seconds) <= 1260:
+                    user_list.append(employee.user_id)
+                    emp_fcm.append(employee.user_fcm_token)
+                    emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
+
+
+    if len(emplist) == 0:
         client_fcm = job_instance.user.user_fcm_token
         noti_data={ }  
     
