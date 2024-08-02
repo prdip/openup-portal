@@ -668,6 +668,15 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
              'job_type'                   :     job_instance.job_type
             }
              
+    job_status      = JobsType.objects.get(status_id=1)
+    update_record   = {
+        "job_status" : job_status.status_id 
+        }
+
+    job_serializer = JobsSerializer(instance=job_instance,data=update_record,partial=True)
+    if job_serializer.is_valid():
+        job_serializer.save()
+
     # SEND NOTIFICATIONS 
 
     for employee in user_list:
@@ -1444,7 +1453,7 @@ def job_alert_after_cancel(job_id,latitude,longitude,accepted_by):
 
         job_status      = JobsType.objects.get(status_id=1)
         update_record   = {
-            "job_status" : job_status.status_id 
+            "job_status_id" : job_status.status_id 
             }
 
         job_serializer = JobsSerializer(instance=job_instance,data=update_record,partial=True)
@@ -1532,7 +1541,7 @@ def notify_client(job_id,user_id):
                     emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
 
 
-    if len(emplist) == 0:
+    if len(user_list) == 0:
         client_fcm = job_instance.user.user_fcm_token
         noti_data={ }  
     
@@ -1584,7 +1593,15 @@ def notify_client(job_id,user_id):
              'job_id'                     :     str(job_id),  
              'job_type'                   :     job_instance.job_type
             }
-             
+    job_status      = JobsType.objects.get(status_id=1)
+    update_record   = {
+        "job_status" : job_status.status_id 
+        }
+    
+    job_serializer = JobsSerializer(instance=job_instance,data=update_record,partial=True)
+    if job_serializer.is_valid():
+        job_serializer.save()
+
     # SEND NOTIFICATIONS 
     
     for employee in employees:
