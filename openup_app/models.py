@@ -49,7 +49,7 @@ class Registration(models.Model):
     location_latitude        =   models.FloatField(null=True)
     location_longitude       =   models.FloatField(null=True)
     device_type              =   models.IntegerField(null=True,default=1)   # 1 == > Anaroid  2==> IOS
-    user_fcm_token           =   models.CharField(max_length=500,null=True,blank=True)
+    user_fcm_token           =   models.TextField(null=True,blank=True)
     user_stripe_id           =   models.CharField(max_length=500,null=True,blank=True)  #CLIENT STRIPE ID 
     user_payment_id          =   models.CharField(max_length=500,null=True,blank=True)  #CLIENT PAYMENT METHOD ID
     user_payment_type        =    models.CharField(max_length=150,null=True)
