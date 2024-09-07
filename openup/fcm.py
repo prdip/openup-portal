@@ -26,58 +26,79 @@ class FCM:
         
         # url     =   'https://fcm.googleapis.com/fcm/send'
         url = "https://fcm.googleapis.com/v1/projects/mazechat-c1649/messages:send"
-        body    =   {  
-                "data"                  :   dataDict['data'],
-                "notification":{  
-                    "title"             :   dataDict['data']['title'],
-                    "body"              :   dataDict['data']['message'],
-                    "sound"             :   "notification.wav",
-                    "content_available" :   "true" 
-                }, 
-                "to":dataDict['fcm_token'],
+        # body    =   {  
+        #         "data"                  :   dataDict['data'],
+        #         "notification":{  
+        #             "title"             :   dataDict['data']['title'],
+        #             "body"              :   dataDict['data']['message'],
+        #             "sound"             :   "notification.wav",
+        #             "content_available" :   "true" 
+        #         }, 
+        #         "to":dataDict['fcm_token'],
                 
-                "apns":{
-                    "headers":{
-                        "apns-expiration":expireTime
-                    }
-                },
-                "android":{
-                    "ttl":str(seconds)+"s"
-                },
-                "webpush":{
-                    "headers":{
-                        "TTL":str(seconds)
-                    }
-                }  
+        #         "apns":{
+        #             "headers":{
+        #                 "apns-expiration":expireTime
+        #             }
+        #         },
+        #         "android":{
+        #             "ttl":str(seconds)+"s"
+        #         },
+        #         "webpush":{
+        #             "headers":{
+        #                 "TTL":str(seconds)
+        #             }
+        #         }  
                         
+        #     }
+        body = {
+            
+        "message": {
+            "token": dataDict['fcm_token'],   
+            "notification": {
+                "title":  dataDict['data']['title'],
+                "body":   dataDict['data']['title']
             }
+        }
+     
+
+        }
 
         if dataDict['device'] and dataDict['device']=='1':
 
-            body = {    
-                "data"  :   dataDict['data'], 
-                "to"    :   dataDict['fcm_token'],
-                "notification":{  
-                    "title"             :   dataDict['data']['title'],
-                    "body"              :   dataDict['data']['message'],
-                    "sound"             :   "notification.wav",
-                    "content_available" :   "true" 
-                }, 
-                "apns":{
-                    "headers":{
-                        "apns-expiration":expireTime
+            # body = {    
+            #     "data"  :   dataDict['data'], 
+            #     "to"    :   dataDict['fcm_token'],
+            #     "notification":{  
+            #         "title"             :   dataDict['data']['title'],
+            #         "body"              :   dataDict['data']['message'],
+            #         "sound"             :   "notification.wav",
+            #         "content_available" :   "true" 
+            #     }, 
+            #     "apns":{
+            #         "headers":{
+            #             "apns-expiration":expireTime
+            #         }
+            #     },
+            #     "android":{
+            #         "ttl":str(seconds)+"s"
+            #     },
+            #     "webpush":{
+            #         "headers":{
+            #             "TTL":str(seconds)
+            #         }
+            #     }  
+            # }
+             body = {
+            
+                "message": {
+                    "token": dataDict['fcm_token'],   
+                    "notification": {
+                        "title":  dataDict['data']['title'],
+                        "body":   dataDict['data']['title']
                     }
-                },
-                "android":{
-                    "ttl":str(seconds)+"s"
-                },
-                "webpush":{
-                    "headers":{
-                        "TTL":str(seconds)
-                    }
-                }  
-            }
-        
+                }
+             }
         headers = {
             'Content-Type': 'application/json; UTF-8',
             "Authorization": "Bearer "+str(serverKey)+""
