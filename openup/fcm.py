@@ -89,7 +89,7 @@ class FCM:
             #         }
             #     }  
             # }
-             body = {
+            body = {
             
                 "message": {
                     "token": dataDict['fcm_token'],   
@@ -98,14 +98,17 @@ class FCM:
                         "body":   dataDict['data']['title']
                     }
                 }
-             }
+            }
         headers = {
             'Content-Type': 'application/json; UTF-8',
             "Authorization": "Bearer "+str(serverKey)+""
-        } 
-        response    =   requests.post(url, data=json.dumps(body), headers=headers)
-        result      =   response.content 
-    
+        }
+        try: 
+            response    =   requests.post(url, data=json.dumps(body), headers=headers)
+            result      =   response.content 
+            print("Notification send",result)
+        except Exception as e:
+            print("Failed to",e)
         return result
     
 
