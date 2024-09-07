@@ -9,7 +9,7 @@ environ.Env.read_env()
 Skey         =   env('STRIPE_KEY')
 Ssecret      =   env('STRIPE_SECRET')
 
-stripe.api_key = Ssecret
+stripe.api_key = Skey
 
 class InStripe: 
     def create_invoice():
