@@ -25,7 +25,7 @@ class FCM:
 
         
         # url     =   'https://fcm.googleapis.com/fcm/send'
-        url = "https://fcm.googleapis.com/v1/projects/mazechat-c1649/messages:send"
+        url = "https://fcm.googleapis.com/v1/projects/openup-2892b/messages:send"
         # body    =   {  
         #         "data"                  :   dataDict['data'],
         #         "notification":{  
