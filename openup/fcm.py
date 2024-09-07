@@ -101,8 +101,11 @@ class FCM:
                 new_access_token = access['token']
                 expiry           = access['expiry'] 
 
-                if isinstance(expiry, str):
+                if isinstance(expiry, (int, float)):  # If it's a Unix timestamp
+                    expiry = datetime.fromtimestamp(expiry, tz=timezone.utc)
+                elif isinstance(expiry, str):  # If it's a string, try parsing it
                     expiry = parse_datetime(expiry)
+
                 user.user_fcm_token = new_access_token,
 
 
@@ -119,9 +122,10 @@ class FCM:
             new_access_token = access['token']
             expiry           = access['expiry']
 
-            if isinstance(expiry, str):
+            if isinstance(expiry, (int, float)):  # If it's a Unix timestamp
+                expiry = datetime.fromtimestamp(expiry, tz=timezone.utc)
+            elif isinstance(expiry, str):  # If it's a string, try parsing it
                 expiry = parse_datetime(expiry)
-
 
             user.user_fcm_token = new_access_token
             user.update_at      = expiry
