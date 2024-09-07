@@ -7,6 +7,8 @@ from openup_app.models import Registration
 from datetime import datetime, timezone
 from google.oauth2 import service_account
 from google.auth.transport.requests import Request as GoogleRequest
+from django.utils.dateparse import parse_datetime
+
 class FCM: 
 
     
@@ -88,11 +90,13 @@ class FCM:
 
     def access_token_get_or_update():
         user = Registration.objects.get(user_id=1)
+        expiry_datetime = user.update_at
         if user.user_fcm_token == '' or user.user_fcm_token == None:
             # create token and add
-            expiry_datetime = user.update_at
- 
-            if expiry_datetime < datetime.now(timezone.utc):
+            if isinstance(expiry_datetime, str):
+                expiry_datetime = parse_datetime(expiry_datetime)
+        
+            if expiry_datetime is None or expiry_datetime < datetime.now(timezone.utc):
                 access           = FCM.get_access_token()
                 new_access_token = access['token']
                 expiry           = access['expiry'] 
