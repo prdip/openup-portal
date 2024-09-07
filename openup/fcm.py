@@ -101,7 +101,11 @@ class FCM:
                 new_access_token = access['token']
                 expiry           = access['expiry'] 
 
+                if isinstance(expiry, str):
+                    expiry = parse_datetime(expiry)
                 user.user_fcm_token = new_access_token,
+
+
                 user.update_at      = expiry,
                 user.save()
                 return new_access_token
@@ -110,9 +114,14 @@ class FCM:
 
         else:
 
+
             access           = FCM.get_access_token()
             new_access_token = access['token']
-            expiry           = access['expiry'] 
+            expiry           = access['expiry']
+
+            if isinstance(expiry, str):
+                expiry = parse_datetime(expiry)
+
 
             user.user_fcm_token = new_access_token
             user.update_at      = expiry
