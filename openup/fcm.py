@@ -26,79 +26,84 @@ class FCM:
         
         # url     =   'https://fcm.googleapis.com/fcm/send'
         url = "https://fcm.googleapis.com/v1/projects/openup-2892b/messages:send"
-        # body    =   {  
-        #         "data"                  :   dataDict['data'],
-        #         "notification":{  
-        #             "title"             :   dataDict['data']['title'],
-        #             "body"              :   dataDict['data']['message'],
-        #             "sound"             :   "notification.wav",
-        #             "content_available" :   "true" 
-        #         }, 
-        #         "to":dataDict['fcm_token'],
+        body    = {
+             "message": {  
+                "data"                  :   dataDict['data'],
+                "notification":{  
+                    "title"             :   dataDict['data']['title'],
+                    "body"              :   dataDict['data']['message'],
+                    "sound"             :   "notification.wav",
+                    "content_available" :   "true" 
+                }, 
+                "token":dataDict['fcm_token'],
                 
-        #         "apns":{
-        #             "headers":{
-        #                 "apns-expiration":expireTime
-        #             }
-        #         },
-        #         "android":{
-        #             "ttl":str(seconds)+"s"
-        #         },
-        #         "webpush":{
-        #             "headers":{
-        #                 "TTL":str(seconds)
-        #             }
-        #         }  
+                "apns":{
+                    "headers":{
+                        "apns-expiration":expireTime
+                    }
+                },
+                "android":{
+                    "ttl":str(seconds)+"s"
+                },
+                "webpush":{
+                    "headers":{
+                        "TTL":str(seconds)
+                    }
+                }  
                         
-        #     }
-        body = {
-            
-        "message": {
-            "token": dataDict['fcm_token'],   
-            "notification": {
-                "title":  dataDict['data']['title'],
-                "body":   dataDict['data']['title']
             }
         }
+        # body = {
+            
+        # "message": {
+        #     "token": dataDict['fcm_token'],   
+        #     "notification": {
+        #         "title":  dataDict['data']['title'],
+        #         "body":   dataDict['data']['title']
+        #     }
+        # }
      
 
-        }
+        # }
 
         if dataDict['device'] and dataDict['device']=='1':
 
-            # body = {    
-            #     "data"  :   dataDict['data'], 
-            #     "to"    :   dataDict['fcm_token'],
-            #     "notification":{  
-            #         "title"             :   dataDict['data']['title'],
-            #         "body"              :   dataDict['data']['message'],
-            #         "sound"             :   "notification.wav",
-            #         "content_available" :   "true" 
-            #     }, 
-            #     "apns":{
-            #         "headers":{
-            #             "apns-expiration":expireTime
-            #         }
-            #     },
-            #     "android":{
-            #         "ttl":str(seconds)+"s"
-            #     },
-            #     "webpush":{
-            #         "headers":{
-            #             "TTL":str(seconds)
-            #         }
-            #     }  
-            # }
             body = {
-            
                 "message": {
-                    "token": dataDict['fcm_token'],   
-                    "notification": {
-                        "title":  dataDict['data']['title'],
-                        "body":   dataDict['data']['title']
-                    }
+                
+                    "data"  :   dataDict['data'], 
+                    "token"    :   dataDict['fcm_token'],
+                    "notification":{  
+                        "title"             :   dataDict['data']['title'],
+                        "body"              :   dataDict['data']['message'],
+                        "sound"             :   "notification.wav",
+                        "content_available" :   "true" 
+                    }, 
+                    "apns":{
+                        "headers":{
+                            "apns-expiration":expireTime
+                        }
+                    },
+                    "android":{
+                        "ttl":str(seconds)+"s"
+                    },
+                    "webpush":{
+                        "headers":{
+                            "TTL":str(seconds)
+                        }
+                    }  
                 }
             }
+            # body = {
+            
+            #     "message": {
+            #         "token": dataDict['fcm_token'],   
+            #         "notification": {
+            #             "title":  dataDict['data']['title'],
+            #             "body":   dataDict['data']['title']
+            #         }
+            #     }
+            # }
         headers = {
             'Content-Type': 'application/json; UTF-8',
             "Authorization": "Bearer "+str(serverKey)+""
@@ -106,9 +111,9 @@ class FCM:
         try: 
             response    =   requests.post(url, data=json.dumps(body), headers=headers)
             result      =   response.content 
-            print("Notification send",result)
+
         except Exception as e:
-            print("Failed to",e)
+            pass
         return result
     
 
