@@ -101,16 +101,13 @@ class FCM:
                 new_access_token = access['token']
                 expiry           = access['expiry'] 
 
-                if isinstance(expiry, (int, float)):  # If it's a Unix timestamp
-                    expiry = datetime.fromtimestamp(expiry, tz=timezone.utc)
-                elif isinstance(expiry, str):  # If it's a string, try parsing it
-                    expiry = parse_datetime(expiry)
+                expiry_str          = expiry.strftime('%Y-%m-%dT%H:%M:%S.%f%z')
 
-                user.user_fcm_token = new_access_token,
-
-
-                user.update_at      = expiry,
-                user.save()
+                update_dict = {
+                    'user_fcm_token': new_access_token,
+                    'update_at': expiry_str
+                }
+                user.update(**update_dict)
                 return new_access_token
             else:
                 return user.user_fcm_token
@@ -122,14 +119,16 @@ class FCM:
             new_access_token = access['token']
             expiry           = access['expiry']
 
-            if isinstance(expiry, (int, float)):  # If it's a Unix timestamp
-                expiry = datetime.fromtimestamp(expiry, tz=timezone.utc)
-            elif isinstance(expiry, str):  # If it's a string, try parsing it
-                expiry = parse_datetime(expiry)
+            expiry_str          = expiry.strftime('%Y-%m-%dT%H:%M:%S.%f%z')
+            # user.user_fcm_token = new_access_token
+            # user.update_at      = expiry_str
+            # user.save()
 
-            user.user_fcm_token = new_access_token
-            user.update_at      = expiry
-            user.save()
+            update_dict = {
+                'user_fcm_token': new_access_token,
+                'update_at': expiry_str
+            }
+            user.update(**update_dict)
             return new_access_token 
 
 
