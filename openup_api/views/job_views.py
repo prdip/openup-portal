@@ -45,6 +45,9 @@ from .validation import check_number,check_text
 
 from django.utils import timezone
 
+import logging
+logger = logging.getLogger('django.request')
+
 import requests
  
 import environ 
@@ -761,6 +764,12 @@ def job_details(request):
                     "message"     :   "Please provide job id",
             })
 
+        if job_data.job_status_id == 4:
+            return JsonResponse({
+                    "success"     :   0,
+                    "message"     :   "This job has been cancelled",
+            })
+
         if job_data.job_accepted_by != None: 
             if int(job_data.job_accepted_by) != int(user_id):
                 return JsonResponse({
@@ -1245,8 +1254,24 @@ def cancel_job(request):
                 "message"     :   "job is already canceled",
                 })
 
+        # Track the employee who had accepted (if any) in job_attempted_by
+        existing_attempted = job_record.job_attempted_by or ''
+        if job_record.job_accepted_by:
+            emp_id_str = str(job_record.job_accepted_by)
+            if emp_id_str not in [x.strip() for x in existing_attempted.split(',') if x.strip()]:
+                if existing_attempted:
+                    new_attempted = existing_attempted + ',' + emp_id_str
+                else:
+                    new_attempted = emp_id_str
+            else:
+                new_attempted = existing_attempted
+        else:
+            new_attempted = existing_attempted
+
         update_data = {
-            "job_status_id" : 4
+            "job_status_id" : 4,
+            "job_accepted_by" : None,
+            "job_attempted_by" : new_attempted
         }
 
         job_ser = JobsSerializer(instance=job_record,data=update_data,partial=True)
@@ -1329,11 +1354,20 @@ def cancel_job_notification(job_id):
 @api_view(['POST'])
 
 def cancel_job_by_employee(request):
-    token       = request.headers['Authorization']
+    try:
+        token       = request.headers['Authorization']
+    except KeyError:
+        logger.error('cancel_job_by_employee: Missing Authorization header')
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Missing Authorization header",
+                })
+
     user_token  = token.replace("Bearer",'')  
     check_user  = token_verification(user_token)
 
     if check_user is None:
+        logger.warning('cancel_job_by_employee: Unauthorized access attempt')
         return JsonResponse({
                 "success"     :   0,
                 "message"     :   "Unauthorized User",
@@ -1343,24 +1377,74 @@ def cancel_job_by_employee(request):
     else:
         job_id  = request.data.get('job_id')
         user_id = check_user['session_user']
-        try:
-            job_record  =   Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
-        except:
-            job_record = None
 
-
-        if job_record == None:
-             return JsonResponse({
-                "success"     :   0,
-                "message"     :   "no job found",
-                })
-         
-        if job_record.job_status.status_id==1:
+        if job_id is None or job_id == '':
+            logger.warning('cancel_job_by_employee: Missing job_id by user %s', user_id)
             return JsonResponse({
                 "success"     :   0,
-                "message"     :   "job is already canceled by you",
+                "message"     :   "Please provide a valid job id",
                 })
 
+        try:
+            job_id = int(job_id)
+        except (ValueError, TypeError):
+            logger.warning('cancel_job_by_employee: Invalid job_id format "%s" by user %s', job_id, user_id)
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Invalid job id format",
+                })
+
+        try:
+            job_record  =   Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
+        except Jobs.DoesNotExist:
+            logger.warning('cancel_job_by_employee: Job %s not found (user %s)', job_id, user_id)
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "No job found with the given id",
+                })
+        except Exception as e:
+            logger.error('cancel_job_by_employee: DB error fetching job %s: %s', job_id, str(e))
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Database error while fetching job",
+                })
+
+        status_id = job_record.job_status.status_id
+
+        if status_id == 1:
+            logger.info('cancel_job_by_employee: Job %s already active/canceled (user %s)', job_id, user_id)
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Job is already canceled",
+                })
+
+        if status_id == 4:
+            logger.info('cancel_job_by_employee: Job %s already canceled by client (user %s)', job_id, user_id)
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Job is already canceled by the client",
+                })
+
+        if status_id == 3:
+            logger.info('cancel_job_by_employee: Job %s already completed, cannot cancel (user %s)', job_id, user_id)
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Job is already completed and cannot be canceled",
+                })
+
+        if status_id == 5:
+            logger.info('cancel_job_by_employee: Job %s has no available employees (user %s)', job_id, user_id)
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Job has no available employees",
+                })
+
+        if job_record.job_accepted_by is None or int(job_record.job_accepted_by) != int(user_id):
+            logger.warning('cancel_job_by_employee: User %s is not the acceptor of job %s (accepted_by=%s)', user_id, job_id, job_record.job_accepted_by)
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "You are not authorized to cancel this job",
+                })
 
         accepted_by = job_record.job_accepted_by
 
@@ -1379,32 +1463,50 @@ def cancel_job_by_employee(request):
             "job_accepted_by" : None,
             "job_attempted_by" : new_attempted
         }
-        job_log = JobLogs(
-            job=job_record.job_id,
-            log_msg="Job caceled by employee",
-            cancel_by=accepted_by,
-            created_at=timezone.now()
-        ) 
-        job_log.save()
+
+        try:
+            job_log = JobLogs(
+                job=job_record.job_id,
+                log_msg="Job canceled by employee",
+                cancel_by=accepted_by,
+                created_at=timezone.now()
+            ) 
+            job_log.save()
+        except Exception as e:
+            logger.error('cancel_job_by_employee: Failed to save JobLogs for job %s: %s', job_id, str(e))
         
         job_ser = JobsSerializer(instance=job_record,data=update_data,partial=True)
 
         if job_ser.is_valid():
-            job_ser.save()
-           
-            notify_client.delay(job_id,user_id)
-            # alert employee that job is active
-            
-            jobAlert(job_id,job_record.user.location_latitude,job_record.user.location_longitude,accepted_by)
+            try:
+                job_ser.save()
+            except Exception as e:
+                logger.error('cancel_job_by_employee: Failed to save job update for job %s: %s', job_id, str(e))
+                return JsonResponse({
+                        "success"     :   0,
+                        "message"     :   "Failed to update job status",
+                        })
+
+            try:
+                notify_client.delay(job_id,user_id)
+            except Exception as e:
+                logger.error('cancel_job_by_employee: Failed to send notify_client task for job %s: %s', job_id, str(e))
+
+            try:
+                jobAlert(job_id,job_record.user.location_latitude,job_record.user.location_longitude,accepted_by)
+            except Exception as e:
+                logger.error('cancel_job_by_employee: Failed to run jobAlert for job %s: %s', job_id, str(e))
+
+            logger.info('cancel_job_by_employee: Job %s canceled successfully by user %s', job_id, user_id)
             return JsonResponse({
                     "success"     :   1,
                     "message"     :   "Your job is cancelled by employee",
                     })
         else:
-            
+            logger.error('cancel_job_by_employee: Serializer errors for job %s: %s', job_id, job_ser.errors)
             return JsonResponse({
                     "success"     :   0,
-                    "message"     :   "some error occured",
+                    "message"     :   "Failed to update job due to validation error",
                     "error"       :   job_ser.errors
                     })
 
@@ -1771,7 +1873,7 @@ def employee_joblist(request):
             else:
                 attempted.add(j.job_id)
 
-        total_records   =   Jobs.objects.exclude(is_delete=1).filter(
+        total_records   =   Jobs.objects.exclude(is_delete=1).exclude(job_status_id=4).filter(
                                 Q(job_accepted_by=user_id) | Q(job_id__in=attempted)
                             ).count()
         
@@ -1781,7 +1883,7 @@ def employee_joblist(request):
         offset          =   (page_no-1)*limit    #multiply record each time
         total_pages     =   math.ceil(total_records / limit) #TOTAL NO OF PAGES
       
-        jobs_list       =   Jobs.objects.exclude(is_delete=1).filter(
+        jobs_list       =   Jobs.objects.exclude(is_delete=1).exclude(job_status_id=4).filter(
                                 Q(job_accepted_by=user_id) | Q(job_id__in=attempted)
                             )[offset:limit+offset]
 
