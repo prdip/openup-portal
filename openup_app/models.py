@@ -249,6 +249,7 @@ class Jobs(models.Model):
     # vehicle_modification     =   models.CharField(max_length=400)
     vehicle_license          =   models.FileField(upload_to=file_name, null=True)
     job_accepted_by          =   models.CharField(max_length=31,null=True)
+    job_attempted_by         =   models.TextField(null=True,default='')
     job_payment_id           =   models.CharField(max_length=100,null=True)  # GENERATED AND SAVED AFTER SUCCESSFUL PAYMENT 
     job_pay_status           =   models.BooleanField(default=0)
     job_time                 =   models.CharField(max_length=100,null=True)    #1==> SUCCESS 0==> NO PAYMENT

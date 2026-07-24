@@ -181,6 +181,7 @@ class JobsSerializer(serializers.Serializer):
     location_latitude        =   serializers.FloatField(required=False)
     location_longitude       =   serializers.FloatField(required=False)
     job_accepted_by          =   serializers.CharField(required=False,allow_null=True)
+    job_attempted_by         =   serializers.CharField(required=False,allow_null=True,allow_blank=True)
     # vehicle_details          =   serializers.CharField()
     # vehicle_modification     =   serializers.CharField()
 
@@ -220,7 +221,7 @@ class JobsSerializer(serializers.Serializer):
         fields = ('job_id','job_type','user','location_latitude',
                   'location_longitude','vehicle_details','year','model','colour','any_mod','window_tint','make',
                   'vehicle_modification','vehicle_license',
-                  'created_at','is_delete','job_status','job_accepted_by','job_distance','job_payment_id','job_time','job_pay_status')
+                  'created_at','is_delete','job_status','job_accepted_by','job_attempted_by','job_distance','job_payment_id','job_time','job_pay_status')
 
 
 

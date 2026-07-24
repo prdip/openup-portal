@@ -563,7 +563,18 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
     # Fetch Employee List
 
     job_instance    =    Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
-    if accepted_by == '':
+
+    # Build list of employee IDs to exclude (accepted_by + all previously attempted)
+    excluded_ids = set()
+    if accepted_by:
+        excluded_ids.add(int(accepted_by))
+    attempted = job_instance.job_attempted_by or ''
+    for aid in attempted.split(','):
+        aid = aid.strip()
+        if aid:
+            excluded_ids.add(int(aid))
+
+    if not excluded_ids:
         if job_instance.job_type == "emergency":
             
             employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
@@ -575,12 +586,12 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
     else:
         if job_instance.job_type == "emergency":
         
-            employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(user_id=accepted_by).filter(user_role_id=1)
+            employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(user_id__in=excluded_ids).filter(user_role_id=1)
             message     =  "EMERGENCY!!! PLEASE ACCEPT THIS JOB ASAP!!!"
 
         else:
-            employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(user_id=accepted_by).filter(employee_status=1).filter(user_role_id=1)
-            message     =  "PLEASE ACCEPT THIS JOB ASAP!!!"
+            employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(user_id__in=excluded_ids).filter(employee_status=1).filter(user_role_id=1)
+            message     =  "PLEASE ACCEPT THIS JOB!!!"
 
 
     # employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
@@ -1352,9 +1363,21 @@ def cancel_job_by_employee(request):
 
 
         accepted_by = job_record.job_accepted_by
+
+        # Append cancelling employee to job_attempted_by
+        existing_attempted = job_record.job_attempted_by or ''
+        if str(user_id) not in [x.strip() for x in existing_attempted.split(',') if x.strip()]:
+            if existing_attempted:
+                new_attempted = existing_attempted + ',' + str(user_id)
+            else:
+                new_attempted = str(user_id)
+        else:
+            new_attempted = existing_attempted
+
         update_data = {
             "job_status_id" : 1,
-            "job_accepted_by" : None
+            "job_accepted_by" : None,
+            "job_attempted_by" : new_attempted
         }
         job_log = JobLogs(
             job=job_record.job_id,
@@ -1499,6 +1522,22 @@ def notify_client(job_id,user_id):
     else:
         employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(user_id=user_id).filter(employee_status=1).filter(user_role_id=1)
         message     =  "PLEASE ACCEPT THIS JOB ASAP!!!"
+
+    # Build exclusion set from job_attempted_by
+    excluded_ids = set()
+    if user_id:
+        excluded_ids.add(int(user_id))
+    attempted = job_instance.job_attempted_by or ''
+    for aid in attempted.split(','):
+        aid = aid.strip()
+        if aid:
+            excluded_ids.add(int(aid))
+
+    if excluded_ids:
+        if job_instance.job_type == "emergency":
+            employees = Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(user_id__in=excluded_ids).filter(user_role_id=1)
+        else:
+            employees = Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(user_id__in=excluded_ids).filter(employee_status=1).filter(user_role_id=1)
     # employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
 
     # get employee list
@@ -1720,7 +1759,21 @@ def employee_joblist(request):
     else:
         user_id         =   check_user['session_user']
         page_no         =   int(request.data.get('page_no'))
-        total_records   =   Jobs.objects.exclude(is_delete=1).filter(job_accepted_by=user_id).count()
+
+        # Get jobs accepted by this employee OR active jobs this employee hasn't attempted
+        attempted = set()
+        active_jobs = Jobs.objects.exclude(is_delete=1).filter(job_status_id=1)
+        for j in active_jobs:
+            if j.job_attempted_by:
+                ids = [x.strip() for x in j.job_attempted_by.split(',') if x.strip()]
+                if str(user_id) not in ids:
+                    attempted.add(j.job_id)
+            else:
+                attempted.add(j.job_id)
+
+        total_records   =   Jobs.objects.exclude(is_delete=1).filter(
+                                Q(job_accepted_by=user_id) | Q(job_id__in=attempted)
+                            ).count()
         
         '''JOB LIST PAGINATION CODE'''
         
@@ -1728,7 +1781,9 @@ def employee_joblist(request):
         offset          =   (page_no-1)*limit    #multiply record each time
         total_pages     =   math.ceil(total_records / limit) #TOTAL NO OF PAGES
       
-        jobs_list       =   Jobs.objects.exclude(is_delete=1).filter(job_accepted_by=user_id)[offset:limit+offset]
+        jobs_list       =   Jobs.objects.exclude(is_delete=1).filter(
+                                Q(job_accepted_by=user_id) | Q(job_id__in=attempted)
+                            )[offset:limit+offset]
 
         job_serializer  = JobsSerializer(jobs_list,many=True).data
 
