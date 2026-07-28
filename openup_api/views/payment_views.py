@@ -378,21 +378,7 @@ def create_customer(request,*args,**kwargs):
 
 
 
-# link apple pay 
 
-@api_view(['POST'])
-def apple_pay(request):
-    
-    intent = stripe.PaymentIntent.create(
-            amount=1099,
-            currency='usd',
-        )
-    client_secret = intent.client_secret
-    return JsonResponse({
-        "success":1,
-        "message":"Payment addedd successfully",
-        "data":client_secret
-    })
 
 
 
