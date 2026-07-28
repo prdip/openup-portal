@@ -104,8 +104,9 @@ def add_job(request):
         any_mod     =   request.data.get('any_mod')    # 1 === > Mod    0==> No mod
         window_tint =   request.data.get('window_tint') # 1 === > Yes    0==> No
         paypal_req_id = request.data.get('paypal_req_id')
-        make         = request.data.get('make')   
+        make         = request.data.get('make')
         payment_type = request.data.get('payment_type')
+        payment_intent_id = request.data.get('payment_intent_id')   # APPLE PAY INTENT RETURNED BY /apple-pay
 
         if make == '' or make == None:
             return JsonResponse({
@@ -237,13 +238,21 @@ def add_job(request):
             payment_id = user_rec.user_payment_id
         except:
             payment_id = None
-            
-    #    comment now
-        if paypal == False and (stripe == None or payment_id == None):
+
+        '''
+        APPLE PAY IS PAID UP FRONT BY /apple-pay, WHICH PARKS THE SUCCESSFUL INTENT
+        WITH AN EMPTY pay_job. AN UNCLAIMED PAYMENT IS WHAT ALLOWS THE JOB HERE.
+        '''
+        apple_payment   =   SuccessPayments.objects.filter(pay_user=str(user_rec.user_id),pay_type="apple_pay",pay_job="")
+        if payment_intent_id != None and payment_intent_id != "":
+            apple_payment = apple_payment.filter(pay_response__contains=payment_intent_id)
+        apple_payment   =   apple_payment.order_by('pay_id').last()
+
+        if paypal == False and apple_payment == None and (stripe == None or payment_id == None):
             return JsonResponse({
                     "success"     :   0,
                     "message"     :   "You are not allow to add job",
-                    
+
                 })
 
 
@@ -300,7 +309,31 @@ def add_job(request):
                      
                     paypal_payment.delay(data)
 
-            if job_type == "emergency":
+            if payment_type == "apple_pay" and apple_payment != None:
+                '''
+                MONEY IS ALREADY TAKEN BY /apple-pay SO NO CHARGE IS RAISED HERE,
+                THE PARKED PAYMENT IS ONLY CLAIMED BY THIS JOB
+                '''
+                intent_id = payment_intent_id
+                if intent_id == None or intent_id == "":
+                    try:
+                        intent_id = json.loads(apple_payment.pay_response)['id']
+                    except:
+                        intent_id = None
+
+                apple_payment.pay_job = str(id)
+                apple_payment.save()
+
+                job_record  =   Jobs.objects.exclude(is_delete=1).get(job_id=int(id))
+                paid_data   =   {
+                        "job_payment_id"    :   intent_id,
+                        "job_pay_status"    :   1,
+                }
+                paid_ser    =   JobsSerializer(instance=job_record,data=paid_data,partial=True)
+                if paid_ser.is_valid():
+                    paid_ser.save()
+
+            if job_type == "emergency" and payment_type != "apple_pay":
                 #    comment now
                 pay_type     = SuccessPayments.objects.filter(pay_user = user_id).order_by('pay_id').reverse()[:1] 
                 try:

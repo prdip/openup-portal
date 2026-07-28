@@ -1,6 +1,8 @@
 from rest_framework.decorators import api_view
 from django.http.response import JsonResponse
+from django.utils import timezone
 from openup_api.views.auth_views import token_verification
+from openup_app.models import SuccessPayments
 import stripe
 import environ
 import logging
@@ -24,6 +26,8 @@ def apple_pay(request):
 
     if check_user is None:
         return JsonResponse({"success": 0, "message": "Unauthorized User"})
+
+    user_id = check_user['session_user']
 
     amount = request.data.get('amount')
     currency = request.data.get('currency', 'usd')
@@ -53,6 +57,19 @@ def apple_pay(request):
         )
 
         if payment_intent.status == 'succeeded':
+            '''
+            APPLE PAY TOKENS ARE SINGLE USE, SO NOTHING CAN BE SAVED ON THE CUSTOMER
+            FOR A LATER CHARGE. INSTEAD THE SUCCESSFUL PAYMENT IS PARKED HERE WITH AN
+            EMPTY pay_job AND add_job CLAIMS IT FOR THE JOB IT CREATES.
+            '''
+            SuccessPayments.objects.create(
+                pay_user=str(user_id),
+                pay_job="",
+                pay_type="apple_pay",
+                pay_response=str(payment_intent),
+                create_at=timezone.now(),
+            )
+
             return JsonResponse({
                 "success": 1,
                 "message": "Payment completed successfully",

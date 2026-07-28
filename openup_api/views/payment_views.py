@@ -349,14 +349,20 @@ def create_customer(request,*args,**kwargs):
         except:
             cust_id         =   None
 
+        '''STRIPE CUSTOMER IS CREATED BY /payment-type, WITHOUT IT NO KEY CAN BE ISSUED'''
+        if cust_id == None or cust_id == "":
+            return JsonResponse({
+                "success"    :   0,
+                "message"   :   "stripe customer not created for this user",
+            })
 
-        # code to create ephemeral key to stripe 
+        # code to create ephemeral key to stripe
         ephemeralKey    = stripe.EphemeralKey.create(
                             customer=cust_id,
                             stripe_version='2022-11-15',)
 
         # setup intent
-        setupIntent  = stripe.SetupIntent.create(customer=cust_id,payment_method_types=["card"])  
+        setupIntent  = stripe.SetupIntent.create(customer=cust_id,payment_method_types=["card"])
         
         '''code for payment intent'''
 
@@ -364,7 +370,7 @@ def create_customer(request,*args,**kwargs):
         "response_data" :   cust_id,
         "customer_id"   :   cust_id,
         "setup_intent"  :   setupIntent.client_secret,
-        "ephemeralKey"  :   ephemeralKey,
+        "ephemeralKey"  :   ephemeralKey.secret,   # PAYMENT SHEET NEEDS THE ek_ SECRET, NOT THE KEY OBJECT
         }
 
         return JsonResponse({
@@ -403,21 +409,35 @@ def link_payment_method(request):
     else:
         cus_id          =       request.data.get('cust_id')
         user_id         =       check_user['session_user']
-         
- 
+
+
         try:
             user_rec     =       Registration.objects.exclude(user_is_delete=1).get(user_id=int(user_id))
         except:
             user_rec     =       None
 
+        if cus_id == None or cus_id == "":
+            return JsonResponse({
+                        "success"    :    0,
+                        "message"   :   "please provide customer id",
+                     })
+
         response_data = stripe.PaymentMethod.list(
             customer=cus_id,
             type="card",
-        ) 
+        )
 
+        '''
+        EMPTY WHEN THE PAYMENT SHEET NEVER ATTACHED A CARD TO THE CUSTOMER
+        '''
+        if len(response_data["data"]) == 0:
+            return JsonResponse({
+                        "success"    :    0,
+                        "message"   :   "no card found on this customer",
+                     })
 
         update_data = {
-                "user_payment_id" : response_data["data"][0]['id'], 
+                "user_payment_id" : response_data["data"][0]['id'],
         }
         user_ser        =   RegisterSerializer(instance=user_rec,data=update_data,partial=True)
         
@@ -589,7 +609,7 @@ def manual_payment(request,*args,**kwargs):
         "response_data" :   cust_id,
         "customer_id"   :   cust_id,
         "setup_intent"  :   setupIntent.client_secret,
-        "ephemeralKey"  :   ephemeralKey,
+        "ephemeralKey"  :   ephemeralKey.secret,   # PAYMENT SHEET NEEDS THE ek_ SECRET, NOT THE KEY OBJECT
         "payment_id"    :   setupIntent.id
         }
       

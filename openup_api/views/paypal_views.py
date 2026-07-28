@@ -564,7 +564,24 @@ def add_payment_type(request):
         payment_type = request.data.get('payment_type')
         card_number  = request.data.get('card_number')
 
-        card = card_number.replace(" ", "")
+        if payment_type != "stripe" and payment_type != "paypal" and payment_type != "apple_pay":
+            return JsonResponse({
+                "success"      :   0,
+                "message"      :   "please provide valid payment type",
+            })
+
+        '''
+        ONLY PAYPAL VAULTS THE CARD HERE, STRIPE CREATES A CUSTOMER AND APPLE PAY
+        HAS NO CREDENTIAL TO STORE AT ALL
+        '''
+        card = None
+        if payment_type == "paypal":
+            if card_number == None or card_number == "":
+                return JsonResponse({
+                    "success"      :   0,
+                    "message"      :   "please provide card number",
+                })
+            card = card_number.replace(" ", "")
 
 
         user         =   Registration.objects.exclude(user_is_delete=1).get(user_id = login_customer)
@@ -762,12 +779,16 @@ def add_payment_type(request):
             )
             paypal_data.save()
 
+        '''
+        APPLE PAY STORES NOTHING BEYOND user_payment_type - THE TOKEN IS SINGLE USE
+        AND EVERY JOB IS PAID UP FRONT THROUGH /apple-pay
+        '''
 
         return JsonResponse({
                 "success"      :   1,
                 "message"      :   "Payment method added successfully",
                 "data"         :    payment_type
-            }) 
+            })
 
 
 
