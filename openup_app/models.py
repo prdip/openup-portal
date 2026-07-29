@@ -472,11 +472,21 @@ class UserEmailSettings(models.Model):
 
 class PaypalInfo(models.Model):
 
+    # WHICH PAYPAL FUNDING SOURCE THIS VAULT BELONGS TO.
+    # A USER CAN HAVE A VAULTED CARD AND A VAULTED VENMO ACCOUNT AT THE SAME TIME,
+    # SO THE VAULT ID ALONE IS NOT ENOUGH TO KNOW HOW TO CHARGE IT.
+    source_choice = (
+        ('card','card'),
+        ('venmo','venmo'),
+        ('paypal','paypal'),
+        )
+
     paypal_info_id      =   models.AutoField(primary_key=True)
     paypal_user         =   models.ForeignKey(Registration,on_delete=models.CASCADE)
     paypal_valut_id     =   models.CharField(max_length=50)
     paypal_response     =   models.TextField(default="text")
     paypal_cust_id      =   models.CharField(max_length=100)
+    paypal_source_type  =   models.CharField(max_length=20,choices=source_choice,default='card')
     is_delete           =   models.BooleanField()
     created_at          =   models.DateTimeField()
     update_at           =   models.DateTimeField(null=True)
