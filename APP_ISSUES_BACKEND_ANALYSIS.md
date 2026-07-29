@@ -42,6 +42,7 @@ ok
 - Ensure the `Images` and `File` records are properly returned with full URLs (using `BASE_URL`).
 - The `job_details()` already includes images organized by type - verify this data reaches the frontend correctly.
 
+ok
 ---
 
 ### ISSUE 3: Too Many Notifications + Review Page Not Popping Up Automatically
@@ -134,7 +135,7 @@ okay
 
 ### ISSUE 9: Employee Cannot Re-Access Job After Exiting App
 
-**Status:** NEEDS BACKEND FIX  
+**Status:** FIXED (backend)  
 **Files:** `openup_api/views/job_views.py`
 
 **Root Cause:** When an employee taps a job via notification and then exits the app:
@@ -142,10 +143,32 @@ okay
 - But the employee may not see it again in their job list because `jobAlert()` doesn't re-notify them.
 - The `employee_joblist()` may not include jobs that were previously shown via notification.
 
-**Backend Fix Required:**
-- Create an endpoint (e.g., `/api/active-job`) that returns the current active job for an authenticated employee if one exists.
-- Ensure `employee_joblist()` includes all active jobs, not just newly notified ones.
-- Add logic to prevent employees from clearing/dismissing job notifications without action - this is partly backend (persisting notification state) and partly frontend.
+**Backend Fix Applied:**
+
+1. **New endpoint `POST /api/active-job`** (`job_views.active_job`) - session restoration. No parameters, auth token only. Returns:
+   ```json
+   {"success":1,"message":"Active job fetched",
+    "data":{"has_active_job":1,
+            "active_job":{"job_id":5,"job_state":"pending","can_accept":1,
+                          "notificationScreenType":"addjob","job_status":"active",
+                          "client_name":"...","images":[...], "...":"same fields as /api/job_details"}}}
+   ```
+   - When nothing is open: `{"has_active_job":0,"active_job":null}` with `success:1`.
+   - **Employee:** first the job they accepted and have not completed (`job_state: "in_progress"`), otherwise the newest active job they were alerted about and have not accepted/rejected (`job_state: "pending"`).
+   - **Client:** their own job that is still waiting for an employee or in progress.
+   - Jobs cancelled by the client (status 4), completed (3) or with no availability (5) are never returned.
+
+2. **Notification state is now read back from the `Alerts` table.** `jobAlert()` already persists the notified employee list per job; `was_alerted()` uses it, so dismissing/clearing the push notification no longer loses the job - the employee gets it back from `/api/active-job` and from the job list. Jobs with no `Alerts` row (legacy) stay visible to all employees.
+
+3. **`employee_joblist()`** now returns every active job the employee has not rejected/cancelled (not just newly notified ones), ordered newest-first for stable pagination, plus per-job flags so the app knows which buttons to show:
+   - `can_accept` (1/0) - job is active and this employee has not acted on it → show Accept/Decline.
+   - `is_assigned` (1/0) - this employee is the acceptor → show in-progress/directions screen.
+   - `was_notified` (1/0) - this employee was alerted about the job.
+   - `job_status` now reports `"Not accepted"` for status 5 instead of mislabelling it `"cancelled"`; `total_records` added to the response.
+
+4. `job_details()` and `active_job()` share one `build_job_payload()` helper, so both return the identical job shape (including before/after images).
+
+**Frontend follow-up:** call `/api/active-job` on app launch/resume and route on `job_state`; treat `has_active_job:0` as "nothing pending". Preventing the *dismissal* of the notification itself is still frontend work - the backend now guarantees the job can always be recovered.
 
 ---
 

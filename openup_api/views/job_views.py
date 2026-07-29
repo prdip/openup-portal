@@ -750,9 +750,158 @@ function that removes data from list
 def removeElements(items,lists):
     for dict in lists:
         for item in items:
-            del(dict[item])  
+            del(dict[item])
     return lists
-    
+
+
+'''
+HELPER: LIST OF EMPLOYEE IDS THAT ALREADY ACTED (REJECTED/CANCELLED) ON A JOB
+'''
+def attempted_ids(job_record):
+    attempted = job_record.job_attempted_by or ''
+    return [x.strip() for x in attempted.split(',') if x.strip()]
+
+
+'''
+HELPER: TRUE WHEN THE EMPLOYEE ALREADY REJECTED OR CANCELLED THIS JOB
+'''
+def has_attempted(job_record,user_id):
+    return str(user_id) in attempted_ids(job_record)
+
+
+'''
+HELPER: TRUE WHEN THE EMPLOYEE WAS NOTIFIED (ALERTED) ABOUT THIS JOB.
+
+jobAlert() persists every alert in the Alerts table with the comma separated list
+of employees it notified, so the notification state survives the app being closed.
+Legacy jobs created before alerts were stored have no Alerts row, those are treated
+as visible to every employee so they are not lost.
+'''
+def was_alerted(job_record,user_id):
+    alerts = Alerts.objects.exclude(is_delete=1).filter(alert_job=job_record.job_id)
+
+    if not alerts.exists():
+        return True
+
+    for alert in alerts:
+        users = [x.strip() for x in (alert.alert_users or '').split(',') if x.strip()]
+        if str(user_id) in users:
+            return True
+
+    return False
+
+
+'''
+HELPER: BUILDS THE JOB DETAIL PAYLOAD (SHARED BY job_details AND active_job)
+'''
+def build_job_payload(job_data):
+
+    # send instance to serializer
+    job_serializer  =   JobsSerializer(job_data).data
+    # remove field from dict
+    job_serializer.pop('created_at')
+    job_serializer.pop('is_delete')
+
+    # create image url
+
+    if job_serializer['vehicle_license'] != None:
+        domain      =      env('BASE_URL')
+        obj         =       job_serializer['vehicle_license']
+        url         =       '{domain}{path}'.format(domain=domain, path=obj)
+
+        job_serializer['vehicle_license_url'] = url
+
+    if job_serializer['job_pay_status'] == True:
+        job_serializer['job_pay_status'] = "1"
+    else:
+         job_serializer['job_pay_status'] = "0"
+
+    if job_serializer['job_status'] == 1:
+        job_serializer['job_status'] = "active"
+
+    if job_serializer['job_status'] == 2:
+        job_serializer['job_status'] = "accepted"
+
+    if job_serializer['job_status'] == "3":
+        job_serializer['job_status']="completed"
+
+    if job_serializer['job_status'] == "4":
+        job_serializer['job_status']="not accepted"
+
+    if job_serializer['any_mod'] == True:
+         job_serializer['any_mod'] = "1"
+    else:
+         job_serializer['any_mod'] = "0"
+
+
+    if job_serializer['window_tint'] == True:
+         job_serializer['window_tint'] = "1"
+    else:
+         job_serializer['window_tint'] = "0"
+
+    # if block execute when job_accepted_by in job record is null
+    if job_data.job_accepted_by != None:
+
+        try:
+            user_record = Registration.objects.exclude(user_is_delete=1).get(user_id=job_data.job_accepted_by)
+        except:
+            user_record = None
+
+        if user_record != None:
+            '''to get employee name '''
+            job_serializer['employee_name'] = user_record.user_first_name+' '+user_record.user_last_name
+
+    domain =  env('BASE_URL')
+    images = Images.objects.exclude(is_delete=1).filter(job=int(job_data.job_id)).exists()
+    if images:
+
+        img_id_list = Images.objects.exclude(is_delete=1).filter(job=job_data.job_id)
+
+        imges_list  = []
+        before_list = []
+        after_list = []
+        img_dict   = {}
+        for image in img_id_list:
+
+            if image.img_type == 1:
+
+                files  = File.objects.exclude(is_delete=1).filter(file_img=image.img_id).exists()
+
+                if files:
+                    files_list = File.objects.exclude(is_delete=1).filter(file_img=image.img_id)
+
+                    for file in files_list:
+
+                        image = domain + file.file.url
+                        before_list.append(image)
+            else:
+
+                files  = File.objects.exclude(is_delete=1).filter(file_img=image.img_id).exists()
+
+                if files:
+                    files_list = File.objects.exclude(is_delete=1).filter(file_img=image.img_id)
+
+                    for file in files_list:
+
+                        image = domain + file.file.url
+                        after_list.append(image)
+
+
+        img_dict['type']   = 'Before'
+        img_dict['images'] = before_list
+        imges_list.append(img_dict)
+        img_dict1 ={}
+        img_dict1['type']   = 'After'
+
+        img_dict1['images']  = after_list
+        imges_list.append(img_dict1)
+        job_serializer['images'] = imges_list
+
+    job_serializer.pop('vehicle_license')
+
+    return job_serializer
+
+
 
  
 '''
@@ -810,111 +959,7 @@ def job_details(request):
                     "message"     :   "This job is accepted by another employee"
                 })
 
-        # send instance to serializer 
-        job_serializer  =   JobsSerializer(job_data).data 
-        # remove field from dict
-        job_serializer.pop('created_at')        
-        job_serializer.pop('is_delete')
-
-        # create image url 
-       
-        if job_serializer['vehicle_license'] != None:     
-            domain      =      env('BASE_URL')
-            obj         =       job_serializer['vehicle_license']
-            url         =       '{domain}{path}'.format(domain=domain, path=obj)
-
-            job_serializer['vehicle_license_url'] = url
-
-        if job_serializer['job_pay_status'] == True:
-            job_serializer['job_pay_status'] = "1"
-        else:
-             job_serializer['job_pay_status'] = "0"
-
-        if job_serializer['job_status'] == 1:
-            job_serializer['job_status'] = "active"
-        
-        if job_serializer['job_status'] == 2:
-            job_serializer['job_status'] = "accepted"
-        
-        if job_serializer['job_status'] == "3":
-            job_serializer['job_status']="completed"
-
-        if job_serializer['job_status'] == "4":
-            job_serializer['job_status']="not accepted"
-
-        if job_serializer['any_mod'] == True:
-             job_serializer['any_mod'] = "1"
-        else:
-             job_serializer['any_mod'] = "0"
-        
-        
-        if job_serializer['window_tint'] == True:
-             job_serializer['window_tint'] = "1"
-        else:
-             job_serializer['window_tint'] = "0"
-        
-        # if block execute when job_accepted_by in job record is null
-        if job_data.job_accepted_by != None:
-
-            try:
-                user_record = Registration.objects.exclude(user_is_delete=1).get(user_id=job_data.job_accepted_by)
-            except:
-                user_record = None
-            
-            if user_record != None:
-                '''to get employee name '''            
-                job_serializer['employee_name'] = user_record.user_first_name+' '+user_record.user_last_name
-
-        domain =  env('BASE_URL')
-        images = Images.objects.exclude(is_delete=1).filter(job=int(job_id)).exists()
-        if images:
-             
-            img_id_list = Images.objects.exclude(is_delete=1).filter(job=job_id)
-
-            imges_list  = []
-            before_list = []
-            after_list = []
-            img_dict   = {}
-            for image in img_id_list:
-                
-            #     img_list   = []
-                if image.img_type == 1:
-                   
-                    files  = File.objects.exclude(is_delete=1).filter(file_img=image.img_id).exists()
-
-                    if files:
-                        files_list = File.objects.exclude(is_delete=1).filter(file_img=image.img_id)
-
-                        for file in files_list:
-
-                            image = domain + file.file.url
-                            before_list.append(image)
-                else: 
-                
-                    files  = File.objects.exclude(is_delete=1).filter(file_img=image.img_id).exists()
-
-                    if files:
-                        files_list = File.objects.exclude(is_delete=1).filter(file_img=image.img_id)
-
-                        for file in files_list:
-
-                            image = domain + file.file.url
-                            after_list.append(image)
-            
-
-            #             img_list.append(image)
-            #         img_dict['images'] = img_list
-          
-            img_dict['type']   = 'Before'
-            img_dict['images'] = before_list
-            imges_list.append(img_dict)
-            img_dict1 ={}
-            img_dict1['type']   = 'After'
-            
-            img_dict1['images']  = after_list
-            imges_list.append(img_dict1)
-            job_serializer['images'] = imges_list
-        job_serializer.pop('vehicle_license')
+        job_serializer  =   build_job_payload(job_data)
 
         data = {
             "job_details":job_serializer
@@ -1895,35 +1940,41 @@ def employee_joblist(request):
         user_id         =   check_user['session_user']
         page_no         =   int(request.data.get('page_no'))
 
-        # Get jobs accepted by this employee OR active jobs this employee hasn't attempted
-        attempted = set()
-        active_jobs = Jobs.objects.exclude(is_delete=1).filter(job_status_id=1)
-        for j in active_jobs:
-            if j.job_attempted_by:
-                ids = [x.strip() for x in j.job_attempted_by.split(',') if x.strip()]
-                if str(user_id) not in ids:
-                    attempted.add(j.job_id)
-            else:
-                attempted.add(j.job_id)
+        '''
+        ALL ACTIVE JOBS THIS EMPLOYEE HAS NOT ALREADY REJECTED/CANCELLED STAY IN THE
+        LIST, EVEN IF THE PUSH NOTIFICATION WAS DISMISSED OR THE APP WAS CLOSED.
+        '''
+        available_ids   =   set()
+        active_jobs     =   Jobs.objects.exclude(is_delete=1).filter(job_status_id=1)
+        for job_record in active_jobs:
+            if not has_attempted(job_record,user_id):
+                available_ids.add(job_record.job_id)
 
-        total_records   =   Jobs.objects.exclude(is_delete=1).exclude(job_status_id=4).filter(
-                                Q(job_accepted_by=user_id) | Q(job_id__in=attempted)
-                            ).count()
-        
+        joblist_filter  =   Jobs.objects.exclude(is_delete=1).exclude(job_status_id=4).filter(
+                                Q(job_accepted_by=user_id) | Q(job_id__in=available_ids)
+                            ).order_by('-job_id')
+
+        total_records   =   joblist_filter.count()
+
         '''JOB LIST PAGINATION CODE'''
-        
+
         limit           =   10
         offset          =   (page_no-1)*limit    #multiply record each time
         total_pages     =   math.ceil(total_records / limit) #TOTAL NO OF PAGES
-      
-        jobs_list       =   Jobs.objects.exclude(is_delete=1).exclude(job_status_id=4).filter(
-                                Q(job_accepted_by=user_id) | Q(job_id__in=attempted)
-                            )[offset:limit+offset]
+
+        jobs_list       =   list(joblist_filter[offset:limit+offset])
 
         job_serializer  = JobsSerializer(jobs_list,many=True).data
 
+        '''FLAGS THE APP NEEDS TO DECIDE WHICH BUTTONS/SCREEN TO SHOW'''
+        for job_record,job in zip(jobs_list,job_serializer):
+
+            job['is_assigned']  =   1 if (job_record.job_accepted_by != None and int(job_record.job_accepted_by) == int(user_id)) else 0
+            job['can_accept']   =   1 if (job_record.job_status_id == 1 and not has_attempted(job_record,user_id)) else 0
+            job['was_notified'] =   1 if was_alerted(job_record,user_id) else 0
+
         '''Remove element from serlialized dict'''
-        removeElements(['is_delete','vehicle_license','location_latitude','location_longitude','job_accepted_by'],job_serializer) 
+        removeElements(['is_delete','vehicle_license','location_latitude','location_longitude','job_accepted_by'],job_serializer)
 
         for job in job_serializer:
 
@@ -1932,7 +1983,7 @@ def employee_joblist(request):
             else:
                 job['job_pay_status'] = "0"
 
-           
+
             if job['job_status'] == 1:
                 job['job_status'] = "active"
 
@@ -1941,17 +1992,20 @@ def employee_joblist(request):
 
             elif job['job_status'] == 3:
                 job['job_status'] = "completed"
-            
+
+            elif job['job_status'] == 5:
+                job['job_status'] = "Not accepted"
+
             else:
                 job['job_status'] = "cancelled"
-             
-           
-            '''if job accepted print client name'''  
+
+
+            '''if job accepted print client name'''
 
             if job['user'] != None:
-                employee_record         =   Registration.objects.exclude(user_is_delete=1).get(user_id=int(job['user']))            
+                employee_record         =   Registration.objects.exclude(user_is_delete=1).get(user_id=int(job['user']))
                 job['client_name']      =   employee_record.user_first_name+ ' ' +employee_record.user_last_name
-                
+
 
 
         removeElements(['user'],job_serializer)
@@ -1961,7 +2015,8 @@ def employee_joblist(request):
             "employee_joblist"  : job_serializer,
             "total_pages"       : total_pages,
             "per_page_record"   : 10,
-            "current_page"      : page_no
+            "current_page"      : page_no,
+            "total_records"     : total_records
 
         }
         return JsonResponse({
@@ -1969,7 +2024,129 @@ def employee_joblist(request):
                 "message"     :   "joblist fetched",
                 "data"        :    data
                 })
-    
+
+
+'''
+API TO RESTORE THE CURRENT JOB SESSION.
+
+THE APP CALLS THIS ON LAUNCH/RESUME SO A JOB IS NEVER LOST WHEN THE EMPLOYEE
+TAPS A NOTIFICATION AND THEN CLOSES THE APP, OR DISMISSES THE NOTIFICATION.
+
+EMPLOYEE  ==>  THE JOB THEY ACCEPTED AND HAVE NOT FINISHED (job_state "in_progress"),
+               OTHERWISE THE NEWEST ACTIVE JOB THEY WERE ALERTED ABOUT AND HAVE NOT
+               ACCEPTED/REJECTED YET (job_state "pending").
+CLIENT    ==>  THEIR OWN JOB THAT IS STILL WAITING FOR AN EMPLOYEE OR IN PROGRESS.
+'''
+@api_view(['POST','GET'])
+def active_job(request):
+
+    try:
+        token   =   request.headers['Authorization']
+    except KeyError:
+        logger.error('active_job: Missing Authorization header')
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Missing Authorization header",
+                })
+
+    user_token  =   token.replace("Bearer",'')
+    check_user  =   token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Unauthorized User",
+                })
+
+    # if token verified
+    else:
+        user_id     =   check_user['session_user']
+
+        try:
+            user_record =   Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
+        except Registration.DoesNotExist:
+            logger.warning('active_job: No registration found for user %s', user_id)
+            return JsonResponse({
+                    "success"     :   0,
+                    "message"     :   "Unauthorized User",
+                    })
+
+        job_record  =   None
+        job_state   =   None
+
+        '''EMPLOYEE'''
+        if user_record.user_role_id == 1:
+
+            # 1. JOB ALREADY ACCEPTED BY THIS EMPLOYEE AND NOT YET COMPLETED
+            job_record  =   Jobs.objects.exclude(is_delete=1).filter(
+                                job_status_id=2,job_accepted_by=str(user_id)
+                            ).order_by('-job_id').first()
+
+            if job_record != None:
+                job_state = "in_progress"
+
+            else:
+                # 2. NEWEST ACTIVE JOB THIS EMPLOYEE WAS NOTIFIED ABOUT AND HAS NOT ACTED ON
+                pending_jobs = Jobs.objects.exclude(is_delete=1).filter(job_status_id=1).order_by('-job_id')
+
+                for pending in pending_jobs:
+                    if has_attempted(pending,user_id):
+                        continue
+                    if not was_alerted(pending,user_id):
+                        continue
+
+                    job_record  =   pending
+                    job_state   =   "pending"
+                    break
+
+        # CLIENT
+        else:
+            job_record  =   Jobs.objects.exclude(is_delete=1).filter(
+                                user=user_id,job_status_id__in=[1,2]
+                            ).order_by('-job_id').first()
+
+            if job_record != None:
+                job_state = "in_progress" if job_record.job_status_id == 2 else "pending"
+
+        if job_record is None:
+            return JsonResponse({
+                    "success"     :   1,
+                    "message"     :   "No active job",
+                    "data"        :   {
+                        "has_active_job"    :   0,
+                        "active_job"        :   None
+                        }
+                    })
+
+        job_payload =   build_job_payload(job_record)
+        job_payload.pop('job_attempted_by',None)
+
+        job_payload['job_state']    =   job_state
+        job_payload['can_accept']   =   1 if (user_record.user_role_id == 1 and job_record.job_status_id == 1 and not has_attempted(job_record,user_id)) else 0
+
+        '''SAME SCREEN TYPE THE PUSH NOTIFICATION CARRIES, SO THE APP REUSES ITS HANDLER'''
+        if user_record.user_role_id == 1:
+            job_payload['notificationScreenType'] = 'addjob' if job_state == "pending" else 'acceptjob'
+        else:
+            job_payload['notificationScreenType'] = 'acceptjob' if job_state == "in_progress" else 'addjob'
+
+        '''CLIENT NAME FOR THE EMPLOYEE SCREEN'''
+        try:
+            client_record   =   Registration.objects.exclude(user_is_delete=1).get(user_id=job_record.user_id)
+            job_payload['client_name']  =   client_record.user_first_name+ ' ' +client_record.user_last_name
+        except Registration.DoesNotExist:
+            logger.warning('active_job: Client %s missing for job %s', job_record.user_id, job_record.job_id)
+
+        return JsonResponse({
+                "success"     :   1,
+                "message"     :   "Active job fetched",
+                "data"        :   {
+                    "has_active_job"    :   1,
+                    "active_job"        :   job_payload
+                    }
+                })
+
+
 import os
 @api_view(['POST'])
 def upload_images(request):

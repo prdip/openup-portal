@@ -96,6 +96,8 @@ urlpatterns = [
   path('client-joblist', job_views.client_joblist,name='client_joblist'),
 # Job list of employee
   path('employee-joblist', job_views.employee_joblist,name='employee_joblist'),
+# Current job session (restore after the app is closed/reopened)
+  path('active-job', job_views.active_job,name='active_job'),
 
 # Settings
   path('add_settings', usersetting.add_settings,name='add_settings'),
