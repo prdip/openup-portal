@@ -724,11 +724,15 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
     if job_serializer.is_valid():
         job_serializer.save()
 
-    # SEND NOTIFICATIONS 
+    # SEND NOTIFICATIONS
 
-    for employee in user_list:
+    '''
+    ONE QUERY FOR THE WHOLE NOTIFY LIST INSTEAD OF A .get() PER EMPLOYEE. THE SET OF
+    EMPLOYEES NOTIFIED IS UNCHANGED - SOFT DELETED USERS ARE STILL EXCLUDED, THEY ARE
+    NOW SKIPPED RATHER THAN RAISING DoesNotExist AND KILLING THE WHOLE ALERT.
+    '''
+    for employee in Registration.objects.exclude(user_is_delete=1).filter(user_id__in=user_list):
 
-        employee = Registration.objects.exclude(Q(user_is_delete=1)).get(user_id=employee)
         if employee.user_fcm_token!=None and employee.user_fcm_token!='':
             noti_data['data']       =   not_data
             noti_data['fcm_token']  =   employee.user_fcm_token 
@@ -778,17 +782,59 @@ Legacy jobs created before alerts were stored have no Alerts row, those are trea
 as visible to every employee so they are not lost.
 '''
 def was_alerted(job_record,user_id):
-    alerts = Alerts.objects.exclude(is_delete=1).filter(alert_job=job_record.job_id)
+    return job_record.job_id in alerted_job_ids([job_record.job_id],user_id)
 
-    if not alerts.exists():
-        return True
 
-    for alert in alerts:
-        users = [x.strip() for x in (alert.alert_users or '').split(',') if x.strip()]
+'''
+HELPER: SAME RULE AS was_alerted() BUT FOR A WHOLE PAGE OF JOBS IN ONE QUERY.
+
+CALLING was_alerted() PER JOB COST TWO QUERIES EACH (AN .exists() PLUS THE FETCH),
+SO A 10 JOB PAGE WAS 20 QUERIES. THIS READS EVERY ALERT ROW FOR THE PAGE AT ONCE
+AND KEEPS THE LEGACY FALLBACK: A JOB WITH NO ALERTS ROW STAYS VISIBLE TO EVERYONE.
+'''
+def alerted_job_ids(job_ids,user_id):
+
+    job_ids     =   list(job_ids)
+    if not job_ids:
+        return set()
+
+    alerted     =   set()
+    has_alert   =   set()
+
+    alert_rows  =   Alerts.objects.exclude(is_delete=1).filter(alert_job__in=job_ids).values_list('alert_job_id','alert_users')
+
+    for alert_job_id, alert_users in alert_rows:
+        has_alert.add(alert_job_id)
+        users = [x.strip() for x in (alert_users or '').split(',') if x.strip()]
         if str(user_id) in users:
-            return True
+            alerted.add(alert_job_id)
 
-    return False
+    '''JOBS THAT NEVER GOT AN ALERTS ROW ARE TREATED AS VISIBLE, AS BEFORE'''
+    return alerted | (set(job_ids) - has_alert)
+
+
+'''
+HELPER: EVERY FILE URL FOR A SET OF IMAGE RECORDS, GROUPED BY IMAGE, IN ONE QUERY.
+
+THE IMAGE LOOPS USED TO RUN AN .exists() AND THEN A SECOND IDENTICAL QUERY FOR
+EVERY SINGLE IMAGE ROW, SO A JOB WITH 10 IMAGES COST 20 QUERIES TO RENDER.
+'''
+def files_by_image(image_ids):
+
+    image_ids   =   list(image_ids)
+    grouped     =   {}
+
+    if not image_ids:
+        return grouped
+
+    domain      =   env('BASE_URL')
+
+    files_list  =   File.objects.exclude(is_delete=1).filter(file_img__in=image_ids).order_by('file_id')
+
+    for file in files_list:
+        grouped.setdefault(file.file_img_id,[]).append(domain + file.file.url)
+
+    return grouped
 
 
 '''
@@ -851,11 +897,16 @@ def build_job_payload(job_data):
             '''to get employee name '''
             job_serializer['employee_name'] = user_record.user_first_name+' '+user_record.user_last_name
 
-    domain =  env('BASE_URL')
-    images = Images.objects.exclude(is_delete=1).filter(job=int(job_data.job_id)).exists()
-    if images:
+    '''
+    THE IMAGE ROWS ARE FETCHED ONCE (THE OLD .exists() PROBE WAS A SECOND IDENTICAL
+    QUERY) AND EVERY FILE FOR THEM COMES BACK IN ONE MORE QUERY INSTEAD OF TWO PER
+    IMAGE.
+    '''
+    img_id_list = list(Images.objects.exclude(is_delete=1).filter(job=int(job_data.job_id)))
 
-        img_id_list = Images.objects.exclude(is_delete=1).filter(job=job_data.job_id)
+    if img_id_list:
+
+        image_files = files_by_image([image.img_id for image in img_id_list])
 
         imges_list  = []
         before_list = []
@@ -865,26 +916,11 @@ def build_job_payload(job_data):
 
             if image.img_type == 1:
 
-                files  = File.objects.exclude(is_delete=1).filter(file_img=image.img_id).exists()
+                before_list.extend(image_files.get(image.img_id,[]))
 
-                if files:
-                    files_list = File.objects.exclude(is_delete=1).filter(file_img=image.img_id)
-
-                    for file in files_list:
-
-                        image = domain + file.file.url
-                        before_list.append(image)
             else:
 
-                files  = File.objects.exclude(is_delete=1).filter(file_img=image.img_id).exists()
-
-                if files:
-                    files_list = File.objects.exclude(is_delete=1).filter(file_img=image.img_id)
-
-                    for file in files_list:
-
-                        image = domain + file.file.url
-                        after_list.append(image)
+                after_list.extend(image_files.get(image.img_id,[]))
 
 
         img_dict['type']   = 'Before'
@@ -1874,7 +1910,17 @@ def client_joblist(request):
         
         job_serializer  =   JobsSerializer(jobs_list,many=True).data
 
-        removeElements(['is_delete','vehicle_license','location_latitude','location_longitude','user'],job_serializer) 
+        removeElements(['is_delete','vehicle_license','location_latitude','location_longitude','user'],job_serializer)
+
+        '''
+        EVERY EMPLOYEE NAME ON THE PAGE IN ONE QUERY INSTEAD OF ONE Registration.get()
+        PER JOB.
+        '''
+        employee_names  =   {}
+        employee_ids    =   [int(job['job_accepted_by']) for job in job_serializer if job['job_accepted_by'] != None]
+        if employee_ids:
+            for uid, first, last in Registration.objects.exclude(user_is_delete=1).filter(user_id__in=employee_ids).values_list('user_id','user_first_name','user_last_name'):
+                employee_names[uid] = first+ ' ' +last
 
         for job in job_serializer:
 
@@ -1900,9 +1946,8 @@ def client_joblist(request):
 
             ''' print employee name==> job accepted by '''   
 
-            if job['job_accepted_by'] != None:
-                employee_record         =   Registration.objects.exclude(user_is_delete=1).get(user_id=int(job['job_accepted_by']))            
-                job['job_accepted_by']  =   employee_record.user_first_name+ ' ' +employee_record.user_last_name
+            if job['job_accepted_by'] != None and int(job['job_accepted_by']) in employee_names:
+                job['job_accepted_by']  =   employee_names[int(job['job_accepted_by'])]
         
 
         # response data
@@ -1945,10 +1990,16 @@ def employee_joblist(request):
         LIST, EVEN IF THE PUSH NOTIFICATION WAS DISMISSED OR THE APP WAS CLOSED.
         '''
         available_ids   =   set()
-        active_jobs     =   Jobs.objects.exclude(is_delete=1).filter(job_status_id=1)
-        for job_record in active_jobs:
-            if not has_attempted(job_record,user_id):
-                available_ids.add(job_record.job_id)
+        '''
+        ONLY THE TWO COLUMNS THE CHECK NEEDS ARE READ. THIS USED TO BUILD A FULL
+        MODEL INSTANCE FOR EVERY ACTIVE JOB IN THE SYSTEM JUST TO LOOK AT ONE TEXT
+        FIELD.
+        '''
+        active_jobs     =   Jobs.objects.exclude(is_delete=1).filter(job_status_id=1).values_list('job_id','job_attempted_by')
+        for job_pk, attempted in active_jobs:
+            ids = [x.strip() for x in (attempted or '').split(',') if x.strip()]
+            if str(user_id) not in ids:
+                available_ids.add(job_pk)
 
         joblist_filter  =   Jobs.objects.exclude(is_delete=1).exclude(job_status_id=4).filter(
                                 Q(job_accepted_by=user_id) | Q(job_id__in=available_ids)
@@ -1967,14 +2018,27 @@ def employee_joblist(request):
         job_serializer  = JobsSerializer(jobs_list,many=True).data
 
         '''FLAGS THE APP NEEDS TO DECIDE WHICH BUTTONS/SCREEN TO SHOW'''
+        '''ONE ALERTS QUERY FOR THE WHOLE PAGE INSTEAD OF TWO PER JOB'''
+        notified_ids    =   alerted_job_ids([job_record.job_id for job_record in jobs_list],user_id)
+
         for job_record,job in zip(jobs_list,job_serializer):
 
             job['is_assigned']  =   1 if (job_record.job_accepted_by != None and int(job_record.job_accepted_by) == int(user_id)) else 0
             job['can_accept']   =   1 if (job_record.job_status_id == 1 and not has_attempted(job_record,user_id)) else 0
-            job['was_notified'] =   1 if was_alerted(job_record,user_id) else 0
+            job['was_notified'] =   1 if job_record.job_id in notified_ids else 0
 
         '''Remove element from serlialized dict'''
         removeElements(['is_delete','vehicle_license','location_latitude','location_longitude','job_accepted_by'],job_serializer)
+
+        '''
+        EVERY CLIENT NAME ON THE PAGE IN ONE QUERY. THE LOOP BELOW USED TO RUN A
+        SEPARATE Registration.get() FOR EACH JOB.
+        '''
+        client_names    =   {}
+        client_ids      =   [job['user'] for job in job_serializer if job['user'] != None]
+        if client_ids:
+            for uid, first, last in Registration.objects.exclude(user_is_delete=1).filter(user_id__in=client_ids).values_list('user_id','user_first_name','user_last_name'):
+                client_names[uid] = first+ ' ' +last
 
         for job in job_serializer:
 
@@ -2002,9 +2066,8 @@ def employee_joblist(request):
 
             '''if job accepted print client name'''
 
-            if job['user'] != None:
-                employee_record         =   Registration.objects.exclude(user_is_delete=1).get(user_id=int(job['user']))
-                job['client_name']      =   employee_record.user_first_name+ ' ' +employee_record.user_last_name
+            if job['user'] != None and int(job['user']) in client_names:
+                job['client_name']      =   client_names[int(job['user'])]
 
 
 
@@ -2087,17 +2150,27 @@ def active_job(request):
 
             else:
                 # 2. NEWEST ACTIVE JOB THIS EMPLOYEE WAS NOTIFIED ABOUT AND HAS NOT ACTED ON
-                pending_jobs = Jobs.objects.exclude(is_delete=1).filter(job_status_id=1).order_by('-job_id')
+                '''
+                THE CANDIDATES ARE NARROWED WITH TWO CHEAP QUERIES BEFORE ANY JOB ROW
+                IS BUILT: THE ATTEMPTED CHECK RUNS ON TWO COLUMNS, THEN ONE ALERTS
+                QUERY COVERS ALL OF THEM. ONLY THE WINNING JOB IS FETCHED IN FULL.
+                '''
+                candidates  =   []
+                pending_ids =   Jobs.objects.exclude(is_delete=1).filter(job_status_id=1).order_by('-job_id').values_list('job_id','job_attempted_by')
 
-                for pending in pending_jobs:
-                    if has_attempted(pending,user_id):
-                        continue
-                    if not was_alerted(pending,user_id):
-                        continue
+                for pending_id, attempted in pending_ids:
+                    ids = [x.strip() for x in (attempted or '').split(',') if x.strip()]
+                    if str(user_id) not in ids:
+                        candidates.append(pending_id)
 
-                    job_record  =   pending
-                    job_state   =   "pending"
-                    break
+                if candidates:
+                    notified    =   alerted_job_ids(candidates,user_id)
+
+                    for pending_id in candidates:
+                        if pending_id in notified:
+                            job_record  =   Jobs.objects.exclude(is_delete=1).get(job_id=pending_id)
+                            job_state   =   "pending"
+                            break
 
         # CLIENT
         else:
@@ -2293,18 +2366,19 @@ def getuploaded_image(request):
                 "message"     :   "Job does not exist"
             })
         
-        domain =  env('BASE_URL')
-        images = Images.objects.exclude(is_delete=1).filter(job=int(job_id)).exists()
-        if images == False:
+        '''ONE QUERY FOR THE IMAGES AND ONE FOR ALL THEIR FILES, SEE files_by_image()'''
+        img_id_list = list(Images.objects.exclude(is_delete=1).filter(job=int(job_id)))
+
+        if not img_id_list:
             return JsonResponse({
                 "success"     :   0,
                 "message"     :   "Images does not exist"
             })
-        
-        img_id_list = Images.objects.exclude(is_delete=1).filter(job=job_id)
+
+        image_files = files_by_image([image.img_id for image in img_id_list])
 
         imges_list = []
-       
+
         for image in img_id_list:
             img_dict   = {}
             if image.img_type == 1:
@@ -2312,18 +2386,11 @@ def getuploaded_image(request):
             else:
 
                 img_dict['type'] = "After"
-            
-            files  = File.objects.exclude(is_delete=1).filter(file_img=image.img_id).exists()
 
-            if files:
-                files_list = File.objects.exclude(is_delete=1).filter(file_img=image.img_id)
+            img_list = image_files.get(image.img_id,[])
 
-                img_list   = []
-                for file in files_list:
-
-                    image = domain + file.file.url
-                    img_list.append(image)
-                    img_dict['images'] = img_list
+            if img_list:
+                img_dict['images'] = img_list
                 imges_list.append(img_dict)
         return JsonResponse({
             "success"     :   1,

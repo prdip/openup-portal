@@ -1176,11 +1176,18 @@ def token_verification(token):
     token_val       =       token
     if token_val is None:
         return None
-    try: 
-        # token verification 
-        verify          = Session.objects.exclude(session_is_delete=1,session_status=False).filter(session_token=token_val).values('session_id').first()['session_id']
-        session_record  = Session.objects.exclude(session_is_delete=1,session_status=False).get(session_id=verify)
-        
+    try:
+        # token verification
+        '''
+        ONE QUERY INSTEAD OF THREE. THIS USED TO LOOK THE SESSION UP BY TOKEN, THROW
+        THE ROW AWAY, FETCH IT AGAIN BY ID, AND THEN HIT THE DB A THIRD TIME WHEN THE
+        RESPONSE DICT BELOW READS session_user. select_related PULLS THE USER IN THE
+        SAME QUERY. A MISSING TOKEN STILL RAISES (None.session_id) AND IS STILL
+        CAUGHT BELOW, SO THE OUTCOME IS UNCHANGED.
+        '''
+        session_record  = Session.objects.exclude(session_is_delete=1,session_status=False).select_related('session_user').filter(session_token=token_val).first()
+        verify          = session_record.session_id
+
     except:
         verify = None
 
