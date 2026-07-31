@@ -536,11 +536,18 @@ def login(request):
     # check user account is activate or not
  
     if user_type == "employee" and user_rec.user_status == False:
-        return JsonResponse({           
+        return JsonResponse({
             "success"       :   0,                      # if account_status is 0 == > user is inactive
             "message"       :   "account is inactive",
             })
-    
+
+    # check user has verified their email via the verification link
+    if user_rec.user_is_verified != True:
+        return JsonResponse({
+            "success"       :   0,
+            "message"       :   "please verify your email to login",
+            })
+
     # CHECK HASH PASSWORD
     hash_pass = user_rec.user_password
     check_pass          =       check_password(password,hash_pass)
