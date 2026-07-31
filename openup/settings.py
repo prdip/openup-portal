@@ -119,12 +119,13 @@ WSGI_APPLICATION = 'openup.wsgi.application'
  
 
 
-EMAIL_BACKEND       = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_USE_SSL       = env('EMAIL_USE_SSL')
+EMAIL_BACKEND       = 'openup.email_backend.EmailBackend'
+EMAIL_USE_SSL       = env.bool('EMAIL_USE_SSL', default=False)
+EMAIL_USE_TLS       = env.bool('EMAIL_USE_TLS', default=False)
 EMAIL_HOST          = env('EMAIL_HOST')
 EMAIL_HOST_USER     = env('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
-EMAIL_PORT          = env('EMAIL_PORT')
+EMAIL_PORT          = env.int('EMAIL_PORT')
 
 
 

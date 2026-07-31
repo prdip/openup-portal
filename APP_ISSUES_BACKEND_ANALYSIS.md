@@ -174,6 +174,7 @@ okay
 
 ## Issues That Are Primarily Frontend (Mobile App)
 
+
 | Issue | Description | Backend Needed? |
 |-------|-------------|-----------------|
 | **Camera Access Protocol** | Allow camera access through settings or popup prompt | **No** - This is 100% mobile app permission handling (AndroidManifest.xml / iOS Info.plist) |
@@ -196,6 +197,8 @@ okay
 **Note:** The user has deferred Venmo/Zelle integration. Apple Pay backend exists but may need testing.
 
 ---
+
+
 
 ## Known Backend Bugs Found During Analysis
 

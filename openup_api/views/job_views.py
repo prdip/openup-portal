@@ -1383,7 +1383,7 @@ def cancel_job(request):
             new_attempted = existing_attempted
 
         update_data = {
-            "job_status_id" : 4,
+            "job_status" : 4,
             "job_accepted_by" : None,
             "job_attempted_by" : new_attempted
         }
@@ -1573,7 +1573,7 @@ def cancel_job_by_employee(request):
             new_attempted = existing_attempted
 
         update_data = {
-            "job_status_id" : 1,
+            "job_status" : 1,
             "job_accepted_by" : None,
             "job_attempted_by" : new_attempted
         }

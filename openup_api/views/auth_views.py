@@ -956,8 +956,18 @@ def change_password(request,*args,**kwargs):
                 sweet_rec = SweetWord(sweet_words= current_password,
                                     sweet_user = user_id,
                                     sweet_u_pass=new_password)
-                
+
                 sweet_rec.save()
+
+                # NOTIFY USER THAT PASSWORD CHANGE WAS INITIATED
+                change_pass_data_dict = {
+                    "Subject"             :     "Your password was changed",
+                    "text_template"       :     "email/change_password.txt",
+                    "token"               :     "",
+                    "email"               :     "open.up@opnup.net",
+                    "to"                  :     check_current_user.user_email
+                }
+                send_change_password_email.delay(change_pass_data_dict)
 
                 return JsonResponse({
                 "success"     :   1,
@@ -1041,10 +1051,16 @@ def forget_password(request):
 
 @shared_task
 def send_forget_pass_email(data_dict):
-   
+
     SendEmail.send_email(data_dict)
-     
+
     # SendEmail.send_email
+
+'''send email in background to notify user of a password change'''
+@shared_task
+def send_change_password_email(data_dict):
+
+    SendEmail.send_email(data_dict)
 
 '''
 Renders forget password template 
