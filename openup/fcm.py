@@ -1,8 +1,10 @@
 # import datetime
-import requests,json,time
-import environ,tempfile
+import requests,json,time,os
+import environ
 env = environ.Env()
 environ.Env.read_env()
+
+FIREBASE_CRED_PATH = os.path.join(os.path.dirname(__file__), 'firebase-credentials.json')
 from openup_app.models import Registration
 from datetime import datetime, timezone
 from google.oauth2 import service_account
@@ -168,35 +170,12 @@ class FCM:
 
         :return: Access token.
         """
-        # Path to the service account key file
-        # key_path = "./firebase-cred.json"
-
-        firebase_cred_data = {
-            "type": "service_account",
-            "project_id": "openup-2892b",
-            "private_key_id": "***REMOVED_KEY_ID***",
-            "private_key": "***REMOVED_PRIVATE_KEY***",
-            "client_email": "firebase-adminsdk-wv4s4@openup-2892b.iam.gserviceaccount.com",
-            "client_id": "106955070550620175554",
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-            "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-wv4s4%40openup-2892b.iam.gserviceaccount.com",
-            "universe_domain": "googleapis.com"
-            }
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode='w') as temp_file:
-            json.dump(firebase_cred_data, temp_file)
-            temp_file_path = temp_file.name
-
-        # Load the credentials from the file
         credentials = service_account.Credentials.from_service_account_file(
-            temp_file_path,
+            FIREBASE_CRED_PATH,
             scopes=["https://www.googleapis.com/auth/cloud-platform"]
         )
 
         # Refresh the credentials
         request = GoogleRequest()
         credentials.refresh(request)
-        # print(credentials.token)
         return credentials.__dict__

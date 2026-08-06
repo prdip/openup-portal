@@ -27,7 +27,7 @@ from django.http.response import JsonResponse
 from openup_api.views.auth_views import token_verification
 
 # Import Models here
-from openup_app.models import Registration,JobsType,Jobs,Alerts,VehicleDetails,Payment,PaypalInfo,PaymentFailedInfo,SuccessPayments, JobLogs, Images, File
+from openup_app.models import Registration,JobsType,Jobs,Alerts,VehicleDetails,Payment,PaypalInfo,PaymentFailedInfo,SuccessPayments, JobLogs, Images, File, Feedback
 
 # Import Serializer
 from openup_app.serializers import JobsSerializer
@@ -193,6 +193,12 @@ def add_job(request):
                 license     =    None
             else:
                 license     =    veh_rec.vehicle_license
+                if license != None:
+                    try:
+                        if not license.storage.exists(license.name):
+                            license = None
+                    except Exception:
+                        license = None
 
         elif license != None and vehicle_id == None:
                 # New image No id 
@@ -597,6 +603,7 @@ def paypal_payment(data):
 # @shared_task()
 def jobAlert(job_id,latitude,longitude,accepted_by):
     # Fetch Employee List
+    # print(f"[jobAlert] called job_id={job_id} latitude={latitude} longitude={longitude} accepted_by={accepted_by}")
 
     job_instance    =    Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
 
@@ -629,6 +636,7 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
             employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(user_id__in=excluded_ids).filter(employee_status=1).filter(user_role_id=1)
             message     =  "PLEASE ACCEPT THIS JOB!!!"
 
+    # print(f"[jobAlert] excluded_ids={excluded_ids} candidate employee count={employees.count()}")
 
     # employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
 
@@ -639,31 +647,35 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
     data        =   {}
     '''IN EMPLOYEE DICT   KEY == > EMPLOYEE_ID  VALUE_LIST ==> [FCM,DEVICE TYPE]'''
     for employee in employees:
-        if employee.user_fcm_token != "" or employee.user_fcm_token != None: 
+        if employee.user_fcm_token != "" or employee.user_fcm_token != None:
             # user location
             user_location = (latitude,longitude)
             # employee location
             emp_location =  (employee.location_latitude,employee.location_longitude)
-            # calculate distance between two point 
+            # calculate distance between two point
             # dist        =   gd(user_location,emp_location).km
             api_key  =  'AIzaSyC2o6UvDF6qUUQM3KCwR6dwoV5qCfj8MGs'
             url      =  f"https://maps.googleapis.com/maps/api/distancematrix/json?origins={latitude},{longitude}&destinations={employee.location_latitude},{employee.location_longitude}&key={api_key}"
             response =  requests.get(url)
             data     =  response.json()
+            # print(f"[jobAlert] distance-matrix response for employee_id={employee.user_id}: status={response.status_code} body={data}")
 
             try:
                 duration_seconds = data['rows'][0]['elements'][0]['duration']['value']
             except KeyError:
                 duration_seconds =''
 
+            # print(f"[jobAlert] employee_id={employee.user_id} fcm_token_set={bool(employee.user_fcm_token)} duration_seconds={duration_seconds}")
 
-            # if dist is less than 6 km append list 
+            # if dist is less than 6 km append list
             if duration_seconds != '':
                 if int(duration_seconds) <= 1260:
                     user_list.append(employee.user_id)
 
                     emp_fcm.append(employee.user_fcm_token)
-                    emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
+                    emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type)))
+
+    # print(f"[jobAlert] matched user_list={user_list}")
 
     if len(user_list) == 0:
         client_fcm = job_instance.user.user_fcm_token
@@ -676,10 +688,10 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
              'job_id'                     :     str(job_id),  
              'job_type'                   :     job_instance.job_type
             }
-        noti_data['fcm_token']  =   client_fcm 
-        noti_data['device']     =   str(employee.device_type)
+        noti_data['fcm_token']  =   client_fcm
+        noti_data['device']     =   str(job_instance.user.device_type)
         noti_data['data']       =   data
-        
+
         job_status      = JobsType.objects.get(status_id=5)
         update_record   = {
             "job_status" : job_status.status_id 
@@ -687,10 +699,12 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
 
         job_serializer = JobsSerializer(instance=job_instance,data=update_record,partial=True)
         if job_serializer.is_valid():
-           
             job_serializer.save()
-    
+        # else:
+        #     print(f"[jobAlert] job_status=5 update failed: {job_serializer.errors}")
+
         # sends push notification
+        # print(f"[jobAlert] no employees matched, sending 'not available' notification to client fcm_token_set={bool(client_fcm)} noti_data={noti_data}")
         FCM.send_notification(noti_data)
         return True
     
@@ -723,6 +737,8 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
     job_serializer = JobsSerializer(instance=job_instance,data=update_record,partial=True)
     if job_serializer.is_valid():
         job_serializer.save()
+    # else:
+    #     print(f"[jobAlert] job_status=1 update failed: {job_serializer.errors}")
 
     # SEND NOTIFICATIONS
 
@@ -735,11 +751,14 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
 
         if employee.user_fcm_token!=None and employee.user_fcm_token!='':
             noti_data['data']       =   not_data
-            noti_data['fcm_token']  =   employee.user_fcm_token 
+            noti_data['fcm_token']  =   employee.user_fcm_token
             noti_data['device']     =   str(employee.device_type)
+            # print(f"[jobAlert] sending 'New job request' to employee_id={employee.user_id}")
             # sends push notification
             FCM.send_notification(noti_data)
-     
+        # else:
+            # print(f"[jobAlert] employee_id={employee.user_id} skipped, no fcm token")
+
 
     return True
     
@@ -896,6 +915,22 @@ def build_job_payload(job_data):
         if user_record != None:
             '''to get employee name '''
             job_serializer['employee_name'] = user_record.user_first_name+' '+user_record.user_last_name
+
+    '''
+    Customer's review, if one has been submitted for this job, surfaced so the
+    employee can see it alongside the job details (e.g. on "My Job").
+    '''
+    try:
+        feedback_record = Feedback.objects.exclude(is_delete=1).get(feedback_job=job_data.job_id)
+    except Feedback.DoesNotExist:
+        feedback_record = None
+
+    if feedback_record != None:
+        job_serializer['feedback_stars']   = feedback_record.feedback_stars
+        job_serializer['feedback_comment'] = feedback_record.feedback_comment
+    else:
+        job_serializer['feedback_stars']   = None
+        job_serializer['feedback_comment'] = None
 
     '''
     THE IMAGE ROWS ARE FETCHED ONCE (THE OLD .exists() PROBE WAS A SECOND IDENTICAL
@@ -2021,11 +2056,22 @@ def employee_joblist(request):
         '''ONE ALERTS QUERY FOR THE WHOLE PAGE INSTEAD OF TWO PER JOB'''
         notified_ids    =   alerted_job_ids([job_record.job_id for job_record in jobs_list],user_id)
 
+        '''Customer's review (if any), one query for the whole page instead of one per job.'''
+        feedback_map    =   {}
+        page_job_ids    =   [job_record.job_id for job_record in jobs_list]
+        if page_job_ids:
+            for f_job_id, f_stars, f_comment in Feedback.objects.exclude(is_delete=1).filter(feedback_job_id__in=page_job_ids).values_list('feedback_job_id','feedback_stars','feedback_comment'):
+                feedback_map[f_job_id] = (f_stars, f_comment)
+
         for job_record,job in zip(jobs_list,job_serializer):
 
             job['is_assigned']  =   1 if (job_record.job_accepted_by != None and int(job_record.job_accepted_by) == int(user_id)) else 0
             job['can_accept']   =   1 if (job_record.job_status_id == 1 and not has_attempted(job_record,user_id)) else 0
             job['was_notified'] =   1 if job_record.job_id in notified_ids else 0
+
+            feedback = feedback_map.get(job_record.job_id)
+            job['feedback_stars']   = feedback[0] if feedback else None
+            job['feedback_comment'] = feedback[1] if feedback else None
 
         '''Remove element from serlialized dict'''
         removeElements(['is_delete','vehicle_license','location_latitude','location_longitude','job_accepted_by'],job_serializer)
