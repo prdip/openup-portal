@@ -1,5 +1,5 @@
 # import datetime
-import requests,json,time,os
+import requests,json,time,os,logging
 import environ
 env = environ.Env()
 environ.Env.read_env()
@@ -11,12 +11,16 @@ from google.oauth2 import service_account
 from google.auth.transport.requests import Request as GoogleRequest
 from django.utils.dateparse import parse_datetime
 
-class FCM: 
+logger = logging.getLogger('django.request')
+
+class FCM:
 
     
 
     def send_notification(dataDict):
-        
+
+        logger.info('FCM.send_notification: data=%s', dataDict)
+
         seconds     =        60*60*24
         # serverKey   =       env('FCM_SERVER_KEY11')
         serverKey  =    FCM.access_token_get_or_update()
@@ -63,7 +67,7 @@ class FCM:
             "token": dataDict['fcm_token'],   
             "notification": {
                 "title":  dataDict['data']['title'],
-                "body":   dataDict['data']['title']
+                "body":   dataDict['data']['message']
             }
         }
      
@@ -104,7 +108,7 @@ class FCM:
                     "token": dataDict['fcm_token'],   
                     "notification": {
                         "title":  dataDict['data']['title'],
-                        "body":   dataDict['data']['title']
+                        "body":   dataDict['data']['message']
                     }
                 }
             }
@@ -124,45 +128,27 @@ class FCM:
     def access_token_get_or_update():
         user = Registration.objects.get(user_id=1)
         expiry_datetime = user.update_at
-        if user.user_fcm_token == '' or user.user_fcm_token == None:
+        access_key = user.user_fcm_access_key
+
+        if isinstance(expiry_datetime, str):
+            expiry_datetime = parse_datetime(expiry_datetime)
+
+        if access_key == '' or access_key is None or expiry_datetime is None or expiry_datetime < datetime.now(timezone.utc):
             # create token and add
-            if isinstance(expiry_datetime, str):
-                expiry_datetime = parse_datetime(expiry_datetime)
-        
-            if expiry_datetime is None or expiry_datetime < datetime.now(timezone.utc):
-                access           = FCM.get_access_token()
-                new_access_token = access['token']
-                expiry           = access['expiry'] 
-
-                expiry_str          = expiry.strftime('%Y-%m-%dT%H:%M:%S.%f%z')
-
-                update_dict = {
-                    'user_fcm_token': new_access_token,
-                    'update_at': expiry_str
-                }
-                user.update(**update_dict)
-                return new_access_token
-            else:
-                return user.user_fcm_token
-
-        else:
-
-
             access           = FCM.get_access_token()
             new_access_token = access['token']
             expiry           = access['expiry']
 
             expiry_str          = expiry.strftime('%Y-%m-%dT%H:%M:%S.%f%z')
-            # user.user_fcm_token = new_access_token
-            # user.update_at      = expiry_str
-            # user.save()
 
             update_dict = {
-                'user_fcm_token': new_access_token,
+                'user_fcm_access_key': new_access_token,
                 'update_at': expiry_str
             }
             user.update(**update_dict)
-            return new_access_token 
+            return new_access_token
+        else:
+            return access_key
 
 
     def get_access_token():

@@ -50,6 +50,7 @@ class Registration(models.Model):
     location_longitude       =   models.FloatField(null=True)
     device_type              =   models.IntegerField(null=True,default=1)   # 1 == > Anaroid  2==> IOS
     user_fcm_token           =   models.TextField(null=True,blank=True)
+    user_fcm_access_key      =   models.TextField(null=True,blank=True)  #GOOGLE OAUTH ACCESS TOKEN FOR FCM HTTP V1 (NOT THE DEVICE FCM TOKEN)
     user_stripe_id           =   models.CharField(max_length=500,null=True,blank=True)  #CLIENT STRIPE ID 
     user_payment_id          =   models.CharField(max_length=500,null=True,blank=True)  #CLIENT PAYMENT METHOD ID
     user_payment_type        =    models.CharField(max_length=150,null=True)
