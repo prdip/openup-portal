@@ -67,7 +67,7 @@ def add_card(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })
     
@@ -266,7 +266,7 @@ def card_details(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })
     else:
@@ -330,7 +330,7 @@ def create_customer(request,*args,**kwargs):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
             })
     else:
@@ -403,7 +403,7 @@ def link_payment_method(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
             })
     else:
@@ -506,7 +506,7 @@ def ask_for_payment(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })
     else:
@@ -575,7 +575,7 @@ def manual_payment(request,*args,**kwargs):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
             })
     else:
@@ -642,7 +642,7 @@ def manual_payment_success(request):
     
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
             })
     else:

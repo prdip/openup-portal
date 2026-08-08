@@ -92,7 +92,7 @@ def add_job(request):
     
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })
     
@@ -616,13 +616,17 @@ def paypal_payment(data):
 '''
  JobAlert function calls whenever new job added by client
 
- latitude and longitude pass by client 
+ latitude and longitude pass by client
 
  SERVICE_JOB == >  ALERT TO ACTIVE EMP
  EMERGENCY_JOB ==> ALERT TO ACTIVE AND INACTIVE EMP
 
+ REGISTERED AS A CELERY TASK, SO reject_job() CAN DISPATCH IT WITH .delay().
+ add_job() STILL CALLS IT DIRECTLY (SYNCHRONOUSLY) BECAUSE IT NEEDS THE RETURN
+ VALUE TO PUT THE no_availability SIGNAL IN ITS OWN RESPONSE - A @shared_task
+ FUNCTION IS STILL AN ORDINARY CALLABLE WHEN INVOKED WITHOUT .delay().
 '''
-# @shared_task()
+@shared_task()
 def jobAlert(job_id,latitude,longitude,accepted_by):
     # Fetch Employee List
     # print(f"[jobAlert] called job_id={job_id} latitude={latitude} longitude={longitude} accepted_by={accepted_by}")
@@ -1055,7 +1059,7 @@ def job_details(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })
     
@@ -1121,7 +1125,7 @@ def remove_job(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
                 })
     
@@ -1173,7 +1177,7 @@ def accept_job(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
             })
     
@@ -1230,8 +1234,7 @@ def accept_job(request):
             job_serializer.save(**data)
 
             # Notification data
-            # accept_job_notification.delay(job_id)
-            accept_job_notification(job_id)
+            accept_job_notification.delay(job_id)
 
             return JsonResponse({
                             "success"     :   1,
@@ -1251,8 +1254,8 @@ def accept_job(request):
 #  Notification generate for accept job
 '''
 NOTIFY CLIENT THAT JOB ACCEPTED
-''' 
-# @shared_task()
+'''
+@shared_task()
 def accept_job_notification(job_id):
 
     user_id     = Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
@@ -1295,7 +1298,7 @@ def reject_job(request):
     check_user      =       token_verification(user_token)
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })
 
@@ -1369,9 +1372,9 @@ def reject_job(request):
 
             # Re-check for other available employees / notify the client if none are left.
             try:
-                jobAlert(job_id, job_record.location_latitude, job_record.location_longitude, '')
+                jobAlert.delay(job_id, job_record.location_latitude, job_record.location_longitude, '')
             except Exception as e:
-                logger.error('reject_job: Failed to run jobAlert for job %s: %s', job_id, str(e))
+                logger.error('reject_job: Failed to queue jobAlert for job %s: %s', job_id, str(e))
 
             return JsonResponse({
                 "success"   :    1,
@@ -1401,7 +1404,7 @@ def complete_job(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
             })
     # if token verified
@@ -1462,9 +1465,8 @@ def complete_job(request):
         if job_serializer.is_valid():
             job_serializer.save()
             
-            # complete job notification function 
-            # complete_job_notification.delay(job_id)
-            complete_job_notification(job_id)
+            # complete job notification function
+            complete_job_notification.delay(job_id)
 
             if job_record.job_pay_status == True:
                 job_pay_status = 1 
@@ -1491,7 +1493,7 @@ def complete_job(request):
 
 
 ''' NOTIFY CLIENT THAT JOB IS COMPLETED '''
-# @shared_task()
+@shared_task()
 def complete_job_notification(job_id):
 
     try:
@@ -1544,7 +1546,7 @@ def cancel_job(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
                 })
     
@@ -1598,8 +1600,7 @@ def cancel_job(request):
         if job_ser.is_valid():
             job_ser.save()
 
-            # cancel_job_notification.delay(job_id)
-            cancel_job_notification(job_id)
+            cancel_job_notification.delay(job_id)
 
 
             return JsonResponse({
@@ -1617,7 +1618,7 @@ def cancel_job(request):
 
 
 '''Notify all employees that the job has been cancelled'''
-# @shared_task()
+@shared_task()
 def cancel_job_notification(job_id):
      # Fetch Employee List
 
@@ -1681,7 +1682,7 @@ def cancel_job_by_employee(request):
     except KeyError:
         logger.error('cancel_job_by_employee: Missing Authorization header')
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Missing Authorization header",
                 })
 
@@ -1691,7 +1692,7 @@ def cancel_job_by_employee(request):
     if check_user is None:
         logger.warning('cancel_job_by_employee: Unauthorized access attempt')
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
                 })
     
@@ -1809,16 +1810,17 @@ def cancel_job_by_employee(request):
                         "message"     :   "Failed to update job status",
                         })
 
+            '''
+            notify_client() ALREADY DOES BOTH HALVES OF THIS EVENT: IT TELLS THE
+            CLIENT THE EMPLOYEE CANCELLED, THEN RE-RUNS THE SAME NEARBY-EMPLOYEE
+            SEARCH jobAlert() DOES. CALLING jobAlert() HERE TOO SENT EVERY MATCHED
+            EMPLOYEE THE "New job request" PUSH TWICE AND WROTE TWO Alerts ROWS
+            FOR ONE CANCELLATION, SO ONLY notify_client() IS DISPATCHED NOW.
+            '''
             try:
-                # notify_client.delay(job_id,user_id)
-                notify_client(job_id,user_id)
+                notify_client.delay(job_id,user_id)
             except Exception as e:
-                logger.error('cancel_job_by_employee: Failed to send notify_client task for job %s: %s', job_id, str(e))
-
-            try:
-                jobAlert(job_id,job_record.user.location_latitude,job_record.user.location_longitude,accepted_by)
-            except Exception as e:
-                logger.error('cancel_job_by_employee: Failed to run jobAlert for job %s: %s', job_id, str(e))
+                logger.error('cancel_job_by_employee: Failed to queue notify_client task for job %s: %s', job_id, str(e))
 
             logger.info('cancel_job_by_employee: Job %s canceled successfully by user %s', job_id, user_id)
             return JsonResponse({
@@ -1835,86 +1837,8 @@ def cancel_job_by_employee(request):
 
     
 
-@shared_task()
-def job_alert_after_cancel(job_id,latitude,longitude,accepted_by):
-    job_instance    =    Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
-     
-    if job_instance.job_type == "emergency":
-        
-        employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(job_accepted_by=accepted_by).filter(user_role_id=1)
-        message     =  "EMERGENCY!!! PLEASE ACCEPT THIS JOB ASAP!!!"
-
-    else:
-        employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(job_accepted_by=accepted_by).filter(employee_status=1).filter(user_role_id=1)
-        message     =  "PLEASE ACCEPT THIS JOB ASAP!!!"
-    # employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
-
-    # get employee list
-    user_list   =   []
-    emp_fcm     =   []
-    emplist     =   {}
-    data        =   {}
-    '''IN EMPLOYEE DICT   KEY == > EMPLOYEE_ID  VALUE_LIST ==> [FCM,DEVICE TYPE]'''
-    for employee in employees:
-        if employee.user_fcm_token != "" or employee.user_fcm_token != None: 
-            # user location
-            user_location = (latitude,longitude)
-            # employee location
-            emp_location =  (employee.location_latitude,employee.location_longitude)
-            # calculate distance between two point 
-            # dist        =   gd(user_location,emp_location).km
-            api_key  =  'AIzaSyC2o6UvDF6qUUQM3KCwR6dwoV5qCfj8MGs'
-            url      =  f"https://maps.googleapis.com/maps/api/distancematrix/json?origins={latitude},{longitude}&destinations={employee.location_latitude},{employee.location_longitude}&key={api_key}"
-            response =  requests.get(url)
-            data     =  response.json()
-             
-            try:
-                duration_seconds = data['rows'][0]['elements'][0]['duration']['value']
-            except KeyError:
-                duration_seconds =''
-            # if dist is less than 6 km append list 
-
-            if duration_seconds <= 1260 and duration_seconds != '':
-                user_list.append(employee.user_id)
-                emp_fcm.append(employee.user_fcm_token)
-                emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
-
-    if len(user_list) == 0:
-        client_fcm = job_instance.user.user_fcm_token
-        noti_data={ }  
-    
-        data = { 
-             'title'                      :     NO_AVAILABILITY_TITLE,
-             'notificationScreenType'     :     NO_AVAILABILITY_SCREEN_TYPE,
-             'message'                    :     NO_AVAILABILITY_MESSAGE,
-             'job_id'                     :     str(job_id),  
-             'job_type'                   :     job_instance.job_type
-            }
-        
-        noti_data['fcm_token']  =   client_fcm 
-        noti_data['device']     =   str(employee.device_type)
-        noti_data['data']       =   data
-
-        # sends push notification
-
-        FCM.send_notification(noti_data)
-
-        job_status      = JobsType.objects.get(status_id=1)
-        update_record   = {
-            "job_status_id" : job_status.status_id 
-            }
-
-        job_serializer = JobsSerializer(instance=job_instance,data=update_record,partial=True)
-        if job_serializer.is_valid():
-            job_serializer.save()
-
-
-        return True
-    
-
-
 '''Notify all employees that the job has been active again'''
-# @shared_task()
+@shared_task()
 def notify_client(job_id,user_id):
     job_instance    =    Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
 
@@ -2100,7 +2024,7 @@ def client_joblist(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
                 })
     
@@ -2196,7 +2120,7 @@ def employee_joblist(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
                 })
     
@@ -2344,7 +2268,7 @@ def active_job(request):
     except KeyError:
         logger.error('active_job: Missing Authorization header')
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Missing Authorization header",
                 })
 
@@ -2353,7 +2277,7 @@ def active_job(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
                 })
 
@@ -2367,7 +2291,7 @@ def active_job(request):
             logger.warning('active_job: No registration found for user %s', user_id)
             return JsonResponse({
                     "success"     :   0,
-                    "message"     :   "Unauthorized User",
+                    "message"     :   "User not found",
                     })
 
         job_record  =   None
@@ -2468,7 +2392,7 @@ def upload_images(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   1,
                 "message"     :   "Unauthorized User",
                 })
     
@@ -2628,7 +2552,7 @@ def getuploaded_image(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
                 })
     

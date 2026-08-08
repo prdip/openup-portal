@@ -67,7 +67,7 @@ def create_customer(request):
     paypal_req_id   =  request.data.get('paypal_req_id')
     if check_user is None:
         return JsonResponse({
-            "success": 0,
+            "success": 2,
             "message": "Unauthorized User",
         })
     else:
@@ -173,7 +173,7 @@ def create_customer(request):
     
     # if check_user is None:
     #     return JsonResponse({
-    #         "success": 0,
+    #         "success": 2,
     #         "message": "Unauthorized User",
     #     })
     # else:
@@ -406,7 +406,7 @@ def paypal_payment(request):
     
     if check_user is None:
         return JsonResponse({
-            "success": 0,
+            "success": 2,
             "message": "Unauthorized User",
         })
     
@@ -553,7 +553,7 @@ def add_payment_type(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
                 })
      
@@ -837,7 +837,7 @@ def create_customer(user_id):
     
 #     if check_user is None:
 #         return JsonResponse({
-#             "success": 0,
+#             "success": 2,
 #             "message": "Unauthorized User",
 #         })
     
@@ -1074,7 +1074,7 @@ def create_paypal_token(request):
     
     if check_user is None:
         return JsonResponse({
-            "success": 0,
+            "success": 2,
             "message": "Unauthorized User",
         })
     else:

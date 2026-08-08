@@ -10,8 +10,11 @@ who receives it, and the exact payload.
 
 ## 1. Job created — `add_job()` → `jobAlert()`
 
-**Trigger:** client calls `POST add_job`. `jobAlert()` runs **synchronously**
-inside that same request (not a background task).
+**Trigger:** client calls `POST add_job`. `jobAlert()` is a Celery task
+(`@shared_task`), but `add_job()` calls it **directly (synchronously)** rather
+than via `.delay()`, because it needs the return value to set the
+`no_availability` flag on its own response (see the note at the end of this
+section). Every other `jobAlert()` call site dispatches it with `.delay()`.
 
 **Condition / logic:** searches active employees (`employee_status=1`,
 `user_role_id=1`, role adjusted for `job_type == "emergency"`), and for each
@@ -100,7 +103,7 @@ appended to `job_attempted_by`.
 
 ---
 
-## 5. Employee cancels — `cancel_job_by_employee()` → `notify_client()` (Celery task) **and** `jobAlert()` (direct call)
+## 5. Employee cancels — `cancel_job_by_employee()` → `notify_client()` (Celery task)
 
 **Trigger:** `POST cancel-job-by-emp`. Requester must be the currently
 accepted employee; job must not already be `completed`(3),
@@ -108,9 +111,8 @@ accepted employee; job must not already be `completed`(3),
 `job_status` resets to `1`, `job_accepted_by` is cleared, and the cancelling
 employee is appended to `job_attempted_by`.
 
-Both of the following fire for the **same** cancellation event:
-
-**`notify_client()`** (async):
+**`notify_client()`** (async, dispatched with `.delay()`) is the only thing
+fired for this event:
 1. Unconditionally sends the client: title `Job Cancelled by Employee. This
    job is active now`, message `This job has been cancelled by the
    employee.Your job is active now`, `notificationScreenType: cancel_job`.
@@ -125,18 +127,17 @@ Both of the following fire for the **same** cancellation event:
      `We are currently not available in your area, coming soon`);
      `job_status` set to `5`.
 
-**`jobAlert()`** (called directly, synchronously, right after
-`notify_client.delay(...)`): independently repeats the **identical**
-nearby-employee search and send logic described in section 1.
-
-> **Known bug — duplicate sends.** Because both are triggered for the same
-> event, every employee who qualifies gets the `New job request` push
-> **twice**, and two `Alerts` rows are written for one cancellation. This is
-> the current behavior, not a documentation error.
+> **Fixed — duplicate sends.** `cancel_job_by_employee()` used to call
+> `jobAlert()` as well, which independently repeated the *identical*
+> nearby-employee search, so every qualifying employee got the `New job
+> request` push **twice** and two `Alerts` rows were written per cancellation.
+> The redundant `jobAlert()` call has been removed — `notify_client()` already
+> covers both the client notice and the employee re-alert, so it is now one
+> push per employee and one `Alerts` row.
 
 ---
 
-## 6. Employee rejects — `reject_job()` → `jobAlert()` (direct call)
+## 6. Employee rejects — `reject_job()` → `jobAlert()` (Celery task)
 
 **Trigger:** `POST reject_job`. Job must not be `canceled by client`(4),
 `completed`(3), or already `no-employees-available`(5). On success the
@@ -144,8 +145,8 @@ rejecting employee is appended to `job_attempted_by` and a `JobLogs` entry
 (`"Job rejected by employee"`) is written.
 
 **Notification:** `reject_job()` sends nothing itself — it re-runs
-`jobAlert()` (synchronously, same 1260s search as section 1), which then
-sends whichever of 1a/1b applies:
+`jobAlert()` via `.delay()` (background, same 1260s search as section 1),
+which then sends whichever of 1a/1b applies:
 - Other qualifying employees get `New job request` / `addjob`.
 - If nobody's left, the client gets `Not Accepted` / `no_availability` and
   `job_status` becomes `5` — this is also how "all employees reject" ends
@@ -153,12 +154,33 @@ sends whichever of 1a/1b applies:
 
 ---
 
-## Not part of the live notification flow
+## Celery
 
-`job_alert_after_cancel()` in `job_views.py` contains a third copy of the
-same nearby-employee search/notification logic, but has **no call sites**
-anywhere in the codebase — it never fires. Not documented above as a live
-path since it's dead code.
+Every notification function is a registered Celery task
+(`@shared_task()`), so pushes and the Distance Matrix lookups they depend on
+run on the worker instead of blocking the HTTP request:
+
+```
+openup_api.views.job_views.jobAlert
+openup_api.views.job_views.accept_job_notification
+openup_api.views.job_views.complete_job_notification
+openup_api.views.job_views.cancel_job_notification
+openup_api.views.job_views.notify_client
+```
+
+The one deliberate exception is `add_job()`, which calls `jobAlert()`
+directly rather than with `.delay()` — a `@shared_task` function is still an
+ordinary callable when invoked without `.delay()`, and `add_job` needs the
+return value to put the `no_availability` signal in its own response. Every
+other call site uses `.delay()`.
+
+**The worker must be running** for these to be delivered — without it,
+`.delay()` calls queue in Redis and are never processed, with nothing in the
+request/response cycle indicating failure:
+
+```
+celery -A openup.celery worker -l INFO
+```
 
 ---
 
@@ -166,12 +188,12 @@ path since it's dead code.
 
 | Event | Function | Async? | Recipient | notificationScreenType |
 |---|---|---|---|---|
-| Job created, employees found | `jobAlert` | No (sync in `add_job`) | Matched employees | `addjob` |
-| Job created, no employees | `jobAlert` | No (sync in `add_job`) | Client | `no_availability` |
+| Job created, employees found | `jobAlert` | No — sync in `add_job` by design | Matched employees | `addjob` |
+| Job created, no employees | `jobAlert` | No — sync in `add_job` by design | Client | `no_availability` |
 | Employee accepts | `accept_job_notification` | Yes | Client | `acceptjob` |
 | Job completed | `complete_job_notification` | Yes | Client only | `completejob` (+ `showReviewPage`) |
 | Client cancels | `cancel_job_notification` | Yes | All active employees | `cancel_job` |
 | Employee cancels — client notice | `notify_client` | Yes | Client | `cancel_job` |
-| Employee cancels — re-alert (found) | `notify_client` + `jobAlert` (duplicate) | Mixed | Matched employees | `addjob` (sent twice) |
-| Employee cancels — re-alert (none) | `notify_client` + `jobAlert` (duplicate) | Mixed | Client | `no_availability` (sent twice) |
-| Employee rejects | `jobAlert` (via `reject_job`) | No (sync) | Matched employees or client | `addjob` or `no_availability` |
+| Employee cancels — re-alert (found) | `notify_client` | Yes | Matched employees | `addjob` |
+| Employee cancels — re-alert (none) | `notify_client` | Yes | Client | `no_availability` |
+| Employee rejects | `jobAlert` (via `reject_job`) | Yes | Matched employees or client | `addjob` or `no_availability` |

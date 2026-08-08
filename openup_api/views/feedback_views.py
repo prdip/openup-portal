@@ -38,7 +38,7 @@ def add_feedback(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })
     

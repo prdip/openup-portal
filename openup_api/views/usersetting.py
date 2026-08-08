@@ -30,7 +30,7 @@ def add_settings(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })
     else:
@@ -96,7 +96,7 @@ def setting_details(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })
     else:
