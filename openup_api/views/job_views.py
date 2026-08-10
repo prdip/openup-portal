@@ -2608,8 +2608,59 @@ def getuploaded_image(request):
 
 
 
+'''
+API: NOT COMPLETED JOBS (STATUS 5) NEAR THE LOGGED-IN EMPLOYEE
+Gets the login employee (with lat & long) from the user table via token, then
+returns the not-deleted jobs with status 5 that fall within a 6 km radius of
+the employee's location.
+'''
+@api_view(['POST'])
+def not_completed_jobs(request):
 
+    token       = request.headers['Authorization']
+    user_token  = token.replace("Bearer",'')
+    check_user  = token_verification(user_token)
 
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   2,
+                "message"     :   "Unauthorized User",
+                })
 
+    user_id     =   check_user['session_user']
 
+    employee    =   Registration.objects.filter(user_id=user_id).first()
+
+    if employee is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "User not found",
+                })
+
+    employee_lat    =   employee.location_latitude
+    employee_long   =   employee.location_longitude
+
+    job_list    =   []
+    if employee_lat is not None and employee_long is not None:
+        jobs_list   =   Jobs.objects.exclude(is_delete=1).filter(job_status_id=1).order_by('-job_id')[:5]
+
+        for job in jobs_list:
+            dist = gd((employee_lat, employee_long), (job.location_latitude, job.location_longitude)).km
+
+            if dist <= 6:
+                job_list.append({
+                        'job_id'                :   job.job_id,
+                        'job_type'              :   job.job_type
+                    })
+
+    data = {
+        "job_list"  :   job_list,
+        "count"     :   len(job_list),
+    }
+
+    return JsonResponse({
+            "success"     :   1,
+            "message"     :   "Activate jobs fetched",
+            "data"        :   data
+            })
 

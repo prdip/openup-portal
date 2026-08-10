@@ -85,6 +85,7 @@ urlpatterns = [
   path('cancel-job', job_views.cancel_job,name='cancel_job'),
   path('upload-images', job_views.upload_images,name='upload-images'),
   path('get-upload-images', job_views.getuploaded_image,name='get-upload-images'),
+  path('not-completed-jobs', job_views.not_completed_jobs,name='not_completed_jobs'),
 
 
 
