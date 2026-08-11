@@ -1514,7 +1514,7 @@ def complete_job_notification(job_id):
             'notificationScreenType'    :   "completejob",
             'message'                   :   'Your job completed. Please add review about your job',
             'job_id'                    :   job_id,
-            'showReviewPage'           :   True
+            'showReviewPage'           :   'true'
         }
 
 
