@@ -1,7 +1,7 @@
 from django.urls import path,re_path
 from django.conf import settings
 from django.conf.urls.static import static
-from openup_api.views import auth_views, cms_views, force_update,vehicle_views,payment_views,job_views,feedback_views,location_views, paypal_views, apple_pay as apple_pay_views
+from openup_api.views import auth_views, cms_views, force_update,vehicle_views,payment_views,job_views,feedback_views,location_views, paypal_views, apple_pay as apple_pay_views, venmo_views
 from openup_api.views import usersetting
 from django.urls import reverse
 from django.views.static import serve
@@ -126,7 +126,11 @@ urlpatterns = [
 
 
   path('apple-pay', apple_pay_views.apple_pay,name='apple_pay'),
-  
+
+
+  # Venmo (processed through PayPal's Orders API)
+  path('create-venmo-order', venmo_views.create_venmo_order,name='create_venmo_order'),
+  path('capture-venmo-order', venmo_views.capture_venmo_order,name='capture_venmo_order'),
 
 
 

@@ -564,15 +564,17 @@ def add_payment_type(request):
         payment_type = request.data.get('payment_type')
         card_number  = request.data.get('card_number')
 
-        if payment_type != "stripe" and payment_type != "paypal" and payment_type != "apple_pay":
+        if payment_type != "stripe" and payment_type != "paypal" and payment_type != "apple_pay" and payment_type != "venmo":
             return JsonResponse({
                 "success"      :   0,
                 "message"      :   "please provide valid payment type",
             })
 
         '''
-        ONLY PAYPAL VAULTS THE CARD HERE, STRIPE CREATES A CUSTOMER AND APPLE PAY
-        HAS NO CREDENTIAL TO STORE AT ALL
+        ONLY PAYPAL VAULTS THE CARD HERE, STRIPE CREATES A CUSTOMER, APPLE PAY
+        HAS NO CREDENTIAL TO STORE AT ALL, AND VENMO IS VAULTED SEPARATELY VIA
+        create-venmo-order / capture-venmo-order (payer approves in Venmo, no
+        card number is collected up front)
         '''
         card = None
         if payment_type == "paypal":

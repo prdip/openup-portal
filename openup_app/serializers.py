@@ -265,7 +265,7 @@ class FeedbackSerializer(serializers.Serializer):
     feedback_job           =      serializers.PrimaryKeyRelatedField(queryset = Jobs.objects.all())
     feedback_user          =      serializers.PrimaryKeyRelatedField(queryset = Registration.objects.all())
     feedback_stars         =      serializers.FloatField(default=1)
-    feedback_comment       =      serializers.CharField(max_length=500)
+    feedback_comment       =      serializers.CharField(max_length=500,required=False,allow_blank=True,allow_null=True)
     created_at             =      serializers.DateTimeField()
     
     def create(self,validated_data):     
