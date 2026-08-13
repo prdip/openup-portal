@@ -39,9 +39,10 @@ urlpatterns = [
   path('privacy_policy', cms_views.privacy_policy,name='privacy_policy'),
 
   path('copyright_page', cms_views.copyright_page,name='copyright_page'),
-  path('terms_and_condition', cms_views.terms_and_condition,name='terms_and_condition'),  
+  path('terms_and_condition', cms_views.terms_and_condition,name='terms_and_condition'),
+  path('term_and_condition', cms_views.terms_and_condition,name='term_and_condition'),
   path('software_license', cms_views.software_license,name='software_license'),
-  path('location_information', cms_views.copyright_page,name='location_information'),
+  path('location_information', cms_views.location_information,name='location_information'),
 
 # Force Update
   path('force_update', force_update.force_update,name='force_update'),

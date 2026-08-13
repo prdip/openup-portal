@@ -1355,7 +1355,19 @@ def reject_job(request):
         else:
             new_attempted = existing_attempted
 
-        job_ser = JobsSerializer(instance=job_record, data={"job_attempted_by": new_attempted}, partial=True)
+        update_data = {"job_attempted_by": new_attempted}
+
+        '''
+        WHEN THE REJECTING EMPLOYEE HAD ALREADY ACCEPTED THE JOB, PUT THE JOB BACK
+        TO active(1) AND CLEAR job_accepted_by (MIRRORS cancel_job_by_employee) SO
+        OTHER NEARBY EMPLOYEES SEE THE JOB AGAIN, WHILE THIS EMPLOYEE STAYS IN
+        job_attempted_by (can_accept=0, is_assigned=0 -> no process button).
+        '''
+        if status_id == 2 and job_record.job_accepted_by is not None and int(job_record.job_accepted_by) == int(user_id):
+            update_data["job_status"] = 1
+            update_data["job_accepted_by"] = None
+
+        job_ser = JobsSerializer(instance=job_record, data=update_data, partial=True)
 
         if job_ser.is_valid():
             job_ser.save()
