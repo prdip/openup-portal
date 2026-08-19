@@ -76,7 +76,7 @@ def create_customer(request):
     paypal_req_id   =  request.data.get('paypal_req_id')
     if check_user is None:
         return JsonResponse({
-            "success": 0,
+            "success": 2,
             "message": "Unauthorized User",
         })
     else:
@@ -182,7 +182,7 @@ def create_customer(request):
     
     # if check_user is None:
     #     return JsonResponse({
-    #         "success": 0,
+    #         "success": 2,
     #         "message": "Unauthorized User",
     #     })
     # else:
@@ -415,7 +415,7 @@ def paypal_payment(request):
     
     if check_user is None:
         return JsonResponse({
-            "success": 0,
+            "success": 2,
             "message": "Unauthorized User",
         })
     
@@ -572,7 +572,7 @@ def add_payment_type(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
                 })
      
@@ -590,6 +590,12 @@ def add_payment_type(request):
             })
 
         '''
+
+        ONLY PAYPAL VAULTS THE CARD HERE, STRIPE CREATES A CUSTOMER, APPLE PAY
+        HAS NO CREDENTIAL TO STORE AT ALL, AND VENMO IS VAULTED SEPARATELY VIA
+        create-venmo-order / capture-venmo-order (payer approves in Venmo, no
+        card number is collected up front)
+
         VENMO CANNOT BE SAVED IN ONE CALL - THE BUYER HAS TO APPROVE IT INSIDE THE
         VENMO APP FIRST. RETURN THE APPROVAL LINK AND STOP HERE, SO A HALF FINISHED
         SETUP NEVER BECOMES THE ACTIVE PAYMENT METHOD. /api/venmo-confirm STORES THE
@@ -601,6 +607,7 @@ def add_payment_type(request):
         '''
         ONLY PAYPAL VAULTS THE CARD HERE, STRIPE CREATES A CUSTOMER AND APPLE PAY
         HAS NO CREDENTIAL TO STORE AT ALL
+
         '''
         card = None
         if payment_type == "paypal":
@@ -865,7 +872,7 @@ def create_customer(user_id):
     
 #     if check_user is None:
 #         return JsonResponse({
-#             "success": 0,
+#             "success": 2,
 #             "message": "Unauthorized User",
 #         })
     
@@ -1178,7 +1185,7 @@ def create_paypal_token(request):
     
     if check_user is None:
         return JsonResponse({
-            "success": 0,
+            "success": 2,
             "message": "Unauthorized User",
         })
     else:

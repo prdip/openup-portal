@@ -38,7 +38,7 @@ def add_feedback(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })
     
@@ -64,7 +64,7 @@ def add_feedback(request):
 
         #  check required data
 
-        if feedback_star is None or feedback_comment is None:
+        if feedback_star is None:
             return JsonResponse({
                 "success"    :   0,
                 "message"   :   "please provide data"

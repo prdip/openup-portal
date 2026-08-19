@@ -19,13 +19,13 @@ stripe.api_key = env('STRIPE_SECRET')
 def apple_pay(request):
     token = request.headers.get('Authorization')
     if not token:
-        return JsonResponse({"success": 0, "message": "Authorization header missing"})
+        return JsonResponse({"success": 2, "message": "Authorization header missing"})
 
     user_token = token.replace("Bearer", '')
     check_user = token_verification(user_token)
 
     if check_user is None:
-        return JsonResponse({"success": 0, "message": "Unauthorized User"})
+        return JsonResponse({"success": 2, "message": "Unauthorized User"})
 
     user_id = check_user['session_user']
 

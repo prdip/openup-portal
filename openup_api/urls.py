@@ -39,9 +39,10 @@ urlpatterns = [
   path('privacy_policy', cms_views.privacy_policy,name='privacy_policy'),
 
   path('copyright_page', cms_views.copyright_page,name='copyright_page'),
-  path('terms_and_condition', cms_views.terms_and_condition,name='terms_and_condition'),  
+  path('terms_and_condition', cms_views.terms_and_condition,name='terms_and_condition'),
+  path('term_and_condition', cms_views.terms_and_condition,name='term_and_condition'),
   path('software_license', cms_views.software_license,name='software_license'),
-  path('location_information', cms_views.copyright_page,name='location_information'),
+  path('location_information', cms_views.location_information,name='location_information'),
 
 # Force Update
   path('force_update', force_update.force_update,name='force_update'),
@@ -85,6 +86,7 @@ urlpatterns = [
   path('cancel-job', job_views.cancel_job,name='cancel_job'),
   path('upload-images', job_views.upload_images,name='upload-images'),
   path('get-upload-images', job_views.getuploaded_image,name='get-upload-images'),
+  path('not-completed-jobs', job_views.not_completed_jobs,name='not_completed_jobs'),
 
 
 
@@ -125,12 +127,16 @@ urlpatterns = [
 
 
   path('apple-pay', apple_pay_views.apple_pay,name='apple_pay'),
+ 
 
+  # Venmo (processed through PayPal's Orders API)
+  path('create-venmo-order', venmo_views.create_venmo_order,name='create_venmo_order'),
+  path('capture-venmo-order', venmo_views.capture_venmo_order,name='capture_venmo_order'),
+ 
 # Venmo (via paypal) - two step because the buyer approves in the venmo app
   path('venmo-setup', venmo_views.venmo_setup,name='venmo_setup'),
   path('venmo-confirm', venmo_views.venmo_confirm,name='venmo_confirm'),
-  
-
+ 
 
 
 

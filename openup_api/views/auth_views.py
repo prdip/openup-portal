@@ -704,7 +704,7 @@ def logout(request,*args,**kwargs):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })    
     else:
@@ -760,7 +760,7 @@ def email_update(request,*args,**kwargs):
     check_user     =       token_verification(user_token)
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })                
     #  IF TOKEN VERIFIED 
@@ -882,7 +882,7 @@ def change_password(request,*args,**kwargs):
     check_user              =       token_verification(user_token)
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })    
     else:
@@ -1146,7 +1146,7 @@ def delete_account(request):
     check_user            =       token_verification(user_token)
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         }) 
     
@@ -1267,7 +1267,7 @@ def get_user_details(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         }) 
     
@@ -1439,7 +1439,7 @@ def employee_status(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         }) 
     

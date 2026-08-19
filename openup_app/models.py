@@ -50,6 +50,7 @@ class Registration(models.Model):
     location_longitude       =   models.FloatField(null=True)
     device_type              =   models.IntegerField(null=True,default=1)   # 1 == > Anaroid  2==> IOS
     user_fcm_token           =   models.TextField(null=True,blank=True)
+    user_fcm_access_key      =   models.TextField(null=True,blank=True)  #GOOGLE OAUTH ACCESS TOKEN FOR FCM HTTP V1 (NOT THE DEVICE FCM TOKEN)
     user_stripe_id           =   models.CharField(max_length=500,null=True,blank=True)  #CLIENT STRIPE ID 
     user_payment_id          =   models.CharField(max_length=500,null=True,blank=True)  #CLIENT PAYMENT METHOD ID
     user_payment_type        =    models.CharField(max_length=150,null=True)
@@ -356,7 +357,7 @@ class Feedback(models.Model):
     feedback_job           =      models.OneToOneField(Jobs,on_delete=models.CASCADE)
     feedback_user          =      models.ForeignKey(Registration,on_delete=models.CASCADE)
     feedback_stars         =      models.FloatField()
-    feedback_comment       =      models.CharField(max_length=500)
+    feedback_comment       =      models.CharField(max_length=500,blank=True,null=True)
     feedback_status        =      models.BooleanField(default=0)
     created_at             =      models.DateTimeField()
     update_at              =      models.DateTimeField(null=True)
@@ -497,7 +498,27 @@ class PaypalInfo(models.Model):
         db_table = 'paypal_cust_info'
 
 
-# save webhook data 
+# save venmo vault info (venmo is processed through paypal's orders api)
+
+class VenmoInfo(models.Model):
+
+    venmo_info_id       =   models.AutoField(primary_key=True)
+    venmo_user          =   models.ForeignKey(Registration,on_delete=models.CASCADE)
+    venmo_vault_id      =   models.CharField(max_length=50)
+    venmo_cust_id       =   models.CharField(max_length=100)
+    venmo_email         =   models.CharField(max_length=150,null=True,blank=True)
+    venmo_response      =   models.TextField(default="text")
+    is_delete           =   models.BooleanField()
+    created_at          =   models.DateTimeField()
+    update_at           =   models.DateTimeField(null=True)
+
+
+
+    class Meta:
+        db_table = 'venmo_cust_info'
+
+
+# save webhook data
 
 class WebhookData(models.Model):
 
