@@ -127,12 +127,16 @@ urlpatterns = [
 
 
   path('apple-pay', apple_pay_views.apple_pay,name='apple_pay'),
-
+ 
 
   # Venmo (processed through PayPal's Orders API)
   path('create-venmo-order', venmo_views.create_venmo_order,name='create_venmo_order'),
   path('capture-venmo-order', venmo_views.capture_venmo_order,name='capture_venmo_order'),
-
+ 
+# Venmo (via paypal) - two step because the buyer approves in the venmo app
+  path('venmo-setup', venmo_views.venmo_setup,name='venmo_setup'),
+  path('venmo-confirm', venmo_views.venmo_confirm,name='venmo_confirm'),
+ 
 
 
 

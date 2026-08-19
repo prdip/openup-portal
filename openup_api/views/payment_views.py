@@ -46,6 +46,9 @@ environ.Env.read_env()
 # Api for add and edit card data
 import requests
 
+# PAYPAL HOST HELPERS
+from openup.paypal_api import paypal_url
+
 
 
 
@@ -769,7 +772,7 @@ def paypal_payment(data):
         paypal_data     =   PaypalInfo.objects.filter(paypal_user=login_user).values().first()
         user            =   Registration.objects.get(user_id=login_user)
         # get access token
-        url             =   'https://api-m.sandbox.paypal.com/v1/oauth2/token'
+        url             =   paypal_url('/v1/oauth2/token')
         headers         =   {'Accept': 'application/json', 'Accept-Language': 'en_US', 'PayPal-Request-Id': paypal_req_id,}
         data            =   {'grant_type': 'client_credentials'}
         auth            =   (client_id, client_secret)

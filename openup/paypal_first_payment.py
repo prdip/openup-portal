@@ -6,6 +6,9 @@ from openup_app.serializers import PaymentFailedInfoSerializer, JobsSerializer
 from openup_app.models import PaypalInfo,Jobs,PaymentFailedInfo,Registration
 import json
 
+# PAYPAL HOST HELPERS
+from openup.paypal_api import paypal_url
+
 
 # Reccuring payments using valut id of paypal customer
 
@@ -17,7 +20,7 @@ class First_PayPal_Payment:
     def background_payments(data):
         
 
-        response = requests.post('https://api-m.sandbox.paypal.com/v2/checkout/orders/', headers=data['headers'], json=data['payloads'])
+        response = requests.post(paypal_url('/v2/checkout/orders/'), headers=data['headers'], json=data['payloads'])
 
         resp_data = json.loads(response.text)
 

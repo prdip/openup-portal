@@ -29,6 +29,15 @@ from django.db.models import Q
 # from openup.background_paypal import backgoun
 from openup.create_cust import stripeCustomer
 
+# PAYPAL HOST HELPERS
+from openup.paypal_api import paypal_url, get_access_token, approval_link, get_vault_record, verify_webhook
+
+import logging
+logger = logging.getLogger('django.request')
+
+# VENMO SETUP IS SHARED WITH add_payment_type, SEE venmo_views.py
+from openup_api.views.venmo_views import start_venmo_setup
+
 
 
 # import stripeCustomer to create cust in stripe run in background process
@@ -77,7 +86,7 @@ def create_customer(request):
         user            = Registration.objects.get(user_id=login_customer)
 
         # To get access token 
-        url             =   'https://api-m.sandbox.paypal.com/v1/oauth2/token'
+        url             =   paypal_url('/v1/oauth2/token')
         headers         =   {'Accept': 'application/json', 'Accept-Language': 'en_US'}
         data            =   {'grant_type': 'client_credentials'}
         auth            =   (client_id, client_secret)
@@ -119,7 +128,7 @@ def create_customer(request):
                 }
             }
         #  set up payment token
-        response = requests.post('https://api-m.sandbox.paypal.com/v3/vault/setup-tokens', headers=headers, json=data)
+        response = requests.post(paypal_url('/v3/vault/setup-tokens'), headers=headers, json=data)
 
         resp_data = json.loads(response.text)
          
@@ -135,7 +144,7 @@ def create_customer(request):
                 }
             }
 
-        response = requests.post('https://api-m.sandbox.paypal.com/v3/vault/payment-tokens', headers=headers, json=payment_method_payload)
+        response = requests.post(paypal_url('/v3/vault/payment-tokens'), headers=headers, json=payment_method_payload)
         resp_data = json.loads(response.text)
         
 
@@ -412,12 +421,25 @@ def paypal_payment(request):
     
     else:
         job_id           =   request.data.get('job_id')
-        paypal_req_id   =   request.data.get('paypal_req_id')  # random text 
+        paypal_req_id   =   request.data.get('paypal_req_id')  # random text
         login_user      =   check_user['session_user']
-        paypal_data     =   PaypalInfo.objects.filter(paypal_user=login_user).values().first()
-        
+        paypal_data     =   get_vault_record(login_user,'card')
+
+        if paypal_data is None:
+            return JsonResponse({
+                "success": 0,
+                "message": "No saved paypal card found for this user",
+            })
+
+        if job_id is None or job_id == '':
+            return JsonResponse({
+                "success": 0,
+                "message": "Please provide a job id",
+            })
+
+
         # get access token
-        url             =   'https://api-m.sandbox.paypal.com/v1/oauth2/token'
+        url             =   paypal_url('/v1/oauth2/token')
         headers         =   {'Accept': 'application/json', 'Accept-Language': 'en_US', 'PayPal-Request-Id': paypal_req_id,}
         data            =   {'grant_type': 'client_credentials'}
         auth            =   (client_id, client_secret)
@@ -478,31 +500,28 @@ def paypal_payment(request):
             "payload"       :   payload,
             "access_token"  :   access_token,
             "url"           :   url,
-            "job_id"        :   job_id
+            "job_id"        :   job_id,
+            "user_id"       :   login_user,
+            "source_type"   :   "card"
             }
         # SEND PAYLOAD TO BACKGROUND TO INITIATE PAYMENT
 
         background_payment.delay(login_user,payload_data)
-        data = {
-            "job_id" : id,
-        }
-        # Update job after successfull payment.
-        job_record = Jobs.objects.exclude(is_delete=1).get(job_id=int(data['job_id']))   
 
-        
-        update_payment_status = {
-                "job_payment_id"    :      data['job_id'],
-                "job_pay_status"    :      1 
-                } 
-        
-        job_ser  = JobsSerializer(instance=job_record,data=update_payment_status,partial=True)
-        if job_ser.is_valid():
-            job_ser.save()
+        '''
+        THE JOB IS NOT MARKED PAID HERE. IT USED TO BE SET TO PAID THE MOMENT THE
+        TASK WAS QUEUED (AND WITH THE BUILTIN id INSTEAD OF THE JOB ID, WHICH MADE
+        THIS ENDPOINT RETURN A 500). PaypalPayment.background_payments MARKS THE JOB
+        PAID ONLY AFTER PAYPAL ACTUALLY ACCEPTS THE ORDER.
+        '''
         return JsonResponse({
                         "success"       :   1,
                         "message"       :   "payment success",
+                        "data"          :   {
+                            "job_id"    :   job_id
+                        }
 
-                })   
+                })
 
 
 
@@ -571,10 +590,24 @@ def add_payment_type(request):
             })
 
         '''
+
         ONLY PAYPAL VAULTS THE CARD HERE, STRIPE CREATES A CUSTOMER, APPLE PAY
         HAS NO CREDENTIAL TO STORE AT ALL, AND VENMO IS VAULTED SEPARATELY VIA
         create-venmo-order / capture-venmo-order (payer approves in Venmo, no
         card number is collected up front)
+
+        VENMO CANNOT BE SAVED IN ONE CALL - THE BUYER HAS TO APPROVE IT INSIDE THE
+        VENMO APP FIRST. RETURN THE APPROVAL LINK AND STOP HERE, SO A HALF FINISHED
+        SETUP NEVER BECOMES THE ACTIVE PAYMENT METHOD. /api/venmo-confirm STORES THE
+        VAULT AND SETS user_payment_type ONCE THE BUYER IS BACK.
+        '''
+        if payment_type == "venmo":
+            return start_venmo_setup(request, login_customer)
+
+        '''
+        ONLY PAYPAL VAULTS THE CARD HERE, STRIPE CREATES A CUSTOMER AND APPLE PAY
+        HAS NO CREDENTIAL TO STORE AT ALL
+
         '''
         card = None
         if payment_type == "paypal":
@@ -639,7 +672,7 @@ def add_payment_type(request):
             # card_data       =    json.loads(request.body)
 
              # To get access token 
-            url             =   'https://api-m.sandbox.paypal.com/v1/oauth2/token'
+            url             =   paypal_url('/v1/oauth2/token')
             headers         =   {'Accept': 'application/json', 'Accept-Language': 'en_US'}
             data            =   {'grant_type': 'client_credentials'}
             auth            =   (client_id, client_secret)
@@ -682,7 +715,7 @@ def add_payment_type(request):
                 }
             
              #  set up payment token
-            response = requests.post('https://api-m.sandbox.paypal.com/v3/vault/setup-tokens', headers=headers, json=data)
+            response = requests.post(paypal_url('/v3/vault/setup-tokens'), headers=headers, json=data)
 
             resp_data = json.loads(response.text)
 
@@ -729,7 +762,7 @@ def add_payment_type(request):
                     }
                 }
 
-            response = requests.post('https://api-m.sandbox.paypal.com/v3/vault/payment-tokens', headers=headers, json=payment_method_payload)
+            response = requests.post(paypal_url('/v3/vault/payment-tokens'), headers=headers, json=payment_method_payload)
             resp_data = json.loads(response.text)
 
             try:
@@ -895,7 +928,7 @@ def create_customer(user_id):
 def create_webhook(request: HttpRequest):
     # random text 
     paypal_req_id   =   request.data.get('paypal_req_id') 
-    url             =   'https://api-m.sandbox.paypal.com/v1/oauth2/token'
+    url             =   paypal_url('/v1/oauth2/token')
     headers         =   {'Accept': 'application/json', 'Accept-Language': 'en_US', 'PayPal-Request-Id': paypal_req_id,}
     data            =   {'grant_type': 'client_credentials'}
     auth            =   (client_id, client_secret)
@@ -932,7 +965,7 @@ def create_webhook(request: HttpRequest):
                 } 
             ] 
     }
-    response = requests.post('https://api-m.sandbox.paypal.com/v1/notifications/webhooks', headers=headers, json=data)
+    response = requests.post(paypal_url('/v1/notifications/webhooks'), headers=headers, json=data)
 
     resp_data = json.loads(response.text)
     # data      = json.loads(resp_data)
@@ -1027,16 +1060,92 @@ def receive_webhook_data(request):
             )
 
         webhook_data.save()
-        
+
     # except ValueError:
     #     return HttpResponseBadRequest("Invalid JSON payload")
     except:
-        pass
+        payload = None
+
+    '''
+    ACT ON CAPTURE EVENTS.
+
+    A VENMO PAYMENT CAN BE APPROVED BY THE BUYER AND STILL BE DENIED AFTERWARDS, SO
+    THE CAPTURE WEBHOOK IS THE ONLY RELIABLE SOURCE OF TRUTH FOR job_pay_status.
+    THE EVENT IS ONLY TRUSTED WHEN PAYPAL_WEBHOOK_ID IS SET AND PAYPAL CONFIRMS THE
+    SIGNATURE - WITHOUT IT THE PAYLOAD IS STILL STORED, EXACTLY AS BEFORE, BUT NO
+    JOB IS TOUCHED.
+    '''
+    if payload:
+        try:
+            apply_capture_event(request, payload)
+        except Exception as e:
+            logger.error('receive_webhook_data: Failed to apply event: %s', str(e))
 
     return JsonResponse({
                             "success"       :   1,
                             "message"       :   "paypal information received ",
-                    })  
+                    })
+
+
+'''
+UPDATES A JOB FROM A VERIFIED PAYPAL CAPTURE WEBHOOK.
+
+THE JOB ID TRAVELS AS custom_id ON THE PURCHASE UNIT (SET BY THE VENMO CHARGE), SO
+IT COMES BACK ON THE CAPTURE RESOURCE.
+'''
+def apply_capture_event(request, payload):
+
+    event_type  =   payload.get('event_type')
+
+    if event_type not in ('PAYMENT.CAPTURE.COMPLETED','PAYMENT.CAPTURE.DENIED','PAYMENT.CAPTURE.DECLINED','PAYMENT.CAPTURE.REVERSED'):
+        return
+
+    verified    =   verify_webhook(request.META, payload)
+
+    if verified is None:
+        logger.warning('receive_webhook_data: PAYPAL_WEBHOOK_ID not set, ignoring %s', event_type)
+        return
+
+    if verified is False:
+        logger.error('receive_webhook_data: Signature check failed for %s', event_type)
+        return
+
+    resource    =   payload.get('resource') or {}
+    job_id      =   resource.get('custom_id')
+
+    if job_id is None or job_id == '':
+        logger.warning('receive_webhook_data: %s has no custom_id, cannot match a job', event_type)
+        return
+
+    try:
+        job_record  =   Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
+    except (Jobs.DoesNotExist, ValueError, TypeError):
+        logger.warning('receive_webhook_data: No job %s for %s', job_id, event_type)
+        return
+
+    if event_type == 'PAYMENT.CAPTURE.COMPLETED':
+        update_data =   {
+            "job_payment_id"    :   resource.get('id') or job_id,
+            "job_pay_status"    :   1
+        }
+    else:
+        update_data =   {
+            "job_pay_status"    :   0
+        }
+        PaymentFailedInfo(
+            user_id=str(job_record.user_id),
+            job_id=str(job_record.job_id),
+            payment_fail_type=event_type[:100],
+            payment_fail_response=json.dumps(payload),
+            created_at=timezone.now()
+        ).save()
+
+    job_ser =   JobsSerializer(instance=job_record,data=update_data,partial=True)
+    if job_ser.is_valid():
+        job_ser.save()
+        logger.info('receive_webhook_data: Job %s updated from %s', job_id, event_type)
+    else:
+        logger.error('receive_webhook_data: Job %s update invalid: %s', job_id, job_ser.errors)
 
 
 
@@ -1081,7 +1190,7 @@ def create_paypal_token(request):
         })
     else:
 
-        url             =   'https://api-m.sandbox.paypal.com/v1/oauth2/token'
+        url             =   paypal_url('/v1/oauth2/token')
         headers         =   {'Accept': 'application/json', 'Accept-Language': 'en_US'}
         data            =   {'grant_type': 'client_credentials'}
         auth            =   (client_id, client_secret)
@@ -1119,7 +1228,7 @@ def create_paypal_token(request):
                 }
             }
         }
-        response = requests.post('https://api-m.sandbox.paypal.com/v3/vault/setup-tokens', headers=headers, json=data)
+        response = requests.post(paypal_url('/v3/vault/setup-tokens'), headers=headers, json=data)
 
         resp_data = json.loads(response.text)
 

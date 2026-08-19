@@ -49,6 +49,12 @@ import logging
 logger = logging.getLogger('django.request')
 
 import requests
+
+# PAYPAL HOST HELPERS
+from openup.paypal_api import paypal_url, get_vault_record
+
+# VENMO CHARGES THE VAULTED VENMO ACCOUNT, SEE venmo_views.py
+from openup_api.views.venmo_views import venmo_payment
  
 import environ 
 env = environ.Env()
@@ -321,10 +327,24 @@ def add_job(request):
                         "user"          :   user_id,
                         "job_id"        :   id,
                         "paypal_req_id" :   paypal_req_id,
-                        
+
                     }
-                     
+
                     paypal_payment.delay(data)
+
+            if payment_type == "venmo":
+                '''
+                THE VENMO ACCOUNT WAS ALREADY APPROVED AND VAULTED BY
+                /api/venmo-setup + /api/venmo-confirm, SO THIS IS A PLAIN
+                MERCHANT INITIATED CHARGE - NO BUYER INTERACTION HERE.
+                '''
+                data = {
+                    "user"          :   user_id,
+                    "job_id"        :   id,
+                    "paypal_req_id" :   paypal_req_id,
+                }
+
+                venmo_payment.delay(data)
 
             if payment_type == "apple_pay" and apple_payment != None:
                 '''
@@ -366,14 +386,23 @@ def add_job(request):
 
                 if payment=="paypal":
 
-                    
+
                         data = {
                             "user"          :   user_id,
                             "job_id"        :   id,
                             "paypal_req_id" :   paypal_req_id,
-                            
+
                         }
                         paypal_payment.delay(data)
+
+                if payment == "venmo":
+
+                        data = {
+                            "user"          :   user_id,
+                            "job_id"        :   id,
+                            "paypal_req_id" :   paypal_req_id,
+                        }
+                        venmo_payment.delay(data)
                 # after if
             data = {
                         "job_id" : id,
@@ -457,12 +486,25 @@ def paypal_payment(data):
         
 
         job_id           =   data['job_id']
-        paypal_req_id   =   data['paypal_req_id']  # random text 
+        paypal_req_id   =   data['paypal_req_id']  # random text
         login_user      =   data['user']
-        paypal_data     =   PaypalInfo.objects.filter(paypal_user=login_user).values().first()
+        paypal_data     =   get_vault_record(login_user,'card')
         user            =   Registration.objects.get(user_id=login_user)
+
+        '''NOTHING VAULTED MEANS THERE IS NOTHING TO CHARGE - RECORD IT INSTEAD OF CRASHING'''
+        if paypal_data is None:
+            logger.error('paypal_payment: No vaulted card for user %s (job %s)', login_user, job_id)
+            PaymentFailedInfo(
+                user_id=login_user,
+                job_id=job_id,
+                payment_fail_type="no_vault",
+                payment_fail_response="No vaulted paypal card found for this user",
+                created_at=timezone.now()
+            ).save()
+            return False
+
         # get access token
-        url             =   'https://api-m.sandbox.paypal.com/v1/oauth2/token'
+        url             =   paypal_url('/v1/oauth2/token')
         headers         =   {'Accept': 'application/json', 'Accept-Language': 'en_US', 'PayPal-Request-Id': paypal_req_id,}
         data            =   {'grant_type': 'client_credentials'}
         auth            =   (client_id, client_secret)
