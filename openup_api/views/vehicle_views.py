@@ -57,7 +57,7 @@ def add_vehicle(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
                 })
      
@@ -264,7 +264,7 @@ def vehicle_edit(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         }) 
     
@@ -336,7 +336,7 @@ def vehicle_details(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         }) 
     

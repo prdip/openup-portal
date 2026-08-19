@@ -18,7 +18,7 @@ import os
 # CODE FOR ENV
 import environ
 env = environ.Env()
-environ.Env.read_env()
+environ.Env.read_env(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
 # CODE FOR ENV END
 
 
@@ -45,9 +45,7 @@ ALLOWED_HOSTS   =   ['*']
 
 #  CELERY SETTINGS 
 
-os.environ.get('REDIS_URL')
-CELERY_BROKER_URL                   =       'redis://127.0.0.1:6379'
-CELERY_RESULT_BACKEND               =       'redis://127.0.0.1:6379'
+CELERY_BROKER_URL                   =       os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379')
 CELERY_ACCEPT_CONTENT               =       ['application/json']
 CELERY_RESULT_SERIALIZER            =       'json'
 CELERY_TASK_SERIALIZER              =       'json'
@@ -119,12 +117,13 @@ WSGI_APPLICATION = 'openup.wsgi.application'
  
 
 
-EMAIL_BACKEND       = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_USE_SSL       = env('EMAIL_USE_SSL')
+EMAIL_BACKEND       = 'openup.email_backend.EmailBackend'
+EMAIL_USE_SSL       = env.bool('EMAIL_USE_SSL', default=False)
+EMAIL_USE_TLS       = env.bool('EMAIL_USE_TLS', default=False)
 EMAIL_HOST          = env('EMAIL_HOST')
 EMAIL_HOST_USER     = env('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
-EMAIL_PORT          = env('EMAIL_PORT')
+EMAIL_PORT          = env.int('EMAIL_PORT')
 
 
 

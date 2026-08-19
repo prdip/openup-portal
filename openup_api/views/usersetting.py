@@ -17,6 +17,8 @@ from openup_app.serializers import SettingsSerializer
 
 from django.db.models import Q
 
+import datetime
+
 # API for Add and update settings
 
 @api_view(['POST'])
@@ -28,7 +30,7 @@ def add_settings(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })
     else:
@@ -58,19 +60,18 @@ def add_settings(request):
             update_data['service_feed_not'] = service_feed_not
 
         for setting in update_data:
-            try:
-                setting_id       =   Settings.objects.exclude(is_delete=1).filter(Q(setting_user_id=int(user_id)) & Q(setting_name=str(setting)) ).values('setting_id').first()['setting_id']  
-            except:
-                pass
-            try:
-                setting_record   =   Settings.objects.exclude(is_delete=1).get(setting_id=setting_id)          
-            except:
-                pass
-                
+            setting_record  =   Settings.objects.exclude(is_delete=1).filter(Q(setting_user_id=int(user_id)) & Q(setting_name=str(setting))).first()
+
             data = {
                 "setting_name"  :   str(setting),
                 "setting_value" :   int(update_data[setting])
             }
+
+            # NEW SETTING: FILL IN THE FIELDS ONLY REQUIRED ON CREATE
+            if setting_record is None:
+                data["setting_user"] = user_id
+                data["created_at"]   = datetime.datetime.now()
+
             setting_ser     =   SettingsSerializer(instance=setting_record,data=data,partial=True)
             if setting_ser.is_valid():
                 setting_ser.save()
@@ -95,7 +96,7 @@ def setting_details(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })
     else:

@@ -20,6 +20,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.views.static import serve
 from openup_app import views
+from openup_api.views import cms_views
 
 handler404 = 'openup_app.views.error_404'
 handler500 = 'openup_app.views.error_500'
@@ -31,9 +32,20 @@ urlpatterns = [
     path('logs',views.error_log,name='logs'),
     path('admin-login',views.admin_login,name='admin_login'),
     path('do-login',views.do_login),
-    path('admin-logout',views.admin_logout,name='admin_logout'), 
+    path('admin-logout',views.admin_logout,name='admin_logout'),
     re_path(r'^media/(?P<path>.*)$', serve,{'document_root': settings.MEDIA_ROOT}),
     re_path(r'^static/(?P<path>.*)$', serve,{'document_root': settings.STATIC_ROOT}),
 
 ]
+
+# CMS PAGES (rendered at root, not under /api)
+urlpatterns += [
+    path('copyright_page', cms_views.copyright_page,name='copyright_page'),
+    path('terms_and_condition', cms_views.terms_and_condition,name='terms_and_condition'),
+    path('term_and_condition', cms_views.terms_and_condition,name='term_and_condition'),
+    path('privacy_policy', cms_views.privacy_policy,name='privacy_policy'),
+    path('software_license', cms_views.software_license,name='software_license'),
+    path('location_information', cms_views.location_information,name='location_information'),
+]
+
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

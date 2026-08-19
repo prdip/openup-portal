@@ -46,6 +46,9 @@ environ.Env.read_env()
 # Api for add and edit card data
 import requests
 
+# PAYPAL HOST HELPERS
+from openup.paypal_api import paypal_url
+
 
 
 
@@ -67,7 +70,7 @@ def add_card(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })
     
@@ -266,7 +269,7 @@ def card_details(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })
     else:
@@ -330,7 +333,7 @@ def create_customer(request,*args,**kwargs):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
             })
     else:
@@ -349,14 +352,20 @@ def create_customer(request,*args,**kwargs):
         except:
             cust_id         =   None
 
+        '''STRIPE CUSTOMER IS CREATED BY /payment-type, WITHOUT IT NO KEY CAN BE ISSUED'''
+        if cust_id == None or cust_id == "":
+            return JsonResponse({
+                "success"    :   0,
+                "message"   :   "stripe customer not created for this user",
+            })
 
-        # code to create ephemeral key to stripe 
+        # code to create ephemeral key to stripe
         ephemeralKey    = stripe.EphemeralKey.create(
                             customer=cust_id,
                             stripe_version='2022-11-15',)
 
         # setup intent
-        setupIntent  = stripe.SetupIntent.create(customer=cust_id,payment_method_types=["card"])  
+        setupIntent  = stripe.SetupIntent.create(customer=cust_id,payment_method_types=["card"])
         
         '''code for payment intent'''
 
@@ -364,7 +373,7 @@ def create_customer(request,*args,**kwargs):
         "response_data" :   cust_id,
         "customer_id"   :   cust_id,
         "setup_intent"  :   setupIntent.client_secret,
-        "ephemeralKey"  :   ephemeralKey,
+        "ephemeralKey"  :   ephemeralKey.secret,   # PAYMENT SHEET NEEDS THE ek_ SECRET, NOT THE KEY OBJECT
         }
 
         return JsonResponse({
@@ -378,21 +387,7 @@ def create_customer(request,*args,**kwargs):
 
 
 
-# link apple pay 
 
-@api_view(['POST'])
-def apple_pay(request):
-    
-    intent = stripe.PaymentIntent.create(
-            amount=1099,
-            currency='usd',
-        )
-    client_secret = intent.client_secret
-    return JsonResponse({
-        "success":1,
-        "message":"Payment addedd successfully",
-        "data":client_secret
-    })
 
 
 
@@ -411,27 +406,41 @@ def link_payment_method(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
             })
     else:
         cus_id          =       request.data.get('cust_id')
         user_id         =       check_user['session_user']
-         
- 
+
+
         try:
             user_rec     =       Registration.objects.exclude(user_is_delete=1).get(user_id=int(user_id))
         except:
             user_rec     =       None
 
+        if cus_id == None or cus_id == "":
+            return JsonResponse({
+                        "success"    :    0,
+                        "message"   :   "please provide customer id",
+                     })
+
         response_data = stripe.PaymentMethod.list(
             customer=cus_id,
             type="card",
-        ) 
+        )
 
+        '''
+        EMPTY WHEN THE PAYMENT SHEET NEVER ATTACHED A CARD TO THE CUSTOMER
+        '''
+        if len(response_data["data"]) == 0:
+            return JsonResponse({
+                        "success"    :    0,
+                        "message"   :   "no card found on this customer",
+                     })
 
         update_data = {
-                "user_payment_id" : response_data["data"][0]['id'], 
+                "user_payment_id" : response_data["data"][0]['id'],
         }
         user_ser        =   RegisterSerializer(instance=user_rec,data=update_data,partial=True)
         
@@ -500,7 +509,7 @@ def ask_for_payment(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })
     else:
@@ -569,7 +578,7 @@ def manual_payment(request,*args,**kwargs):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
             })
     else:
@@ -603,7 +612,7 @@ def manual_payment(request,*args,**kwargs):
         "response_data" :   cust_id,
         "customer_id"   :   cust_id,
         "setup_intent"  :   setupIntent.client_secret,
-        "ephemeralKey"  :   ephemeralKey,
+        "ephemeralKey"  :   ephemeralKey.secret,   # PAYMENT SHEET NEEDS THE ek_ SECRET, NOT THE KEY OBJECT
         "payment_id"    :   setupIntent.id
         }
       
@@ -636,7 +645,7 @@ def manual_payment_success(request):
     
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
             })
     else:
@@ -763,7 +772,7 @@ def paypal_payment(data):
         paypal_data     =   PaypalInfo.objects.filter(paypal_user=login_user).values().first()
         user            =   Registration.objects.get(user_id=login_user)
         # get access token
-        url             =   'https://api-m.sandbox.paypal.com/v1/oauth2/token'
+        url             =   paypal_url('/v1/oauth2/token')
         headers         =   {'Accept': 'application/json', 'Accept-Language': 'en_US', 'PayPal-Request-Id': paypal_req_id,}
         data            =   {'grant_type': 'client_credentials'}
         auth            =   (client_id, client_secret)

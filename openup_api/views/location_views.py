@@ -11,13 +11,82 @@ from openup_api.views.auth_views import token_verification
 from openup_app.serializers import RegisterSerializer,JobsSerializer
 
 # Import Models here
-from openup_app.models import Registration,Jobs
+from openup_app.models import Registration,Jobs,JobLogs
 
 # Import Q
 from django.db.models import Q
- 
+
 
 from geopy.distance import geodesic as gd
+
+
+'''
+HELPER: NORMALISE AN ID TO AN int (OR None WHEN IT IS MISSING/NOT NUMERIC).
+
+job_accepted_by AND JobLogs.cancel_by ARE CharFields WHILE Jobs.user_id IS AN
+int, SO WITHOUT THIS THE SAME action_by_user_id FIELD WOULD COME BACK AS "9"
+FOR AN ACCEPT AND 9 FOR A CLIENT CANCEL.
+'''
+def to_int(value):
+    try:
+        return int(value)
+    except (TypeError,ValueError):
+        return None
+
+
+'''
+HELPER: WHAT HAS HAPPENED TO A JOB, AND WHO DID IT.
+
+EXACTLY ONE FLAG IS TRUE AT A TIME - THESE DESCRIBE THE JOB'S CURRENT STATE,
+NOT ITS WHOLE HISTORY.
+
+job_status COVERS accepted(2)/completed(3)/canceled-by-client(4), BUT AN
+EMPLOYEE REJECT OR CANCEL PUTS THE JOB BACK TO active(1) AND IS ONLY RECORDED
+IN JobLogs, SO FOR active(1)/not-completed(5) THE NEWEST JobLogs ROW DECIDES.
+'''
+def job_action_status(job):
+
+    action_status = {
+            "is_accept"             :       False,
+            "is_cancle"             :       False,
+            "is_reject"             :       False,
+            "is_complete"           :       False,
+            "action_by_user_id"     :       None,
+    }
+
+    if job is None:
+        return action_status
+
+    # completed(3) and accepted(2) are both the work of the accepting employee
+    if job.job_status_id == 3:
+        action_status["is_complete"]        =   True
+        action_status["action_by_user_id"]  =   to_int(job.job_accepted_by)
+
+    elif job.job_status_id == 2:
+        action_status["is_accept"]          =   True
+        action_status["action_by_user_id"]  =   to_int(job.job_accepted_by)
+
+    # canceled(4) is only ever set by cancel_job, so the client is the actor
+    elif job.job_status_id == 4:
+        action_status["is_cancle"]          =   True
+        action_status["action_by_user_id"]  =   to_int(job.user_id)
+
+    else:
+        last_log = JobLogs.objects.exclude(is_delete=1).filter(
+                        job=str(job.job_id)
+                    ).order_by('-created_at','-log_id').first()
+
+        if last_log is not None:
+
+            if last_log.log_msg == "Job rejected by employee":
+                action_status["is_reject"]          =   True
+                action_status["action_by_user_id"]  =   to_int(last_log.cancel_by)
+
+            elif last_log.log_msg == "Job canceled by employee":
+                action_status["is_cancle"]          =   True
+                action_status["action_by_user_id"]  =   to_int(last_log.cancel_by)
+
+    return action_status
 
 
 #  API for location update
@@ -33,7 +102,7 @@ def update_location(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         }) 
     
@@ -114,12 +183,22 @@ def update_location(request):
         if user_ser.is_valid():
             user_ser.save()
 
-      
+        # '''
+        # THE APP POLLS THIS ENDPOINT WHILE A JOB IS RUNNING, SO THE RESPONSE ALSO
+        # REPORTS WHETHER THE JOB WAS ACCEPTED / REJECTED / CANCELLED / COMPLETED
+        # AND WHICH USER DID IT. THAT LETS THE APP REACT (STOP NAVIGATION, OPEN THE
+        # REVIEW SCREEN...) WITHOUT DEPENDING ON THE PUSH BEING DELIVERED OR TAPPED.
+        # '''
+        # data = {
+        #             "job_id"    :   to_int(job_id) if job is None else job.job_id,
+        # }
+        # data.update(job_action_status(job))
+
         return JsonResponse({
                             "success"        :       1,
                             "message"        :      "User location updated succesfully",
                             # "data"           :      data
-                            
+
             })
                             
 
@@ -137,7 +216,7 @@ def dist_calculation(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         }) 
     
@@ -191,7 +270,7 @@ def service_available(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         }) 
     
@@ -273,7 +352,7 @@ def employee_location(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         }) 
     

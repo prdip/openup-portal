@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('openup_app', '0001_initial'),
+        ('openup_app', '0057_webhookdata'),
     ]
 
     operations = [

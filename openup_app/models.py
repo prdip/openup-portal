@@ -50,6 +50,7 @@ class Registration(models.Model):
     location_longitude       =   models.FloatField(null=True)
     device_type              =   models.IntegerField(null=True,default=1)   # 1 == > Anaroid  2==> IOS
     user_fcm_token           =   models.TextField(null=True,blank=True)
+    user_fcm_access_key      =   models.TextField(null=True,blank=True)  #GOOGLE OAUTH ACCESS TOKEN FOR FCM HTTP V1 (NOT THE DEVICE FCM TOKEN)
     user_stripe_id           =   models.CharField(max_length=500,null=True,blank=True)  #CLIENT STRIPE ID 
     user_payment_id          =   models.CharField(max_length=500,null=True,blank=True)  #CLIENT PAYMENT METHOD ID
     user_payment_type        =    models.CharField(max_length=150,null=True)
@@ -249,6 +250,7 @@ class Jobs(models.Model):
     # vehicle_modification     =   models.CharField(max_length=400)
     vehicle_license          =   models.FileField(upload_to=file_name, null=True)
     job_accepted_by          =   models.CharField(max_length=31,null=True)
+    job_attempted_by         =   models.TextField(null=True,default='')
     job_payment_id           =   models.CharField(max_length=100,null=True)  # GENERATED AND SAVED AFTER SUCCESSFUL PAYMENT 
     job_pay_status           =   models.BooleanField(default=0)
     job_time                 =   models.CharField(max_length=100,null=True)    #1==> SUCCESS 0==> NO PAYMENT
@@ -355,7 +357,7 @@ class Feedback(models.Model):
     feedback_job           =      models.OneToOneField(Jobs,on_delete=models.CASCADE)
     feedback_user          =      models.ForeignKey(Registration,on_delete=models.CASCADE)
     feedback_stars         =      models.FloatField()
-    feedback_comment       =      models.CharField(max_length=500)
+    feedback_comment       =      models.CharField(max_length=500,blank=True,null=True)
     feedback_status        =      models.BooleanField(default=0)
     created_at             =      models.DateTimeField()
     update_at              =      models.DateTimeField(null=True)
@@ -471,11 +473,21 @@ class UserEmailSettings(models.Model):
 
 class PaypalInfo(models.Model):
 
+    # WHICH PAYPAL FUNDING SOURCE THIS VAULT BELONGS TO.
+    # A USER CAN HAVE A VAULTED CARD AND A VAULTED VENMO ACCOUNT AT THE SAME TIME,
+    # SO THE VAULT ID ALONE IS NOT ENOUGH TO KNOW HOW TO CHARGE IT.
+    source_choice = (
+        ('card','card'),
+        ('venmo','venmo'),
+        ('paypal','paypal'),
+        )
+
     paypal_info_id      =   models.AutoField(primary_key=True)
     paypal_user         =   models.ForeignKey(Registration,on_delete=models.CASCADE)
     paypal_valut_id     =   models.CharField(max_length=50)
     paypal_response     =   models.TextField(default="text")
     paypal_cust_id      =   models.CharField(max_length=100)
+    paypal_source_type  =   models.CharField(max_length=20,choices=source_choice,default='card')
     is_delete           =   models.BooleanField()
     created_at          =   models.DateTimeField()
     update_at           =   models.DateTimeField(null=True)
@@ -486,7 +498,27 @@ class PaypalInfo(models.Model):
         db_table = 'paypal_cust_info'
 
 
-# save webhook data 
+# save venmo vault info (venmo is processed through paypal's orders api)
+
+class VenmoInfo(models.Model):
+
+    venmo_info_id       =   models.AutoField(primary_key=True)
+    venmo_user          =   models.ForeignKey(Registration,on_delete=models.CASCADE)
+    venmo_vault_id      =   models.CharField(max_length=50)
+    venmo_cust_id       =   models.CharField(max_length=100)
+    venmo_email         =   models.CharField(max_length=150,null=True,blank=True)
+    venmo_response      =   models.TextField(default="text")
+    is_delete           =   models.BooleanField()
+    created_at          =   models.DateTimeField()
+    update_at           =   models.DateTimeField(null=True)
+
+
+
+    class Meta:
+        db_table = 'venmo_cust_info'
+
+
+# save webhook data
 
 class WebhookData(models.Model):
 

@@ -536,11 +536,18 @@ def login(request):
     # check user account is activate or not
  
     if user_type == "employee" and user_rec.user_status == False:
-        return JsonResponse({           
+        return JsonResponse({
             "success"       :   0,                      # if account_status is 0 == > user is inactive
             "message"       :   "account is inactive",
             })
-    
+
+    # check user has verified their email via the verification link
+    if user_rec.user_is_verified != True:
+        return JsonResponse({
+            "success"       :   0,
+            "message"       :   "please verify your email to login",
+            })
+
     # CHECK HASH PASSWORD
     hash_pass = user_rec.user_password
     check_pass          =       check_password(password,hash_pass)
@@ -697,7 +704,7 @@ def logout(request,*args,**kwargs):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })    
     else:
@@ -753,7 +760,7 @@ def email_update(request,*args,**kwargs):
     check_user     =       token_verification(user_token)
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })                
     #  IF TOKEN VERIFIED 
@@ -875,7 +882,7 @@ def change_password(request,*args,**kwargs):
     check_user              =       token_verification(user_token)
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })    
     else:
@@ -956,8 +963,18 @@ def change_password(request,*args,**kwargs):
                 sweet_rec = SweetWord(sweet_words= current_password,
                                     sweet_user = user_id,
                                     sweet_u_pass=new_password)
-                
+
                 sweet_rec.save()
+
+                # NOTIFY USER THAT PASSWORD CHANGE WAS INITIATED
+                change_pass_data_dict = {
+                    "Subject"             :     "Your password was changed",
+                    "text_template"       :     "email/change_password.txt",
+                    "token"               :     "",
+                    "email"               :     "open.up@opnup.net",
+                    "to"                  :     check_current_user.user_email
+                }
+                send_change_password_email.delay(change_pass_data_dict)
 
                 return JsonResponse({
                 "success"     :   1,
@@ -1041,10 +1058,16 @@ def forget_password(request):
 
 @shared_task
 def send_forget_pass_email(data_dict):
-   
+
     SendEmail.send_email(data_dict)
-     
+
     # SendEmail.send_email
+
+'''send email in background to notify user of a password change'''
+@shared_task
+def send_change_password_email(data_dict):
+
+    SendEmail.send_email(data_dict)
 
 '''
 Renders forget password template 
@@ -1123,7 +1146,7 @@ def delete_account(request):
     check_user            =       token_verification(user_token)
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         }) 
     
@@ -1176,11 +1199,18 @@ def token_verification(token):
     token_val       =       token
     if token_val is None:
         return None
-    try: 
-        # token verification 
-        verify          = Session.objects.exclude(session_is_delete=1,session_status=False).filter(session_token=token_val).values('session_id').first()['session_id']
-        session_record  = Session.objects.exclude(session_is_delete=1,session_status=False).get(session_id=verify)
-        
+    try:
+        # token verification
+        '''
+        ONE QUERY INSTEAD OF THREE. THIS USED TO LOOK THE SESSION UP BY TOKEN, THROW
+        THE ROW AWAY, FETCH IT AGAIN BY ID, AND THEN HIT THE DB A THIRD TIME WHEN THE
+        RESPONSE DICT BELOW READS session_user. select_related PULLS THE USER IN THE
+        SAME QUERY. A MISSING TOKEN STILL RAISES (None.session_id) AND IS STILL
+        CAUGHT BELOW, SO THE OUTCOME IS UNCHANGED.
+        '''
+        session_record  = Session.objects.exclude(session_is_delete=1,session_status=False).select_related('session_user').filter(session_token=token_val).first()
+        verify          = session_record.session_id
+
     except:
         verify = None
 
@@ -1237,7 +1267,7 @@ def get_user_details(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         }) 
     
@@ -1409,7 +1439,7 @@ def employee_status(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         }) 
     

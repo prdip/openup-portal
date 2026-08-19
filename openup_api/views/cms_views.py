@@ -21,11 +21,11 @@ def cms_details(request,*args,**kwargs):
         # return cms links as a response
         cms_links   =  {
 
-            "copyright"             :       domain+"/copyright_page",
-            "terms_and_condition"   :       domain+"/terms_and_condition",
-            "privacy_policy"        :       domain+"/privacy_policy",
-            "software_license"      :       domain+"/software_license",
-            "location_information"  :       domain+"/location_information"
+            "copyright"             :       domain+"/api/copyright_page",
+            "terms_and_condition"   :       domain+"/api/terms_and_condition",
+            "privacy_policy"        :       domain+"/api/privacy_policy",
+            "software_license"      :       domain+"/api/software_license",
+            "location_information"  :       domain+"/api/location_information"
         }
 
 

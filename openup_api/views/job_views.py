@@ -27,7 +27,7 @@ from django.http.response import JsonResponse
 from openup_api.views.auth_views import token_verification
 
 # Import Models here
-from openup_app.models import Registration,JobsType,Jobs,Alerts,VehicleDetails,Payment,PaypalInfo,PaymentFailedInfo,SuccessPayments, JobLogs, Images, File
+from openup_app.models import Registration,JobsType,Jobs,Alerts,VehicleDetails,Payment,PaypalInfo,PaymentFailedInfo,SuccessPayments, JobLogs, Images, File, Feedback
 
 # Import Serializer
 from openup_app.serializers import JobsSerializer
@@ -45,7 +45,16 @@ from .validation import check_number,check_text
 
 from django.utils import timezone
 
+import logging
+logger = logging.getLogger('django.request')
+
 import requests
+
+# PAYPAL HOST HELPERS
+from openup.paypal_api import paypal_url, get_vault_record
+
+# VENMO CHARGES THE VAULTED VENMO ACCOUNT, SEE venmo_views.py
+from openup_api.views.venmo_views import venmo_payment
  
 import environ 
 env = environ.Env()
@@ -65,6 +74,17 @@ AND PAYMENT WILL GENERATED IN BACKGROUND
 client_id=env("CLIENT_ID")
 client_secret=env("CLIENT_SECRET")
 
+'''
+NO-EMPLOYEE-AVAILABLE PUSH / SCREEN MESSAGE. SHARED BY jobAlert(), notify_client()
+AND THE add_job() RESPONSE SO THE NOTIFICATION BAR AND THE ON-SCREEN TEXT ALWAYS
+MATCH. 'no_availability' IS DELIBERATELY DISTINCT FROM 'addjob' SO THE APP CAN
+RELIABLY SWITCH ITS "Hang tight..." WAITING SCREEN TO THIS MESSAGE INSTEAD OF
+LEAVING THE CLIENT WAITING FOREVER.
+'''
+NO_AVAILABILITY_SCREEN_TYPE  =   'no_availability'
+NO_AVAILABILITY_TITLE        =   'Not Accepted'
+NO_AVAILABILITY_MESSAGE      =   'We are currently not available in your area, coming soon'
+
 
 
 
@@ -78,7 +98,7 @@ def add_job(request):
     
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })
     
@@ -101,8 +121,9 @@ def add_job(request):
         any_mod     =   request.data.get('any_mod')    # 1 === > Mod    0==> No mod
         window_tint =   request.data.get('window_tint') # 1 === > Yes    0==> No
         paypal_req_id = request.data.get('paypal_req_id')
-        make         = request.data.get('make')   
+        make         = request.data.get('make')
         payment_type = request.data.get('payment_type')
+        payment_intent_id = request.data.get('payment_intent_id')   # APPLE PAY INTENT RETURNED BY /apple-pay
 
         if make == '' or make == None:
             return JsonResponse({
@@ -189,6 +210,12 @@ def add_job(request):
                 license     =    None
             else:
                 license     =    veh_rec.vehicle_license
+                if license != None:
+                    try:
+                        if not license.storage.exists(license.name):
+                            license = None
+                    except Exception:
+                        license = None
 
         elif license != None and vehicle_id == None:
                 # New image No id 
@@ -234,13 +261,21 @@ def add_job(request):
             payment_id = user_rec.user_payment_id
         except:
             payment_id = None
-            
-    #    comment now
-        if paypal == False and (stripe == None or payment_id == None):
+
+        '''
+        APPLE PAY IS PAID UP FRONT BY /apple-pay, WHICH PARKS THE SUCCESSFUL INTENT
+        WITH AN EMPTY pay_job. AN UNCLAIMED PAYMENT IS WHAT ALLOWS THE JOB HERE.
+        '''
+        apple_payment   =   SuccessPayments.objects.filter(pay_user=str(user_rec.user_id),pay_type="apple_pay",pay_job="")
+        if payment_intent_id != None and payment_intent_id != "":
+            apple_payment = apple_payment.filter(pay_response__contains=payment_intent_id)
+        apple_payment   =   apple_payment.order_by('pay_id').last()
+
+        if paypal == False and apple_payment == None and (stripe == None or payment_id == None):
             return JsonResponse({
                     "success"     :   0,
                     "message"     :   "You are not allow to add job",
-                    
+
                 })
 
 
@@ -276,7 +311,7 @@ def add_job(request):
                 JOB ALERT IS SHARED TASK FUNCTION RUN IN BACKGROUND @shardtask decorator required
             '''
             accepted_by = ''
-            jobAlert(id,current_location_lat,current_location_long,accepted_by)
+            alert_result = jobAlert(id,current_location_lat,current_location_long,accepted_by)
              
             # payment_type = user_rec.user_payment_type
 
@@ -292,12 +327,50 @@ def add_job(request):
                         "user"          :   user_id,
                         "job_id"        :   id,
                         "paypal_req_id" :   paypal_req_id,
-                        
+
                     }
-                     
+
                     paypal_payment.delay(data)
 
-            if job_type == "emergency":
+            if payment_type == "venmo":
+                '''
+                THE VENMO ACCOUNT WAS ALREADY APPROVED AND VAULTED BY
+                /api/venmo-setup + /api/venmo-confirm, SO THIS IS A PLAIN
+                MERCHANT INITIATED CHARGE - NO BUYER INTERACTION HERE.
+                '''
+                data = {
+                    "user"          :   user_id,
+                    "job_id"        :   id,
+                    "paypal_req_id" :   paypal_req_id,
+                }
+
+                venmo_payment.delay(data)
+
+            if payment_type == "apple_pay" and apple_payment != None:
+                '''
+                MONEY IS ALREADY TAKEN BY /apple-pay SO NO CHARGE IS RAISED HERE,
+                THE PARKED PAYMENT IS ONLY CLAIMED BY THIS JOB
+                '''
+                intent_id = payment_intent_id
+                if intent_id == None or intent_id == "":
+                    try:
+                        intent_id = json.loads(apple_payment.pay_response)['id']
+                    except:
+                        intent_id = None
+
+                apple_payment.pay_job = str(id)
+                apple_payment.save()
+
+                job_record  =   Jobs.objects.exclude(is_delete=1).get(job_id=int(id))
+                paid_data   =   {
+                        "job_payment_id"    :   intent_id,
+                        "job_pay_status"    :   1,
+                }
+                paid_ser    =   JobsSerializer(instance=job_record,data=paid_data,partial=True)
+                if paid_ser.is_valid():
+                    paid_ser.save()
+
+            if job_type == "emergency" and payment_type != "apple_pay":
                 #    comment now
                 pay_type     = SuccessPayments.objects.filter(pay_user = user_id).order_by('pay_id').reverse()[:1] 
                 try:
@@ -313,19 +386,39 @@ def add_job(request):
 
                 if payment=="paypal":
 
-                    
+
                         data = {
                             "user"          :   user_id,
                             "job_id"        :   id,
                             "paypal_req_id" :   paypal_req_id,
-                            
+
                         }
                         paypal_payment.delay(data)
+
+                if payment == "venmo":
+
+                        data = {
+                            "user"          :   user_id,
+                            "job_id"        :   id,
+                            "paypal_req_id" :   paypal_req_id,
+                        }
+                        venmo_payment.delay(data)
                 # after if
             data = {
                         "job_id" : id,
                     }
-             
+
+            '''
+            WHEN NO EMPLOYEE IS NEARBY, THE RESPONSE CARRIES THE SAME no_availability
+            SIGNAL AS THE PUSH NOTIFICATION SO THE APP CAN SWITCH ITS "Hang tight..."
+            SCREEN TO "We are currently not available..." IMMEDIATELY - IT DOES NOT
+            HAVE TO WAIT FOR (OR DEPEND ON) THE NOTIFICATION BEING TAPPED.
+            '''
+            if alert_result is not None and alert_result.get('available') is False:
+                data['notificationScreenType']  =   NO_AVAILABILITY_SCREEN_TYPE
+                data['message']                 =   NO_AVAILABILITY_MESSAGE
+                data['job_status']              =   'no_availability'
+
             return JsonResponse({
                 "success"   :   1,
                 "message"   :   "Job added successfully",
@@ -393,12 +486,25 @@ def paypal_payment(data):
         
 
         job_id           =   data['job_id']
-        paypal_req_id   =   data['paypal_req_id']  # random text 
+        paypal_req_id   =   data['paypal_req_id']  # random text
         login_user      =   data['user']
-        paypal_data     =   PaypalInfo.objects.filter(paypal_user=login_user).values().first()
+        paypal_data     =   get_vault_record(login_user,'card')
         user            =   Registration.objects.get(user_id=login_user)
+
+        '''NOTHING VAULTED MEANS THERE IS NOTHING TO CHARGE - RECORD IT INSTEAD OF CRASHING'''
+        if paypal_data is None:
+            logger.error('paypal_payment: No vaulted card for user %s (job %s)', login_user, job_id)
+            PaymentFailedInfo(
+                user_id=login_user,
+                job_id=job_id,
+                payment_fail_type="no_vault",
+                payment_fail_response="No vaulted paypal card found for this user",
+                created_at=timezone.now()
+            ).save()
+            return False
+
         # get access token
-        url             =   'https://api-m.sandbox.paypal.com/v1/oauth2/token'
+        url             =   paypal_url('/v1/oauth2/token')
         headers         =   {'Accept': 'application/json', 'Accept-Language': 'en_US', 'PayPal-Request-Id': paypal_req_id,}
         data            =   {'grant_type': 'client_credentials'}
         auth            =   (client_id, client_secret)
@@ -552,18 +658,34 @@ def paypal_payment(data):
 '''
  JobAlert function calls whenever new job added by client
 
- latitude and longitude pass by client 
+ latitude and longitude pass by client
 
  SERVICE_JOB == >  ALERT TO ACTIVE EMP
  EMERGENCY_JOB ==> ALERT TO ACTIVE AND INACTIVE EMP
 
+ REGISTERED AS A CELERY TASK, SO reject_job() CAN DISPATCH IT WITH .delay().
+ add_job() STILL CALLS IT DIRECTLY (SYNCHRONOUSLY) BECAUSE IT NEEDS THE RETURN
+ VALUE TO PUT THE no_availability SIGNAL IN ITS OWN RESPONSE - A @shared_task
+ FUNCTION IS STILL AN ORDINARY CALLABLE WHEN INVOKED WITHOUT .delay().
 '''
-# @shared_task()
+@shared_task()
 def jobAlert(job_id,latitude,longitude,accepted_by):
     # Fetch Employee List
+    # print(f"[jobAlert] called job_id={job_id} latitude={latitude} longitude={longitude} accepted_by={accepted_by}")
 
     job_instance    =    Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
-    if accepted_by == '':
+
+    # Build list of employee IDs to exclude (accepted_by + all previously attempted)
+    excluded_ids = set()
+    if accepted_by:
+        excluded_ids.add(int(accepted_by))
+    attempted = job_instance.job_attempted_by or ''
+    for aid in attempted.split(','):
+        aid = aid.strip()
+        if aid:
+            excluded_ids.add(int(aid))
+
+    if not excluded_ids:
         if job_instance.job_type == "emergency":
             
             employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
@@ -575,13 +697,14 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
     else:
         if job_instance.job_type == "emergency":
         
-            employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(user_id=accepted_by).filter(user_role_id=1)
+            employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(user_id__in=excluded_ids).filter(user_role_id=1)
             message     =  "EMERGENCY!!! PLEASE ACCEPT THIS JOB ASAP!!!"
 
         else:
-            employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(user_id=accepted_by).filter(employee_status=1).filter(user_role_id=1)
-            message     =  "PLEASE ACCEPT THIS JOB ASAP!!!"
+            employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(user_id__in=excluded_ids).filter(employee_status=1).filter(user_role_id=1)
+            message     =  "PLEASE ACCEPT THIS JOB!!!"
 
+    # print(f"[jobAlert] excluded_ids={excluded_ids} candidate employee count={employees.count()}")
 
     # employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
 
@@ -592,47 +715,52 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
     data        =   {}
     '''IN EMPLOYEE DICT   KEY == > EMPLOYEE_ID  VALUE_LIST ==> [FCM,DEVICE TYPE]'''
     for employee in employees:
-        if employee.user_fcm_token != "" or employee.user_fcm_token != None: 
+        if employee.user_fcm_token != "" or employee.user_fcm_token != None:
             # user location
             user_location = (latitude,longitude)
             # employee location
             emp_location =  (employee.location_latitude,employee.location_longitude)
-            # calculate distance between two point 
+            # calculate distance between two point
             # dist        =   gd(user_location,emp_location).km
             api_key  =  'AIzaSyC2o6UvDF6qUUQM3KCwR6dwoV5qCfj8MGs'
             url      =  f"https://maps.googleapis.com/maps/api/distancematrix/json?origins={latitude},{longitude}&destinations={employee.location_latitude},{employee.location_longitude}&key={api_key}"
             response =  requests.get(url)
             data     =  response.json()
+            # print(f"[jobAlert] distance-matrix response for employee_id={employee.user_id}: status={response.status_code} body={data}")
 
             try:
                 duration_seconds = data['rows'][0]['elements'][0]['duration']['value']
             except KeyError:
                 duration_seconds =''
 
+            # print(f"[jobAlert] employee_id={employee.user_id} fcm_token_set={bool(employee.user_fcm_token)} duration_seconds={duration_seconds}")
 
-            # if dist is less than 6 km append list 
+            # if dist is less than 6 km append list
             if duration_seconds != '':
                 if int(duration_seconds) <= 1260:
                     user_list.append(employee.user_id)
 
                     emp_fcm.append(employee.user_fcm_token)
-                    emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
+                    emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type)))
+
+    # print(f"[jobAlert] matched user_list={user_list}")
 
     if len(user_list) == 0:
         client_fcm = job_instance.user.user_fcm_token
         noti_data={ }  
     
-        data = { 
-             'title'                      :     'Not Accepted',             
-             'notificationScreenType'     :     'addjob',
-             'message'                    :     'We are currently not available in your area. Coming soon',
-             'job_id'                     :     str(job_id),  
+        # 'no_availability' is distinct from 'addjob' so the app can reliably switch its on-screen "Hang tight..." message to match this notification's text.
+        data = {
+             'title'                      :     NO_AVAILABILITY_TITLE,
+             'notificationScreenType'     :     NO_AVAILABILITY_SCREEN_TYPE,
+             'message'                    :     NO_AVAILABILITY_MESSAGE,
+             'job_id'                     :     str(job_id),
              'job_type'                   :     job_instance.job_type
             }
-        noti_data['fcm_token']  =   client_fcm 
-        noti_data['device']     =   str(employee.device_type)
+        noti_data['fcm_token']  =   client_fcm
+        noti_data['device']     =   str(job_instance.user.device_type)
         noti_data['data']       =   data
-        
+
         job_status      = JobsType.objects.get(status_id=5)
         update_record   = {
             "job_status" : job_status.status_id 
@@ -640,12 +768,15 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
 
         job_serializer = JobsSerializer(instance=job_instance,data=update_record,partial=True)
         if job_serializer.is_valid():
-           
             job_serializer.save()
-    
+        # else:
+        #     print(f"[jobAlert] job_status=5 update failed: {job_serializer.errors}")
+
         # sends push notification
+        logger.info('jobAlert: sending "%s" notification to client for job %s', NO_AVAILABILITY_TITLE, job_id)
         FCM.send_notification(noti_data)
-        return True
+        logger.info('jobAlert: sent "%s" notification to client for job %s', NO_AVAILABILITY_TITLE, job_id)
+        return {'available': False, 'job_id': int(job_id), 'notificationScreenType': NO_AVAILABILITY_SCREEN_TYPE, 'message': NO_AVAILABILITY_MESSAGE}
     
     emp_lis         =   ','.join(str(i) for i in user_list)
     alert_title     =    "new job added"
@@ -676,21 +807,29 @@ def jobAlert(job_id,latitude,longitude,accepted_by):
     job_serializer = JobsSerializer(instance=job_instance,data=update_record,partial=True)
     if job_serializer.is_valid():
         job_serializer.save()
+    # else:
+    #     print(f"[jobAlert] job_status=1 update failed: {job_serializer.errors}")
 
-    # SEND NOTIFICATIONS 
+    # SEND NOTIFICATIONS
 
-    for employee in user_list:
+    '''
+    ONE QUERY FOR THE WHOLE NOTIFY LIST INSTEAD OF A .get() PER EMPLOYEE. THE SET OF
+    EMPLOYEES NOTIFIED IS UNCHANGED - SOFT DELETED USERS ARE STILL EXCLUDED, THEY ARE
+    NOW SKIPPED RATHER THAN RAISING DoesNotExist AND KILLING THE WHOLE ALERT.
+    '''
+    for employee in Registration.objects.exclude(user_is_delete=1).filter(user_id__in=user_list):
 
-        employee = Registration.objects.exclude(Q(user_is_delete=1)).get(user_id=employee)
         if employee.user_fcm_token!=None and employee.user_fcm_token!='':
             noti_data['data']       =   not_data
-            noti_data['fcm_token']  =   employee.user_fcm_token 
+            noti_data['fcm_token']  =   employee.user_fcm_token
             noti_data['device']     =   str(employee.device_type)
             # sends push notification
+            logger.info('jobAlert: sending "New job request" notification to employee %s for job %s', employee.user_id, job_id)
             FCM.send_notification(noti_data)
-     
+            logger.info('jobAlert: sent "New job request" notification to employee %s for job %s', employee.user_id, job_id)
 
-    return True
+
+    return {'available': True, 'job_id': int(job_id)}
     
 
 
@@ -703,9 +842,250 @@ function that removes data from list
 def removeElements(items,lists):
     for dict in lists:
         for item in items:
-            del(dict[item])  
+            del(dict[item])
     return lists
-    
+
+
+'''
+HELPER: LIST OF EMPLOYEE IDS THAT ALREADY ACTED (REJECTED/CANCELLED) ON A JOB
+'''
+def attempted_ids(job_record):
+    attempted = job_record.job_attempted_by or ''
+    return [x.strip() for x in attempted.split(',') if x.strip()]
+
+
+'''
+HELPER: TRUE WHEN THE EMPLOYEE ALREADY REJECTED OR CANCELLED THIS JOB
+'''
+def has_attempted(job_record,user_id):
+    return str(user_id) in attempted_ids(job_record)
+
+
+'''
+HELPER: TRUE WHEN THE EMPLOYEE WAS NOTIFIED (ALERTED) ABOUT THIS JOB.
+
+jobAlert() persists every alert in the Alerts table with the comma separated list
+of employees it notified, so the notification state survives the app being closed.
+Legacy jobs created before alerts were stored have no Alerts row, those are treated
+as visible to every employee so they are not lost.
+'''
+def was_alerted(job_record,user_id):
+    return job_record.job_id in alerted_job_ids([job_record.job_id],user_id)
+
+
+'''
+HELPER: SAME RULE AS was_alerted() BUT FOR A WHOLE PAGE OF JOBS IN ONE QUERY.
+
+CALLING was_alerted() PER JOB COST TWO QUERIES EACH (AN .exists() PLUS THE FETCH),
+SO A 10 JOB PAGE WAS 20 QUERIES. THIS READS EVERY ALERT ROW FOR THE PAGE AT ONCE
+AND KEEPS THE LEGACY FALLBACK: A JOB WITH NO ALERTS ROW STAYS VISIBLE TO EVERYONE.
+'''
+def alerted_job_ids(job_ids,user_id):
+
+    job_ids     =   list(job_ids)
+    if not job_ids:
+        return set()
+
+    alerted     =   set()
+    has_alert   =   set()
+
+    alert_rows  =   Alerts.objects.exclude(is_delete=1).filter(alert_job__in=job_ids).values_list('alert_job_id','alert_users')
+
+    for alert_job_id, alert_users in alert_rows:
+        has_alert.add(alert_job_id)
+        users = [x.strip() for x in (alert_users or '').split(',') if x.strip()]
+        if str(user_id) in users:
+            alerted.add(alert_job_id)
+
+    '''JOBS THAT NEVER GOT AN ALERTS ROW ARE TREATED AS VISIBLE, AS BEFORE'''
+    return alerted | (set(job_ids) - has_alert)
+
+
+'''
+HELPER: EVERY FILE URL FOR A SET OF IMAGE RECORDS, GROUPED BY IMAGE, IN ONE QUERY.
+
+THE IMAGE LOOPS USED TO RUN AN .exists() AND THEN A SECOND IDENTICAL QUERY FOR
+EVERY SINGLE IMAGE ROW, SO A JOB WITH 10 IMAGES COST 20 QUERIES TO RENDER.
+'''
+def files_by_image(image_ids):
+
+    image_ids   =   list(image_ids)
+    grouped     =   {}
+
+    if not image_ids:
+        return grouped
+
+    domain      =   env('BASE_URL')
+
+    files_list  =   File.objects.exclude(is_delete=1).filter(file_img__in=image_ids).order_by('file_id')
+
+    for file in files_list:
+        grouped.setdefault(file.file_img_id,[]).append(domain + file.file.url)
+
+    return grouped
+
+
+'''
+HELPER: BEFORE/AFTER IMAGES FOR A PAGE OF JOBS, ONE QUERY FOR THE WHOLE PAGE
+INSTEAD OF THE PER-JOB LOOKUP build_job_payload() DOES FOR A SINGLE JOB.
+USED BY client_joblist()/employee_joblist() SO "MY JOB/HISTORY" CAN SHOW
+BEFORE/AFTER PHOTOS WITHOUT A SEPARATE REQUEST PER JOB.
+'''
+def images_by_job(job_ids):
+    job_ids = list(job_ids)
+    result  = {}
+    if not job_ids:
+        return result
+
+    img_list = list(Images.objects.exclude(is_delete=1).filter(job_id__in=job_ids))
+    if not img_list:
+        return result
+
+    image_files = files_by_image([image.img_id for image in img_list])
+
+    per_job = {}
+    for image in img_list:
+        entry = per_job.setdefault(image.job_id, {'before': [], 'after': []})
+        if image.img_type == 1:
+            entry['before'].extend(image_files.get(image.img_id, []))
+        else:
+            entry['after'].extend(image_files.get(image.img_id, []))
+
+    for job_id, lists in per_job.items():
+        result[job_id] = [
+            {'type': 'Before', 'images': lists['before']},
+            {'type': 'After',  'images': lists['after']},
+        ]
+
+    return result
+
+
+'''
+HELPER: BUILDS THE JOB DETAIL PAYLOAD (SHARED BY job_details AND active_job)
+'''
+def build_job_payload(job_data, user_id=None):
+
+    # send instance to serializer
+    job_serializer  =   JobsSerializer(job_data).data
+    # remove field from dict
+    job_serializer.pop('created_at')
+    job_serializer.pop('is_delete')
+
+    # create image url
+
+    if job_serializer['vehicle_license'] != None:
+        domain      =      env('BASE_URL')
+        obj         =       job_serializer['vehicle_license']
+        url         =       '{domain}{path}'.format(domain=domain, path=obj)
+
+        job_serializer['vehicle_license_url'] = url
+
+    if job_serializer['job_pay_status'] == True:
+        job_serializer['job_pay_status'] = "1"
+    else:
+         job_serializer['job_pay_status'] = "0"
+
+    if job_serializer['job_status'] == 1:
+        job_serializer['job_status'] = "active"
+
+    if job_serializer['job_status'] == 2:
+        job_serializer['job_status'] = "accepted"
+
+    if job_serializer['job_status'] == "3":
+        job_serializer['job_status']="completed"
+
+    if job_serializer['job_status'] == "4":
+        job_serializer['job_status']="not accepted"
+
+    if job_serializer['any_mod'] == True:
+         job_serializer['any_mod'] = "1"
+    else:
+         job_serializer['any_mod'] = "0"
+
+
+    if job_serializer['window_tint'] == True:
+         job_serializer['window_tint'] = "1"
+    else:
+         job_serializer['window_tint'] = "0"
+
+    # if block execute when job_accepted_by in job record is null
+    if job_data.job_accepted_by != None:
+
+        try:
+            user_record = Registration.objects.exclude(user_is_delete=1).get(user_id=job_data.job_accepted_by)
+        except:
+            user_record = None
+
+        if user_record != None:
+            '''to get employee name '''
+            job_serializer['employee_name'] = user_record.user_first_name+' '+user_record.user_last_name
+
+    '''
+    SAME can_accept/is_assigned FLAGS employee_joblist()/active_job() ALREADY COMPUTE,
+    SO THE JOB DETAILS SCREEN CAN SHOW ACCEPT/DECLINE TOO (E.G. AFTER ANOTHER EMPLOYEE
+    CANCELS AND THIS EMPLOYEE OPENS THE JOB DIRECTLY).
+    '''
+    if user_id is not None:
+        job_serializer['is_assigned']  =   1 if (job_data.job_accepted_by != None and int(job_data.job_accepted_by) == int(user_id)) else 0
+        job_serializer['can_accept']   =   1 if (job_data.job_status_id == 1 and not has_attempted(job_data,user_id)) else 0
+
+    '''
+    Customer's review, if one has been submitted for this job, surfaced so the
+    employee can see it alongside the job details (e.g. on "My Job").
+    '''
+    try:
+        feedback_record = Feedback.objects.exclude(is_delete=1).get(feedback_job=job_data.job_id)
+    except Feedback.DoesNotExist:
+        feedback_record = None
+
+    if feedback_record != None:
+        job_serializer['feedback_stars']   = feedback_record.feedback_stars
+        job_serializer['feedback_comment'] = feedback_record.feedback_comment
+    else:
+        job_serializer['feedback_stars']   = None
+        job_serializer['feedback_comment'] = None
+
+    '''
+    THE IMAGE ROWS ARE FETCHED ONCE (THE OLD .exists() PROBE WAS A SECOND IDENTICAL
+    QUERY) AND EVERY FILE FOR THEM COMES BACK IN ONE MORE QUERY INSTEAD OF TWO PER
+    IMAGE.
+    '''
+    img_id_list = list(Images.objects.exclude(is_delete=1).filter(job=int(job_data.job_id)))
+
+    if img_id_list:
+
+        image_files = files_by_image([image.img_id for image in img_id_list])
+
+        imges_list  = []
+        before_list = []
+        after_list = []
+        img_dict   = {}
+        for image in img_id_list:
+
+            if image.img_type == 1:
+
+                before_list.extend(image_files.get(image.img_id,[]))
+
+            else:
+
+                after_list.extend(image_files.get(image.img_id,[]))
+
+
+        img_dict['type']   = 'Before'
+        img_dict['images'] = before_list
+        imges_list.append(img_dict)
+        img_dict1 ={}
+        img_dict1['type']   = 'After'
+
+        img_dict1['images']  = after_list
+        imges_list.append(img_dict1)
+        job_serializer['images'] = imges_list
+
+    job_serializer.pop('vehicle_license')
+
+    return job_serializer
+
+
 
  
 '''
@@ -721,7 +1101,7 @@ def job_details(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })
     
@@ -750,6 +1130,12 @@ def job_details(request):
                     "message"     :   "Please provide job id",
             })
 
+        if job_data.job_status_id == 4:
+            return JsonResponse({
+                    "success"     :   0,
+                    "message"     :   "This job has been cancelled",
+            })
+
         if job_data.job_accepted_by != None: 
             if int(job_data.job_accepted_by) != int(user_id):
                 return JsonResponse({
@@ -757,111 +1143,7 @@ def job_details(request):
                     "message"     :   "This job is accepted by another employee"
                 })
 
-        # send instance to serializer 
-        job_serializer  =   JobsSerializer(job_data).data 
-        # remove field from dict
-        job_serializer.pop('created_at')        
-        job_serializer.pop('is_delete')
-
-        # create image url 
-       
-        if job_serializer['vehicle_license'] != None:     
-            domain      =      env('BASE_URL')
-            obj         =       job_serializer['vehicle_license']
-            url         =       '{domain}{path}'.format(domain=domain, path=obj)
-
-            job_serializer['vehicle_license_url'] = url
-
-        if job_serializer['job_pay_status'] == True:
-            job_serializer['job_pay_status'] = "1"
-        else:
-             job_serializer['job_pay_status'] = "0"
-
-        if job_serializer['job_status'] == 1:
-            job_serializer['job_status'] = "active"
-        
-        if job_serializer['job_status'] == 2:
-            job_serializer['job_status'] = "accepted"
-        
-        if job_serializer['job_status'] == "3":
-            job_serializer['job_status']="completed"
-
-        if job_serializer['job_status'] == "4":
-            job_serializer['job_status']="not accepted"
-
-        if job_serializer['any_mod'] == True:
-             job_serializer['any_mod'] = "1"
-        else:
-             job_serializer['any_mod'] = "0"
-        
-        
-        if job_serializer['window_tint'] == True:
-             job_serializer['window_tint'] = "1"
-        else:
-             job_serializer['window_tint'] = "0"
-        
-        # if block execute when job_accepted_by in job record is null
-        if job_data.job_accepted_by != None:
-
-            try:
-                user_record = Registration.objects.exclude(user_is_delete=1).get(user_id=job_data.job_accepted_by)
-            except:
-                user_record = None
-            
-            if user_record != None:
-                '''to get employee name '''            
-                job_serializer['employee_name'] = user_record.user_first_name+' '+user_record.user_last_name
-
-        domain =  env('BASE_URL')
-        images = Images.objects.exclude(is_delete=1).filter(job=int(job_id)).exists()
-        if images:
-             
-            img_id_list = Images.objects.exclude(is_delete=1).filter(job=job_id)
-
-            imges_list  = []
-            before_list = []
-            after_list = []
-            img_dict   = {}
-            for image in img_id_list:
-                
-            #     img_list   = []
-                if image.img_type == 1:
-                   
-                    files  = File.objects.exclude(is_delete=1).filter(file_img=image.img_id).exists()
-
-                    if files:
-                        files_list = File.objects.exclude(is_delete=1).filter(file_img=image.img_id)
-
-                        for file in files_list:
-
-                            image = domain + file.file.url
-                            before_list.append(image)
-                else: 
-                
-                    files  = File.objects.exclude(is_delete=1).filter(file_img=image.img_id).exists()
-
-                    if files:
-                        files_list = File.objects.exclude(is_delete=1).filter(file_img=image.img_id)
-
-                        for file in files_list:
-
-                            image = domain + file.file.url
-                            after_list.append(image)
-            
-
-            #             img_list.append(image)
-            #         img_dict['images'] = img_list
-          
-            img_dict['type']   = 'Before'
-            img_dict['images'] = before_list
-            imges_list.append(img_dict)
-            img_dict1 ={}
-            img_dict1['type']   = 'After'
-            
-            img_dict1['images']  = after_list
-            imges_list.append(img_dict1)
-            job_serializer['images'] = imges_list
-        job_serializer.pop('vehicle_license')
+        job_serializer  =   build_job_payload(job_data, user_id)
 
         data = {
             "job_details":job_serializer
@@ -885,7 +1167,7 @@ def remove_job(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
                 })
     
@@ -937,7 +1219,7 @@ def accept_job(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
             })
     
@@ -1014,7 +1296,7 @@ def accept_job(request):
 #  Notification generate for accept job
 '''
 NOTIFY CLIENT THAT JOB ACCEPTED
-''' 
+'''
 @shared_task()
 def accept_job_notification(job_id):
 
@@ -1033,34 +1315,131 @@ def accept_job_notification(job_id):
     noti_data['data']       =   data
     noti_data['fcm_token']  =   str(user_record.user_fcm_token)
     noti_data['device']     =   str(user_record.device_type)
-    
-    FCM.send_notification(noti_data)     
+
+    logger.info('accept_job_notification: sending "job accepted" notification to client for job %s', job_id)
+    FCM.send_notification(noti_data)
+    logger.info('accept_job_notification: sent "job accepted" notification to client for job %s', job_id)
     return True
 
 
     
 
 
-'''API FOR REJECT JOB'''
+'''API FOR REJECT JOB
+Employee declines a job they were alerted about (job still status 1, not yet
+accepted). Records the rejection the same way cancel_job_by_employee records
+a cancellation, so the employee is never offered this job again, and
+re-runs the area search so other nearby employees (or the "not available"
+client notification) still fire once everyone eligible has rejected.
+'''
 @api_view(['POST'])
 def reject_job(request):
 
     token = request.headers['Authorization']
-    user_token = token.replace("Bearer",'')  
+    user_token = token.replace("Bearer",'')
     check_user      =       token_verification(user_token)
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
         })
-    
+
     # if token verified
     else:
-        # job_id      =       request.data.get(job_id,None)
-        return JsonResponse({
-            "success"   :    1,
-            "message"   :   "job rejected"
-            })
+        job_id  = request.data.get('job_id', None)
+        user_id = check_user['session_user']
+
+        if job_id is None or job_id == '':
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Please provide a valid job id",
+                })
+
+        try:
+            job_id = int(job_id)
+        except (ValueError, TypeError):
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Invalid job id format",
+                })
+
+        try:
+            job_record  =   Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
+        except Jobs.DoesNotExist:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "No job found with the given id",
+                })
+
+        status_id = job_record.job_status.status_id
+
+        if status_id == 4:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Job is already canceled by the client",
+                })
+
+        if status_id == 3:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Job is already completed",
+                })
+
+        if status_id == 5:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Job has no available employees",
+                })
+
+        existing_attempted = job_record.job_attempted_by or ''
+        if str(user_id) not in [x.strip() for x in existing_attempted.split(',') if x.strip()]:
+            new_attempted = existing_attempted + ',' + str(user_id) if existing_attempted else str(user_id)
+        else:
+            new_attempted = existing_attempted
+
+        update_data = {"job_attempted_by": new_attempted}
+
+        '''
+        WHEN THE REJECTING EMPLOYEE HAD ALREADY ACCEPTED THE JOB, PUT THE JOB BACK
+        TO active(1) AND CLEAR job_accepted_by (MIRRORS cancel_job_by_employee) SO
+        OTHER NEARBY EMPLOYEES SEE THE JOB AGAIN, WHILE THIS EMPLOYEE STAYS IN
+        job_attempted_by (can_accept=0, is_assigned=0 -> no process button).
+        '''
+        if status_id == 2 and job_record.job_accepted_by is not None and int(job_record.job_accepted_by) == int(user_id):
+            update_data["job_status"] = 1
+            update_data["job_accepted_by"] = None
+
+        job_ser = JobsSerializer(instance=job_record, data=update_data, partial=True)
+
+        if job_ser.is_valid():
+            job_ser.save()
+
+            try:
+                JobLogs(
+                    job=job_record.job_id,
+                    log_msg="Job rejected by employee",
+                    cancel_by=user_id,
+                    created_at=timezone.now()
+                ).save()
+            except Exception as e:
+                logger.error('reject_job: Failed to save JobLogs for job %s: %s', job_id, str(e))
+
+            # Re-check for other available employees / notify the client if none are left.
+            try:
+                jobAlert.delay(job_id, job_record.location_latitude, job_record.location_longitude, '')
+            except Exception as e:
+                logger.error('reject_job: Failed to queue jobAlert for job %s: %s', job_id, str(e))
+
+            return JsonResponse({
+                "success"   :    1,
+                "message"   :   "job rejected"
+                })
+        else:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Failed to update job due to validation error",
+                "error"       :   job_ser.errors
+                })
 
 
 
@@ -1079,7 +1458,7 @@ def complete_job(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
             })
     # if token verified
@@ -1117,7 +1496,19 @@ def complete_job(request):
                 "success"   :   0,
                 "message"   :   "invalid employee"
             })
-       
+
+        '''
+        Before/after photos must be taken at the moment of service - enforce it
+        server-side too, not just via the app's "complete" button being disabled.
+        '''
+        before_exists = Images.objects.exclude(is_delete=1).filter(job=job_record.job_id, img_type=1).exists()
+        after_exists  = Images.objects.exclude(is_delete=1).filter(job=job_record.job_id).exclude(img_type=1).exists()
+
+        if not before_exists or not after_exists:
+            return JsonResponse({
+                "success"   :   0,
+                "message"   :   "Please upload both before and after pictures before completing the job"
+            })
 
         job_status      = JobsType.objects.get(status_id=3)
         update_record   = {
@@ -1128,7 +1519,7 @@ def complete_job(request):
         if job_serializer.is_valid():
             job_serializer.save()
             
-            # complete job notification function 
+            # complete job notification function
             complete_job_notification.delay(job_id)
 
             if job_record.job_pay_status == True:
@@ -1171,22 +1562,26 @@ def complete_job_notification(job_id):
     
     # User information dictionary
 
-    data = { 
+    # 'showReviewPage' tells the client app to auto-open the review page instead of waiting for the notification to be tapped.
+    data = {
             'title'                    :   'job completed',
             'notificationScreenType'    :   "completejob",
             'message'                   :   'Your job completed. Please add review about your job',
-            'job_id'                    :   job_id
+            'job_id'                    :   job_id,
+            'showReviewPage'           :   'true'
         }
-        
-    
-    # SEND NOTIFICATIONS 
+
+
+    # SEND NOTIFICATIONS
 
     noti_data={ }  
     noti_data['data'] = data
     noti_data['fcm_token']  =  (str(client_record.user_fcm_token))
     noti_data['device']     =  str(client_record.device_type)
-    
+
+    logger.info('complete_job_notification: sending "job completed" notification to client for job %s', job_id)
     FCM.send_notification(noti_data)
+    logger.info('complete_job_notification: sent "job completed" notification to client for job %s', job_id)
     return True
 
 
@@ -1205,7 +1600,7 @@ def cancel_job(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
                 })
     
@@ -1234,8 +1629,24 @@ def cancel_job(request):
                 "message"     :   "job is already canceled",
                 })
 
+        # Track the employee who had accepted (if any) in job_attempted_by
+        existing_attempted = job_record.job_attempted_by or ''
+        if job_record.job_accepted_by:
+            emp_id_str = str(job_record.job_accepted_by)
+            if emp_id_str not in [x.strip() for x in existing_attempted.split(',') if x.strip()]:
+                if existing_attempted:
+                    new_attempted = existing_attempted + ',' + emp_id_str
+                else:
+                    new_attempted = emp_id_str
+            else:
+                new_attempted = existing_attempted
+        else:
+            new_attempted = existing_attempted
+
         update_data = {
-            "job_status_id" : 4
+            "job_status" : 4,
+            "job_accepted_by" : None,
+            "job_attempted_by" : new_attempted
         }
 
         job_ser = JobsSerializer(instance=job_record,data=update_data,partial=True)
@@ -1293,23 +1704,25 @@ def cancel_job_notification(job_id):
 
     # pass dictionary data to send notification
     not_data = { 
-             'title'                      :     'Cancel Job',             
+             'title'                      :     'Cancel Job',
              'notificationScreenType'     :     'cancel_job',
              'message'                    :     'The job has been cancelled',
-             'job_id'                     :     str(job_id),  
+             'job_id'                     :     str(job_id),
              'job_type'                   :     job_instance.job_type
             }
-             
-    # SEND NOTIFICATIONS 
-    
+
+    # SEND NOTIFICATIONS
+
     for employee in employees:
         if employee.user_fcm_token!=None and employee.user_fcm_token!='':
             noti_data['data']       =   not_data
-            noti_data['fcm_token']  =   employee.user_fcm_token 
+            noti_data['fcm_token']  =   employee.user_fcm_token
             noti_data['device']     =   str(employee.device_type)
             # sends push notification
+            logger.info('cancel_job_notification: sending "Cancel Job" notification to employee %s for job %s', employee.user_id, job_id)
             FCM.send_notification(noti_data)
-     
+            logger.info('cancel_job_notification: sent "Cancel Job" notification to employee %s for job %s', employee.user_id, job_id)
+
     return True
 
 
@@ -1318,13 +1731,22 @@ def cancel_job_notification(job_id):
 @api_view(['POST'])
 
 def cancel_job_by_employee(request):
-    token       = request.headers['Authorization']
+    try:
+        token       = request.headers['Authorization']
+    except KeyError:
+        logger.error('cancel_job_by_employee: Missing Authorization header')
+        return JsonResponse({
+                "success"     :   2,
+                "message"     :   "Missing Authorization header",
+                })
+
     user_token  = token.replace("Bearer",'')  
     check_user  = token_verification(user_token)
 
     if check_user is None:
+        logger.warning('cancel_job_by_employee: Unauthorized access attempt')
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
                 })
     
@@ -1332,138 +1754,142 @@ def cancel_job_by_employee(request):
     else:
         job_id  = request.data.get('job_id')
         user_id = check_user['session_user']
-        try:
-            job_record  =   Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
-        except:
-            job_record = None
 
-
-        if job_record == None:
-             return JsonResponse({
-                "success"     :   0,
-                "message"     :   "no job found",
-                })
-         
-        if job_record.job_status.status_id==1:
+        if job_id is None or job_id == '':
+            logger.warning('cancel_job_by_employee: Missing job_id by user %s', user_id)
             return JsonResponse({
                 "success"     :   0,
-                "message"     :   "job is already canceled by you",
+                "message"     :   "Please provide a valid job id",
                 })
 
+        try:
+            job_id = int(job_id)
+        except (ValueError, TypeError):
+            logger.warning('cancel_job_by_employee: Invalid job_id format "%s" by user %s', job_id, user_id)
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Invalid job id format",
+                })
+
+        try:
+            job_record  =   Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
+        except Jobs.DoesNotExist:
+            logger.warning('cancel_job_by_employee: Job %s not found (user %s)', job_id, user_id)
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "No job found with the given id",
+                })
+        except Exception as e:
+            logger.error('cancel_job_by_employee: DB error fetching job %s: %s', job_id, str(e))
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Database error while fetching job",
+                })
+
+        status_id = job_record.job_status.status_id
+
+        if status_id == 1:
+            logger.info('cancel_job_by_employee: Job %s already active/canceled (user %s)', job_id, user_id)
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Job is already canceled",
+                })
+
+        if status_id == 4:
+            logger.info('cancel_job_by_employee: Job %s already canceled by client (user %s)', job_id, user_id)
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Job is already canceled by the client",
+                })
+
+        if status_id == 3:
+            logger.info('cancel_job_by_employee: Job %s already completed, cannot cancel (user %s)', job_id, user_id)
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Job is already completed and cannot be canceled",
+                })
+
+        if status_id == 5:
+            logger.info('cancel_job_by_employee: Job %s has no available employees (user %s)', job_id, user_id)
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Job has no available employees",
+                })
+
+        if job_record.job_accepted_by is None or int(job_record.job_accepted_by) != int(user_id):
+            logger.warning('cancel_job_by_employee: User %s is not the acceptor of job %s (accepted_by=%s)', user_id, job_id, job_record.job_accepted_by)
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "You are not authorized to cancel this job",
+                })
 
         accepted_by = job_record.job_accepted_by
+
+        # Append cancelling employee to job_attempted_by
+        existing_attempted = job_record.job_attempted_by or ''
+        if str(user_id) not in [x.strip() for x in existing_attempted.split(',') if x.strip()]:
+            if existing_attempted:
+                new_attempted = existing_attempted + ',' + str(user_id)
+            else:
+                new_attempted = str(user_id)
+        else:
+            new_attempted = existing_attempted
+
         update_data = {
-            "job_status_id" : 1,
-            "job_accepted_by" : None
+            "job_status" : 1,
+            "job_accepted_by" : None,
+            "job_attempted_by" : new_attempted
         }
-        job_log = JobLogs(
-            job=job_record.job_id,
-            log_msg="Job caceled by employee",
-            cancel_by=accepted_by,
-            created_at=timezone.now()
-        ) 
-        job_log.save()
+
+        try:
+            job_log = JobLogs(
+                job=job_record.job_id,
+                log_msg="Job canceled by employee",
+                cancel_by=accepted_by,
+                created_at=timezone.now()
+            ) 
+            job_log.save()
+        except Exception as e:
+            logger.error('cancel_job_by_employee: Failed to save JobLogs for job %s: %s', job_id, str(e))
         
         job_ser = JobsSerializer(instance=job_record,data=update_data,partial=True)
 
         if job_ser.is_valid():
-            job_ser.save()
-           
-            notify_client.delay(job_id,user_id)
-            # alert employee that job is active
-            
-            jobAlert(job_id,job_record.user.location_latitude,job_record.user.location_longitude,accepted_by)
+            try:
+                job_ser.save()
+            except Exception as e:
+                logger.error('cancel_job_by_employee: Failed to save job update for job %s: %s', job_id, str(e))
+                return JsonResponse({
+                        "success"     :   0,
+                        "message"     :   "Failed to update job status",
+                        })
+
+            '''
+            notify_client() ALREADY DOES BOTH HALVES OF THIS EVENT: IT TELLS THE
+            CLIENT THE EMPLOYEE CANCELLED, THEN RE-RUNS THE SAME NEARBY-EMPLOYEE
+            SEARCH jobAlert() DOES. CALLING jobAlert() HERE TOO SENT EVERY MATCHED
+            EMPLOYEE THE "New job request" PUSH TWICE AND WROTE TWO Alerts ROWS
+            FOR ONE CANCELLATION, SO ONLY notify_client() IS DISPATCHED NOW.
+            '''
+            try:
+                notify_client.delay(job_id,user_id)
+            except Exception as e:
+                logger.error('cancel_job_by_employee: Failed to queue notify_client task for job %s: %s', job_id, str(e))
+
+            logger.info('cancel_job_by_employee: Job %s canceled successfully by user %s', job_id, user_id)
             return JsonResponse({
                     "success"     :   1,
                     "message"     :   "Your job is cancelled by employee",
                     })
         else:
-            
+            logger.error('cancel_job_by_employee: Serializer errors for job %s: %s', job_id, job_ser.errors)
             return JsonResponse({
                     "success"     :   0,
-                    "message"     :   "some error occured",
+                    "message"     :   "Failed to update job due to validation error",
                     "error"       :   job_ser.errors
                     })
 
     
-
-@shared_task()
-def job_alert_after_cancel(job_id,latitude,longitude,accepted_by):
-    job_instance    =    Jobs.objects.exclude(is_delete=1).get(job_id=int(job_id))
-     
-    if job_instance.job_type == "emergency":
-        
-        employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(job_accepted_by=accepted_by).filter(user_role_id=1)
-        message     =  "EMERGENCY!!! PLEASE ACCEPT THIS JOB ASAP!!!"
-
-    else:
-        employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(job_accepted_by=accepted_by).filter(employee_status=1).filter(user_role_id=1)
-        message     =  "PLEASE ACCEPT THIS JOB ASAP!!!"
-    # employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
-
-    # get employee list
-    user_list   =   []
-    emp_fcm     =   []
-    emplist     =   {}
-    data        =   {}
-    '''IN EMPLOYEE DICT   KEY == > EMPLOYEE_ID  VALUE_LIST ==> [FCM,DEVICE TYPE]'''
-    for employee in employees:
-        if employee.user_fcm_token != "" or employee.user_fcm_token != None: 
-            # user location
-            user_location = (latitude,longitude)
-            # employee location
-            emp_location =  (employee.location_latitude,employee.location_longitude)
-            # calculate distance between two point 
-            # dist        =   gd(user_location,emp_location).km
-            api_key  =  'AIzaSyC2o6UvDF6qUUQM3KCwR6dwoV5qCfj8MGs'
-            url      =  f"https://maps.googleapis.com/maps/api/distancematrix/json?origins={latitude},{longitude}&destinations={employee.location_latitude},{employee.location_longitude}&key={api_key}"
-            response =  requests.get(url)
-            data     =  response.json()
-             
-            try:
-                duration_seconds = data['rows'][0]['elements'][0]['duration']['value']
-            except KeyError:
-                duration_seconds =''
-            # if dist is less than 6 km append list 
-
-            if duration_seconds <= 1260 and duration_seconds != '':
-                user_list.append(employee.user_id)
-                emp_fcm.append(employee.user_fcm_token)
-                emplist[str(employee.user_id)] = list((str(employee.user_fcm_token),str(employee.device_type))) 
-
-    if len(user_list) == 0:
-        client_fcm = job_instance.user.user_fcm_token
-        noti_data={ }  
-    
-        data = { 
-             'title'                      :     'Not Accepted',             
-             'notificationScreenType'     :     'addjob',
-             'message'                    :     'We are currently not available in your area. Coming soon',
-             'job_id'                     :     str(job_id),  
-             'job_type'                   :     job_instance.job_type
-            }
-        
-        noti_data['fcm_token']  =   client_fcm 
-        noti_data['device']     =   str(employee.device_type)
-        noti_data['data']       =   data
-
-        # sends push notification
-
-        FCM.send_notification(noti_data)
-
-        job_status      = JobsType.objects.get(status_id=1)
-        update_record   = {
-            "job_status_id" : job_status.status_id 
-            }
-
-        job_serializer = JobsSerializer(instance=job_instance,data=update_record,partial=True)
-        if job_serializer.is_valid():
-            job_serializer.save()
-
-
-        return True
-    
-
 
 '''Notify all employees that the job has been active again'''
 @shared_task()
@@ -1487,8 +1913,9 @@ def notify_client(job_id,user_id):
     noti_data['data']       =   data
 
     # sends push notification
-
+    logger.info('notify_client: sending "Job Cancelled by Employee" notification to client for job %s', job_id)
     FCM.send_notification(noti_data)
+    logger.info('notify_client: sent "Job Cancelled by Employee" notification to client for job %s', job_id)
 
 
     if job_instance.job_type == "emergency":
@@ -1499,6 +1926,22 @@ def notify_client(job_id,user_id):
     else:
         employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(user_id=user_id).filter(employee_status=1).filter(user_role_id=1)
         message     =  "PLEASE ACCEPT THIS JOB ASAP!!!"
+
+    # Build exclusion set from job_attempted_by
+    excluded_ids = set()
+    if user_id:
+        excluded_ids.add(int(user_id))
+    attempted = job_instance.job_attempted_by or ''
+    for aid in attempted.split(','):
+        aid = aid.strip()
+        if aid:
+            excluded_ids.add(int(aid))
+
+    if excluded_ids:
+        if job_instance.job_type == "emergency":
+            employees = Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(user_id__in=excluded_ids).filter(user_role_id=1)
+        else:
+            employees = Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).exclude(user_id__in=excluded_ids).filter(employee_status=1).filter(user_role_id=1)
     # employees   =  Registration.objects.exclude(Q(user_is_delete=1) & Q(user_role_id=2)).filter(user_role_id=1)
 
     # get employee list
@@ -1543,23 +1986,26 @@ def notify_client(job_id,user_id):
 
     if len(user_list) == 0:
         client_fcm = job_instance.user.user_fcm_token
-        noti_data={ }  
-    
-        data = { 
-             'title'                      :     'Not Accepted',             
-             'notificationScreenType'     :     'addjob',
-             'message'                    :     'We are currently not available in your area. Coming soon',
-             'job_id'                     :     str(job_id),  
+        noti_data={ }
+
+        # 'no_availability' is distinct from 'addjob' so the app can reliably switch its on-screen "Hang tight..." message to match this notification's text.
+        data = {
+             'title'                      :     NO_AVAILABILITY_TITLE,
+             'notificationScreenType'     :     NO_AVAILABILITY_SCREEN_TYPE,
+             'message'                    :     NO_AVAILABILITY_MESSAGE,
+             'job_id'                     :     str(job_id),
              'job_type'                   :     job_instance.job_type
             }
-        
-        noti_data['fcm_token']  =   client_fcm 
-        noti_data['device']     =   str(employee.device_type)
+
+        noti_data['fcm_token']  =   client_fcm
+        # Uses the client's own device type, not the employee-loop variable (which can be unbound if zero employees match).
+        noti_data['device']     =   str(job_instance.user.device_type)
         noti_data['data']       =   data
 
-            # sends push notification
-
+        # sends push notification
+        logger.info('notify_client: sending "%s" notification to client for job %s', NO_AVAILABILITY_TITLE, job_id)
         FCM.send_notification(noti_data)
+        logger.info('notify_client: sent "%s" notification to client for job %s', NO_AVAILABILITY_TITLE, job_id)
 
         job_status      = JobsType.objects.get(status_id=5)
         update_record   = {
@@ -1607,11 +2053,13 @@ def notify_client(job_id,user_id):
     for employee in employees:
         if employee.user_fcm_token!=None and employee.user_fcm_token!='':
             noti_data['data']       =   not_data
-            noti_data['fcm_token']  =   employee.user_fcm_token 
+            noti_data['fcm_token']  =   employee.user_fcm_token
             noti_data['device']     =   str(employee.device_type)
             # sends push notification
+            logger.info('notify_client: sending "New job request" notification to employee %s for job %s', employee.user_id, job_id)
             FCM.send_notification(noti_data)
-     
+            logger.info('notify_client: sent "New job request" notification to employee %s for job %s', employee.user_id, job_id)
+
     return True
 
 
@@ -1630,7 +2078,7 @@ def client_joblist(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
                 })
     
@@ -1655,9 +2103,24 @@ def client_joblist(request):
         
         job_serializer  =   JobsSerializer(jobs_list,many=True).data
 
-        removeElements(['is_delete','vehicle_license','location_latitude','location_longitude','user'],job_serializer) 
+        '''BEFORE/AFTER PHOTOS FOR "MY JOB/HISTORY", ONE QUERY FOR THE WHOLE PAGE'''
+        images_map      =   images_by_job([job['job_id'] for job in job_serializer])
+
+        removeElements(['is_delete','vehicle_license','location_latitude','location_longitude','user'],job_serializer)
+
+        '''
+        EVERY EMPLOYEE NAME ON THE PAGE IN ONE QUERY INSTEAD OF ONE Registration.get()
+        PER JOB.
+        '''
+        employee_names  =   {}
+        employee_ids    =   [int(job['job_accepted_by']) for job in job_serializer if job['job_accepted_by'] != None]
+        if employee_ids:
+            for uid, first, last in Registration.objects.exclude(user_is_delete=1).filter(user_id__in=employee_ids).values_list('user_id','user_first_name','user_last_name'):
+                employee_names[uid] = first+ ' ' +last
 
         for job in job_serializer:
+
+            job['images'] = images_map.get(job['job_id'], [])
 
             if job['job_pay_status'] == True:
                 job['job_pay_status'] = "1"
@@ -1681,9 +2144,8 @@ def client_joblist(request):
 
             ''' print employee name==> job accepted by '''   
 
-            if job['job_accepted_by'] != None:
-                employee_record         =   Registration.objects.exclude(user_is_delete=1).get(user_id=int(job['job_accepted_by']))            
-                job['job_accepted_by']  =   employee_record.user_first_name+ ' ' +employee_record.user_last_name
+            if job['job_accepted_by'] != None and int(job['job_accepted_by']) in employee_names:
+                job['job_accepted_by']  =   employee_names[int(job['job_accepted_by'])]
         
 
         # response data
@@ -1712,7 +2174,7 @@ def employee_joblist(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
                 })
     
@@ -1720,20 +2182,77 @@ def employee_joblist(request):
     else:
         user_id         =   check_user['session_user']
         page_no         =   int(request.data.get('page_no'))
-        total_records   =   Jobs.objects.exclude(is_delete=1).filter(job_accepted_by=user_id).count()
-        
+
+        '''
+        ALL ACTIVE JOBS THIS EMPLOYEE HAS NOT ALREADY REJECTED/CANCELLED STAY IN THE
+        LIST, EVEN IF THE PUSH NOTIFICATION WAS DISMISSED OR THE APP WAS CLOSED.
+        '''
+        available_ids   =   set()
+        '''
+        ONLY THE TWO COLUMNS THE CHECK NEEDS ARE READ. THIS USED TO BUILD A FULL
+        MODEL INSTANCE FOR EVERY ACTIVE JOB IN THE SYSTEM JUST TO LOOK AT ONE TEXT
+        FIELD.
+        '''
+        active_jobs     =   Jobs.objects.exclude(is_delete=1).filter(job_status_id=1).values_list('job_id','job_attempted_by')
+        for job_pk, attempted in active_jobs:
+            ids = [x.strip() for x in (attempted or '').split(',') if x.strip()]
+            if str(user_id) not in ids:
+                available_ids.add(job_pk)
+
+        joblist_filter  =   Jobs.objects.exclude(is_delete=1).exclude(job_status_id=4).filter(
+                                Q(job_accepted_by=user_id) | Q(job_id__in=available_ids)
+                            ).order_by('-job_id')
+
+        total_records   =   joblist_filter.count()
+
         '''JOB LIST PAGINATION CODE'''
-        
+
         limit           =   10
         offset          =   (page_no-1)*limit    #multiply record each time
         total_pages     =   math.ceil(total_records / limit) #TOTAL NO OF PAGES
-      
-        jobs_list       =   Jobs.objects.exclude(is_delete=1).filter(job_accepted_by=user_id)[offset:limit+offset]
+
+        jobs_list       =   list(joblist_filter[offset:limit+offset])
 
         job_serializer  = JobsSerializer(jobs_list,many=True).data
 
+        '''FLAGS THE APP NEEDS TO DECIDE WHICH BUTTONS/SCREEN TO SHOW'''
+        '''ONE ALERTS QUERY FOR THE WHOLE PAGE INSTEAD OF TWO PER JOB'''
+        notified_ids    =   alerted_job_ids([job_record.job_id for job_record in jobs_list],user_id)
+
+        '''Customer's review (if any), one query for the whole page instead of one per job.'''
+        feedback_map    =   {}
+        page_job_ids    =   [job_record.job_id for job_record in jobs_list]
+        if page_job_ids:
+            for f_job_id, f_stars, f_comment in Feedback.objects.exclude(is_delete=1).filter(feedback_job_id__in=page_job_ids).values_list('feedback_job_id','feedback_stars','feedback_comment'):
+                feedback_map[f_job_id] = (f_stars, f_comment)
+
+        '''BEFORE/AFTER PHOTOS FOR "MY JOB/HISTORY", ONE QUERY FOR THE WHOLE PAGE'''
+        images_map      =   images_by_job(page_job_ids)
+
+        for job_record,job in zip(jobs_list,job_serializer):
+
+            job['is_assigned']  =   1 if (job_record.job_accepted_by != None and int(job_record.job_accepted_by) == int(user_id)) else 0
+            job['can_accept']   =   1 if (job_record.job_status_id == 1 and not has_attempted(job_record,user_id)) else 0
+            job['was_notified'] =   1 if job_record.job_id in notified_ids else 0
+
+            feedback = feedback_map.get(job_record.job_id)
+            job['feedback_stars']   = feedback[0] if feedback else None
+            job['feedback_comment'] = feedback[1] if feedback else None
+
+            job['images'] = images_map.get(job_record.job_id, [])
+
         '''Remove element from serlialized dict'''
-        removeElements(['is_delete','vehicle_license','location_latitude','location_longitude','job_accepted_by'],job_serializer) 
+        removeElements(['is_delete','vehicle_license','location_latitude','location_longitude','job_accepted_by'],job_serializer)
+
+        '''
+        EVERY CLIENT NAME ON THE PAGE IN ONE QUERY. THE LOOP BELOW USED TO RUN A
+        SEPARATE Registration.get() FOR EACH JOB.
+        '''
+        client_names    =   {}
+        client_ids      =   [job['user'] for job in job_serializer if job['user'] != None]
+        if client_ids:
+            for uid, first, last in Registration.objects.exclude(user_is_delete=1).filter(user_id__in=client_ids).values_list('user_id','user_first_name','user_last_name'):
+                client_names[uid] = first+ ' ' +last
 
         for job in job_serializer:
 
@@ -1742,7 +2261,7 @@ def employee_joblist(request):
             else:
                 job['job_pay_status'] = "0"
 
-           
+
             if job['job_status'] == 1:
                 job['job_status'] = "active"
 
@@ -1751,17 +2270,19 @@ def employee_joblist(request):
 
             elif job['job_status'] == 3:
                 job['job_status'] = "completed"
-            
+
+            elif job['job_status'] == 5:
+                job['job_status'] = "Not accepted"
+
             else:
                 job['job_status'] = "cancelled"
-             
-           
-            '''if job accepted print client name'''  
 
-            if job['user'] != None:
-                employee_record         =   Registration.objects.exclude(user_is_delete=1).get(user_id=int(job['user']))            
-                job['client_name']      =   employee_record.user_first_name+ ' ' +employee_record.user_last_name
-                
+
+            '''if job accepted print client name'''
+
+            if job['user'] != None and int(job['user']) in client_names:
+                job['client_name']      =   client_names[int(job['user'])]
+
 
 
         removeElements(['user'],job_serializer)
@@ -1771,7 +2292,8 @@ def employee_joblist(request):
             "employee_joblist"  : job_serializer,
             "total_pages"       : total_pages,
             "per_page_record"   : 10,
-            "current_page"      : page_no
+            "current_page"      : page_no,
+            "total_records"     : total_records
 
         }
         return JsonResponse({
@@ -1779,8 +2301,142 @@ def employee_joblist(request):
                 "message"     :   "joblist fetched",
                 "data"        :    data
                 })
-    
+
+
+'''
+API TO RESTORE THE CURRENT JOB SESSION.
+
+THE APP CALLS THIS ON LAUNCH/RESUME SO A JOB IS NEVER LOST WHEN THE EMPLOYEE
+TAPS A NOTIFICATION AND THEN CLOSES THE APP, OR DISMISSES THE NOTIFICATION.
+
+EMPLOYEE  ==>  THE JOB THEY ACCEPTED AND HAVE NOT FINISHED (job_state "in_progress"),
+               OTHERWISE THE NEWEST ACTIVE JOB THEY WERE ALERTED ABOUT AND HAVE NOT
+               ACCEPTED/REJECTED YET (job_state "pending").
+CLIENT    ==>  THEIR OWN JOB THAT IS STILL WAITING FOR AN EMPLOYEE OR IN PROGRESS.
+'''
+@api_view(['POST','GET'])
+def active_job(request):
+
+    try:
+        token   =   request.headers['Authorization']
+    except KeyError:
+        logger.error('active_job: Missing Authorization header')
+        return JsonResponse({
+                "success"     :   2,
+                "message"     :   "Missing Authorization header",
+                })
+
+    user_token  =   token.replace("Bearer",'')
+    check_user  =   token_verification(user_token)
+
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   2,
+                "message"     :   "Unauthorized User",
+                })
+
+    # if token verified
+    else:
+        user_id     =   check_user['session_user']
+
+        try:
+            user_record =   Registration.objects.exclude(user_is_delete=1).get(user_id=user_id)
+        except Registration.DoesNotExist:
+            logger.warning('active_job: No registration found for user %s', user_id)
+            return JsonResponse({
+                    "success"     :   0,
+                    "message"     :   "User not found",
+                    })
+
+        job_record  =   None
+        job_state   =   None
+
+        '''EMPLOYEE'''
+        if user_record.user_role_id == 1:
+
+            # 1. JOB ALREADY ACCEPTED BY THIS EMPLOYEE AND NOT YET COMPLETED
+            job_record  =   Jobs.objects.exclude(is_delete=1).filter(
+                                job_status_id=2,job_accepted_by=str(user_id)
+                            ).order_by('-job_id').first()
+
+            if job_record != None:
+                job_state = "in_progress"
+
+            else:
+                # 2. NEWEST ACTIVE JOB THIS EMPLOYEE WAS NOTIFIED ABOUT AND HAS NOT ACTED ON
+                '''
+                THE CANDIDATES ARE NARROWED WITH TWO CHEAP QUERIES BEFORE ANY JOB ROW
+                IS BUILT: THE ATTEMPTED CHECK RUNS ON TWO COLUMNS, THEN ONE ALERTS
+                QUERY COVERS ALL OF THEM. ONLY THE WINNING JOB IS FETCHED IN FULL.
+                '''
+                candidates  =   []
+                pending_ids =   Jobs.objects.exclude(is_delete=1).filter(job_status_id=1).order_by('-job_id').values_list('job_id','job_attempted_by')
+
+                for pending_id, attempted in pending_ids:
+                    ids = [x.strip() for x in (attempted or '').split(',') if x.strip()]
+                    if str(user_id) not in ids:
+                        candidates.append(pending_id)
+
+                if candidates:
+                    notified    =   alerted_job_ids(candidates,user_id)
+
+                    for pending_id in candidates:
+                        if pending_id in notified:
+                            job_record  =   Jobs.objects.exclude(is_delete=1).get(job_id=pending_id)
+                            job_state   =   "pending"
+                            break
+
+        # CLIENT
+        else:
+            job_record  =   Jobs.objects.exclude(is_delete=1).filter(
+                                user=user_id,job_status_id__in=[1,2]
+                            ).order_by('-job_id').first()
+
+            if job_record != None:
+                job_state = "in_progress" if job_record.job_status_id == 2 else "pending"
+
+        if job_record is None:
+            return JsonResponse({
+                    "success"     :   1,
+                    "message"     :   "No active job",
+                    "data"        :   {
+                        "has_active_job"    :   0,
+                        "active_job"        :   None
+                        }
+                    })
+
+        job_payload =   build_job_payload(job_record, user_id)
+        job_payload.pop('job_attempted_by',None)
+
+        job_payload['job_state']    =   job_state
+        job_payload['can_accept']   =   1 if (user_record.user_role_id == 1 and job_record.job_status_id == 1 and not has_attempted(job_record,user_id)) else 0
+
+        '''SAME SCREEN TYPE THE PUSH NOTIFICATION CARRIES, SO THE APP REUSES ITS HANDLER'''
+        if user_record.user_role_id == 1:
+            job_payload['notificationScreenType'] = 'addjob' if job_state == "pending" else 'acceptjob'
+        else:
+            job_payload['notificationScreenType'] = 'acceptjob' if job_state == "in_progress" else 'addjob'
+
+        '''CLIENT NAME FOR THE EMPLOYEE SCREEN'''
+        try:
+            client_record   =   Registration.objects.exclude(user_is_delete=1).get(user_id=job_record.user_id)
+            job_payload['client_name']  =   client_record.user_first_name+ ' ' +client_record.user_last_name
+        except Registration.DoesNotExist:
+            logger.warning('active_job: Client %s missing for job %s', job_record.user_id, job_record.job_id)
+
+        return JsonResponse({
+                "success"     :   1,
+                "message"     :   "Active job fetched",
+                "data"        :   {
+                    "has_active_job"    :   1,
+                    "active_job"        :   job_payload
+                    }
+                })
+
+
 import os
+from django.conf import settings
+from django.core.files import File as DjangoFile
 @api_view(['POST'])
 def upload_images(request):
 
@@ -1790,7 +2446,7 @@ def upload_images(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   1,
                 "message"     :   "Unauthorized User",
                 })
     
@@ -1798,7 +2454,6 @@ def upload_images(request):
     else:
         job_id   =  request.data.get("job_id")
         img_type =  request.data.get("img_type")
-        image_list  =  request.FILES.getlist('image')
 
         if job_id == '' or job_id == None:
             return JsonResponse({
@@ -1811,77 +2466,96 @@ def upload_images(request):
                 "success"     :   0,
                 "message"     :   "Please provide a image type"
             })
-        if image_list == '' or image_list == None:
-            return JsonResponse({
-                "success"     :   0,
-                "message"     :   "Please provide a image type"
-            })
-        
-        job_check = Jobs.objects.exclude(is_delete=1).filter(job_id=job_id).exists()
-        if job_check ==False:
-            return JsonResponse({
-                "success"     :   0,
-                "message"     :   "Job does not exist"
-            })
+
         if img_type != "before" and img_type != "after":
              return JsonResponse({
                 "success"     :   0,
                 "message"     :   "Please provide a image type before or after"
             })
-        for image in image_list: 
+
+        try:
+            job_id = int(job_id)
+        except (ValueError, TypeError):
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Invalid job id"
+            })
+
+        job_rec  = Jobs.objects.exclude(is_delete=1).filter(job_id=job_id).first()
+        if job_rec is None:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Job does not exist"
+            })
+
+        image_list  =  request.FILES.getlist('image')
+        print(image_list)
+
+        '''
+        THE APP DOES NOT ALWAYS SEND A REAL MULTIPART FILE - THE image FIELD CAN BE A
+        JSON/URI STRING (e.g. '{"uri":"http://host/media/attachments/xxx.jpg"}') POINTING
+        TO A FILE THAT IS ALREADY ON THE SERVER (THE IMAGE-PICKER TEMP FILE THAT LIVES
+        UNDER media/attachments/). SUPPORT BOTH SO THE UPLOAD NEVER FAILS OR SILENTLY
+        CREATES AN EMPTY Images ROW.
+        '''
+        server_files = []
+        if not image_list:
+            image_ref = request.data.get('image')
+            print("image_ref:====>", image_ref)
+            if isinstance(image_ref, str):
+                try:
+                    parsed = json.loads(image_ref)
+                    if isinstance(parsed, dict):
+                        image_ref = parsed.get('uri') or parsed.get('url') or parsed.get('file_path')
+                except (ValueError, TypeError):
+                    pass
+                if isinstance(image_ref, str) and image_ref:
+                    basename = os.path.basename(image_ref)
+                    local_path = os.path.join(settings.MEDIA_ROOT, 'attachments', basename)
+                    if os.path.exists(local_path):
+                        server_files.append(local_path)
+
+        if not image_list and not server_files:
+            return JsonResponse({
+                "success"     :   0,
+                "message"     :   "Please provide a valid image"
+            })
+
+        for image in image_list:
             try:
                 im = Image.open(image)
                 im.verify()
             except:
                 im = None
 
-            if im is None: 
+            if im is None:
                 return JsonResponse({
                     "success"     :   0,
                     "message"     :   "please provide valid image",
                 })
 
-        job_rec  = Jobs.objects.exclude(is_delete=1).get(job_id=job_id)
-        if img_type == 'before':
-            img_type = 1
-        else:
-            img_type = 2
+        img_type_val = 1 if img_type == 'before' else 2
 
         img_data =      Images(
             job        = job_rec,
-            
-            img_type   = img_type,
+            img_type   = img_type_val,
             created_at = timezone.now(),
             is_delete  = 0
         )
         img_data.save()
-        # img_id = img_data.img_id 
 
         for image in image_list:
-
-        
             filename = os.path.basename(image.name)
-            # ext     =   filename.split('.')[-1]
-            # name    =   filename.split('.')[0]
-            count   =   0
             name, ext = os.path.splitext(filename)
-    
+
             if len(name) > 12:
                 name = name[:12]
-            
-            # for i in range(0, len(filename)):  
-            #     if(filename[i] != ' '):  
-            #         count = count + 1
-
-            #     if count >=12:
-            #         name = str(filename)[0:12]
 
             time     =   (timezone.now()).strftime("%Y-%m-%d %H:%M:%S")
             filename =   "%s%s.%s" % (name,str(time),ext)
-            # original_string = 'Jonaten_bann2023-07-27 20:12:10.png'
-            modified_string = filename.replace(' ', '_').replace(':', '') 
+            modified_string = filename.replace(' ', '_').replace(':', '')
             file_path_name = os.path.join('attachments/',modified_string)
-                # apirequest.png
+
             file = File(file            = image,
                         file_name       = image,
                         file_path       = "media/attachments",
@@ -1889,7 +2563,34 @@ def upload_images(request):
                         file_img        = img_data
                         )
             file.save()
-    
+
+        '''
+        ALREADY-UPLOADED FILES (e.g. THE IMAGE-PICKER TEMP FILE THE APP PUT IN
+        media/attachments/) ARE COPIED INTO THE SAME ATTACHMENTS LAYOUT AS NORMAL
+        UPLOADS, SO THE RESULTING File ROWS ARE CONSISTENT WITH upload_images.
+        '''
+        for local_path in server_files:
+            basename     = os.path.basename(local_path)
+            name, ext    = os.path.splitext(basename)
+
+            if len(name) > 12:
+                name = name[:12]
+
+            time     =   (timezone.now()).strftime("%Y-%m-%d %H:%M:%S")
+            filename =   "%s%s.%s" % (name,str(time),ext)
+            modified_string = filename.replace(' ', '_').replace(':', '')
+            file_path_name = os.path.join('attachments/',modified_string)
+
+            with open(local_path, 'rb') as fh:
+                django_file = DjangoFile(fh, name=os.path.basename(file_path_name))
+                File(file            = django_file,
+                     file_name       = basename,
+                     file_path       = "media/attachments",
+                     file_system_name= file_path_name,
+                     file_size       = os.path.getsize(local_path),
+                     file_img        = img_data
+                     ).save()
+
         return JsonResponse({
                 "success"     :   1,
                 "message"     :   "Images uploaded successfully"
@@ -1905,7 +2606,7 @@ def getuploaded_image(request):
 
     if check_user is None:
         return JsonResponse({
-                "success"     :   0,
+                "success"     :   2,
                 "message"     :   "Unauthorized User",
                 })
     
@@ -1926,18 +2627,19 @@ def getuploaded_image(request):
                 "message"     :   "Job does not exist"
             })
         
-        domain =  env('BASE_URL')
-        images = Images.objects.exclude(is_delete=1).filter(job=int(job_id)).exists()
-        if images == False:
+        '''ONE QUERY FOR THE IMAGES AND ONE FOR ALL THEIR FILES, SEE files_by_image()'''
+        img_id_list = list(Images.objects.exclude(is_delete=1).filter(job=int(job_id)))
+
+        if not img_id_list:
             return JsonResponse({
                 "success"     :   0,
                 "message"     :   "Images does not exist"
             })
-        
-        img_id_list = Images.objects.exclude(is_delete=1).filter(job=job_id)
+
+        image_files = files_by_image([image.img_id for image in img_id_list])
 
         imges_list = []
-       
+
         for image in img_id_list:
             img_dict   = {}
             if image.img_type == 1:
@@ -1945,18 +2647,11 @@ def getuploaded_image(request):
             else:
 
                 img_dict['type'] = "After"
-            
-            files  = File.objects.exclude(is_delete=1).filter(file_img=image.img_id).exists()
 
-            if files:
-                files_list = File.objects.exclude(is_delete=1).filter(file_img=image.img_id)
+            img_list = image_files.get(image.img_id,[])
 
-                img_list   = []
-                for file in files_list:
-
-                    image = domain + file.file.url
-                    img_list.append(image)
-                    img_dict['images'] = img_list
+            if img_list:
+                img_dict['images'] = img_list
                 imges_list.append(img_dict)
         return JsonResponse({
             "success"     :   1,
@@ -1967,8 +2662,59 @@ def getuploaded_image(request):
 
 
 
+'''
+API: NOT COMPLETED JOBS (STATUS 5) NEAR THE LOGGED-IN EMPLOYEE
+Gets the login employee (with lat & long) from the user table via token, then
+returns the not-deleted jobs with status 5 that fall within a 6 km radius of
+the employee's location.
+'''
+@api_view(['POST'])
+def not_completed_jobs(request):
 
+    token       = request.headers['Authorization']
+    user_token  = token.replace("Bearer",'')
+    check_user  = token_verification(user_token)
 
+    if check_user is None:
+        return JsonResponse({
+                "success"     :   2,
+                "message"     :   "Unauthorized User",
+                })
 
+    user_id     =   check_user['session_user']
 
+    employee    =   Registration.objects.filter(user_id=user_id).first()
+
+    if employee is None:
+        return JsonResponse({
+                "success"     :   0,
+                "message"     :   "User not found",
+                })
+
+    employee_lat    =   employee.location_latitude
+    employee_long   =   employee.location_longitude
+
+    job_list    =   []
+    if employee_lat is not None and employee_long is not None:
+        jobs_list   =   Jobs.objects.exclude(is_delete=1).filter(job_status_id=1).order_by('-job_id')[:5]
+
+        for job in jobs_list:
+            dist = gd((employee_lat, employee_long), (job.location_latitude, job.location_longitude)).km
+
+            if dist <= 6:
+                job_list.append({
+                        'job_id'                :   job.job_id,
+                        'job_type'              :   job.job_type
+                    })
+
+    data = {
+        "job_list"  :   job_list,
+        "count"     :   len(job_list),
+    }
+
+    return JsonResponse({
+            "success"     :   1,
+            "message"     :   "Activate jobs fetched",
+            "data"        :   data
+            })
 
