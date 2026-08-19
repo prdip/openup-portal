@@ -59,6 +59,8 @@ def create_venmo_order(request):
     venmo_req_id  = request.data.get('venmo_req_id')
     email_address = request.data.get('email_address')
     save_venmo    = request.data.get('save_venmo', False)
+    return_url    = request.data.get('return_url') or VENMO_RETURN_URL
+    cancel_url    = request.data.get('cancel_url') or VENMO_CANCEL_URL
 
     if not amount:
         return JsonResponse({"success": 0, "message": "Amount is required"})
@@ -74,11 +76,14 @@ def create_venmo_order(request):
     if venmo_req_id:
         headers['PayPal-Request-Id'] = venmo_req_id
 
+    if not return_url or not cancel_url:
+        return JsonResponse({"success": 0, "message": "return_url and cancel_url are required"})
+
     venmo_source = {
         "experience_context": {
             "brand_name": PAYPAL_BRAND_NAME,
-            "return_url": VENMO_RETURN_URL,
-            "cancel_url": VENMO_CANCEL_URL,
+            "return_url": return_url,
+            "cancel_url": cancel_url,
         }
     }
     if email_address:
