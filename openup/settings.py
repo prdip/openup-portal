@@ -18,7 +18,7 @@ import os
 # CODE FOR ENV
 import environ
 env = environ.Env()
-environ.Env.read_env(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
+# environ.Env.read_env(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
 # CODE FOR ENV END
 
 
