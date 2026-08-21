@@ -273,8 +273,8 @@ def user_register(request):
             data_dict = {
                 "Subject"             :     "Request for Acount Activation",
                 "text_template"       :     "email/confirm_user.txt",
-                # "email"               :     email_id.mail_from_address,
-                "email"               :     'open.up@opnup.net',
+                "email"               :     email_id.mail_from_address,
+                # "email"               :     'open.up@opnup.net',
                 "to"                  :     email, 
                 "user_type"          :      user_type,
                 "user_email"         :      email
