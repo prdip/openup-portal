@@ -275,13 +275,13 @@ def user_register(request):
                 "text_template"       :     "email/confirm_user.txt",
                 # "email"               :     email_id.mail_from_address,
                 "email"               :     'open.up@opnup.net',
-                "to"                  :     'open.up@opnup.net', 
+                "to"                  :     email, 
                 "user_type"          :      user_type,
                 "user_email"         :      email
             }
 
-            # send_empemail.delay(data_dict)
-            send_empemail(data_dict)
+            send_empemail.delay(data_dict)
+            # send_empemail(data_dict)
             email_dict = {
                 "Subject"            :   "Please Verify Your email to start using Openup emergency service",
                 "text_template"      :   "email/verify_user.txt",
@@ -428,7 +428,7 @@ def send_email(data_dict):
     SendEmail.send_email(data_dict)
 
 
-# @shared_task()
+@shared_task()
 def send_empemail(data_dict):
     '''call send_email function'''
 
