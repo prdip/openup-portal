@@ -18,6 +18,7 @@ import os
 # CODE FOR ENV
 import environ
 env = environ.Env()
+env.read_env('/var/www/openupweb/openup/.env')
 # environ.Env.read_env(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
 # CODE FOR ENV END
 
