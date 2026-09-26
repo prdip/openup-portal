@@ -1052,6 +1052,9 @@ def build_job_payload(job_data, user_id=None):
     '''
     img_id_list = list(Images.objects.exclude(is_delete=1).filter(job=int(job_data.job_id)))
 
+    '''ALWAYS SEND THE KEY (EMPTY LIST WHEN THERE ARE NO IMAGES), LIKE client_joblist()/employee_joblist()'''
+    job_serializer['images'] = []
+
     if img_id_list:
 
         image_files = files_by_image([image.img_id for image in img_id_list])
@@ -2098,7 +2101,7 @@ def client_joblist(request):
             total_pages     =   math.ceil(total_records / limit)
         except:
             total_pages    =    0
-        jobs_list       =   Jobs.objects.exclude(is_delete=1).filter(user=user_id)[offset:limit+offset]
+        jobs_list       =   Jobs.objects.exclude(is_delete=1).filter(user=user_id).order_by('-job_id')[offset:limit+offset]
 
         
         job_serializer  =   JobsSerializer(jobs_list,many=True).data
